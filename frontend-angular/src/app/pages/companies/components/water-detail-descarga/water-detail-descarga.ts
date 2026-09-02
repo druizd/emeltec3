@@ -379,6 +379,9 @@ export class WaterDetailDescargaComponent {
     { id: 'nivel', label: 'Nivel', unit: 'm' },
     { id: 'totalizador', label: 'Totalizador', unit: 'm³' },
     { id: 'nivel_freatico', label: 'Nivel Freático', unit: 'm' },
+    // Pseudo-campo: exporta una columna por señal digital del sitio, con su
+    // alias como encabezado. En un sitio sin señales no agrega ninguna.
+    { id: 'digitales', label: 'Señales digitales', unit: '0/1' },
   ];
 
   readonly downloadGranularityOptions: {

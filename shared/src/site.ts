@@ -114,9 +114,43 @@ export interface SiteDashboardData {
   variables?: DashboardVariable[];
 }
 
+/** Un rol histórico dentro de una fila: caudal, nivel, totalizador, freático. */
+export interface SiteDashboardHistoryRole {
+  ok: boolean;
+  valor: number | string | null;
+  unidad?: string | null;
+  alias?: string | null;
+  error?: string | null;
+}
+
+/**
+ * Una señal digital dentro de una fila histórica. `valor` es 1 o 0 — nunca un
+ * booleano, para que el gráfico y el CSV la traten como cualquier otra serie.
+ * `ok: false` (con `error`) es un instante en que el bit no se pudo leer: no
+ * es lo mismo que un 0 y no debe dibujarse como apagado.
+ */
+export interface SiteDashboardHistoryDigital {
+  ok: boolean;
+  valor: number | null;
+  alias: string;
+  bit: number;
+  error: string | null;
+}
+
 export interface SiteDashboardHistoryEntry {
   timestamp: string;
-  variables: Record<string, string | number | boolean | null>;
+  fecha?: string;
+  received_at?: string | null;
+  caudal?: SiteDashboardHistoryRole;
+  nivel?: SiteDashboardHistoryRole;
+  totalizador?: SiteDashboardHistoryRole;
+  nivel_freatico?: SiteDashboardHistoryRole;
+  /**
+   * Señales digitales del sitio, indexadas por la clave de respuesta de cada
+   * variable. Objeto vacío cuando el sitio no tiene ninguna configurada — el
+   * shape de la fila no depende de la configuración.
+   */
+  digitales?: Record<string, SiteDashboardHistoryDigital>;
 }
 
 /** Paginación de `GET /api/companies/sites/:siteId/dashboard-history`. */

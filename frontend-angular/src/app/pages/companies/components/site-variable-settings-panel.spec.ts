@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { SiteVariableSettingsPanelComponent } from './site-variable-settings-panel';
 import type { SiteVariablesPayload } from '../../../services/administration.service';
 
@@ -42,6 +44,11 @@ interface VariableFormShape {
   rangoIngMax: string;
   conSigno: string;
   signoBits: string;
+  bitIndex: string;
+  palabraBits: string;
+  bitInvertido: string;
+  etiquetaOn: string;
+  etiquetaOff: string;
 }
 
 function baseForm(overrides: Partial<VariableFormShape> = {}): VariableFormShape {
@@ -66,6 +73,11 @@ function baseForm(overrides: Partial<VariableFormShape> = {}): VariableFormShape
     rangoIngMax: '',
     conSigno: 'false',
     signoBits: '16',
+    bitIndex: '0',
+    palabraBits: '16',
+    bitInvertido: 'false',
+    etiquetaOn: '',
+    etiquetaOff: '',
     ...overrides,
   };
 }
@@ -93,6 +105,22 @@ function variablesPayload(
     })),
     mappings: [],
   } as unknown as SiteVariablesPayload;
+}
+
+/** Un mapeo por bit sobre REG_H, como lo devuelve la API en `mappings`. */
+function bitMapping(id: string, alias: string, bit: number) {
+  return {
+    id,
+    alias,
+    d1: 'REG_H',
+    d2: null,
+    tipo_dato: 'BOOLEAN',
+    unidad: null,
+    rol_dashboard: 'generico',
+    transformacion: 'bit',
+    parametros: { bit, palabra_bits: 16 },
+    sitio_id: 's1',
+  };
 }
 
 describe('SiteVariableSettingsPanelComponent · lógica de transformación', () => {
@@ -333,6 +361,371 @@ describe('SiteVariableSettingsPanelComponent · lógica de transformación', () 
       expect(form.rangoRawMax).toBe('20000');
       expect(form.rangoIngMax).toBe('20');
       expect(component.useRangeScale()).toBe(true);
+    });
+  });
+
+  describe('señal digital (un bit de la palabra)', () => {
+    /** 171 = 0b0000_0000_1010_1011 → bits 0,1,3,5,7 en 1. */
+    function palabra(valor = 171) {
+      component.siteVariables.set(variablesPayload([{ nombre_dato: 'REG_H', valor_dato: valor }]));
+    }
+
+    function formBit(overrides: Partial<VariableFormShape> = {}) {
+      component.variableForm.set(
+        baseForm({ transformacion: 'bit', d1: 'REG_H', d2: '', ...overrides }),
+      );
+    }
+
+    it('persiste el bit y el ancho de la palabra', () => {
+      formBit({ bitIndex: '3' });
+      const params = buildParams();
+      expect(params['bit']).toBe(3);
+      expect(params['palabra_bits']).toBe(16);
+    });
+
+    it('no ensucia parametros con factor, offset ni etiquetas vacías', () => {
+      formBit({ bitIndex: '0' });
+      expect(buildParams()).toEqual({ bit: 0, palabra_bits: 16 });
+    });
+
+    it('persiste invertido y las etiquetas cuando se escriben', () => {
+      formBit({
+        bitIndex: '2',
+        bitInvertido: 'true',
+        etiquetaOn: 'Marcha',
+        etiquetaOff: 'Detenido',
+      });
+      const params = buildParams();
+      expect(params['invertido']).toBe(true);
+      expect(params['etiqueta_on']).toBe('Marcha');
+      expect(params['etiqueta_off']).toBe('Detenido');
+    });
+
+    it('la vista previa muestra la etiqueta y el 1/0', () => {
+      palabra();
+      formBit({ bitIndex: '0', etiquetaOn: 'Marcha', etiquetaOff: 'Detenido' });
+      expect(component.previewResultText()).toBe('Marcha · 1');
+
+      formBit({ bitIndex: '2', etiquetaOn: 'Marcha', etiquetaOff: 'Detenido' });
+      expect(component.previewResultText()).toBe('Detenido · 0');
+    });
+
+    it('sin etiquetas la vista previa cae a Activo/Inactivo', () => {
+      palabra();
+      formBit({ bitIndex: '1' });
+      expect(component.previewResultText()).toBe('Activo · 1');
+    });
+
+    it('invertido da vuelta la vista previa', () => {
+      palabra();
+      formBit({ bitIndex: '0', bitInvertido: 'true' });
+      expect(component.previewResultText()).toBe('Inactivo · 0');
+    });
+
+    it('el grid va del bit más significativo al menos significativo', () => {
+      palabra();
+      formBit({ bitIndex: '0' });
+      const cells = component.bitCells();
+      expect(cells).toHaveLength(16);
+      expect(cells[0]?.index).toBe(15);
+      expect(cells[15]?.index).toBe(0);
+    });
+
+    it('el grid refleja el estado en vivo de cada bit', () => {
+      palabra();
+      formBit();
+      const porIndice = new Map(component.bitCells().map((cell) => [cell.index, cell.estado]));
+      expect(porIndice.get(0)).toBe('1');
+      expect(porIndice.get(1)).toBe('1');
+      expect(porIndice.get(2)).toBe('0');
+      expect(porIndice.get(7)).toBe('1');
+      expect(porIndice.get(15)).toBe('0');
+    });
+
+    it('sin lectura el grid queda neutro en vez de mostrar ceros falsos', () => {
+      component.siteVariables.set(variablesPayload([]));
+      formBit();
+      expect(component.bitCells().every((cell) => cell.estado === '–')).toBe(true);
+    });
+
+    it('marca como elegida solo la celda del bit configurado', () => {
+      palabra();
+      formBit({ bitIndex: '5' });
+      const elegidas = component.bitCells().filter((cell) => cell.selected);
+      expect(elegidas.map((cell) => cell.index)).toEqual([5]);
+    });
+
+    it('clic en una celda cambia el bit configurado', () => {
+      palabra();
+      formBit({ bitIndex: '0' });
+      component.selectBit(9);
+      expect(component.variableForm().bitIndex).toBe('9');
+      expect(buildParams()['bit']).toBe(9);
+    });
+
+    it('el resumen muestra la palabra en binario agrupado', () => {
+      palabra();
+      formBit({ bitIndex: '0' });
+      expect(component.bitSummary()).toContain('0000 0000 1010 1011');
+    });
+
+    it('avisa cuando el crudo no cabe en el ancho declarado', () => {
+      palabra(70000);
+      formBit({ bitIndex: '0' });
+      expect(component.bitSummary()).toContain('no es una palabra sin signo de 16 bits');
+      // La vista previa no puede inventar un estado: repite el diagnóstico.
+      expect(component.previewResultText()).toContain('no es una palabra sin signo');
+    });
+
+    it('con 32 bits esa misma palabra sí se puede leer', () => {
+      palabra(70000);
+      formBit({ bitIndex: '16', palabraBits: '32' });
+      expect(component.bitCells()).toHaveLength(32);
+      expect(component.previewResultText()).toBe('Activo · 1');
+    });
+
+    it('angostar la palabra recorta un bit que ya no existe', () => {
+      formBit({ bitIndex: '20', palabraBits: '32' });
+      component.updateWordBits('16');
+      expect(component.variableForm().palabraBits).toBe('16');
+      expect(component.variableForm().bitIndex).toBe('15');
+    });
+
+    it('elegir la transformación deja el tipo en BOOLEAN y sin unidad', () => {
+      component.variableForm.set(baseForm({ transformacion: 'lineal', d2: '', unidad: 'bar' }));
+      component.updateVariableTransform('bit');
+      expect(component.variableForm().tipo_dato).toBe('BOOLEAN');
+      expect(component.variableForm().unidad).toBe('');
+    });
+
+    it('salir de la transformación devuelve el tipo a FLOAT', () => {
+      formBit();
+      component.updateVariableTransform('bit');
+      component.updateVariableTransform('lineal');
+      expect(component.variableForm().tipo_dato).toBe('FLOAT');
+    });
+
+    it('elegir la transformación descarta el rol inferido del alias', () => {
+      component.variableForm.set(
+        baseForm({ transformacion: 'lineal', d2: '', rol_dashboard: 'nivel' }),
+      );
+      component.updateVariableTransform('bit');
+      expect(component.variableForm().rol_dashboard).toBe('generico');
+    });
+
+    it('no ofrece ni el complemento a 2 ni la escala por rango', () => {
+      formBit();
+      expect(component.usesSignedOption()).toBe(false);
+      expect(component.usesScaleTransform()).toBe(false);
+    });
+
+    it('lista los bits ya configurados sobre el mismo dato, ordenados', () => {
+      component.siteVariables.update((current) => ({
+        ...current,
+        mappings: [
+          bitMapping('RM3', 'Nivel alto', 4),
+          bitMapping('RM1', 'Marcha bomba 1', 0),
+          bitMapping('RM2', 'Falla térmico', 1),
+          {
+            ...bitMapping('RM9', 'Presión otra palabra', 0),
+            d1: 'REG_OTRO',
+          },
+        ],
+      }));
+      formBit();
+
+      expect(component.bitMappingsForCurrentKey().map((item) => item.bit)).toEqual([0, 1, 4]);
+      expect(component.bitMappingsForCurrentKey().map((item) => item.mapping.alias)).toEqual([
+        'Marcha bomba 1',
+        'Falla térmico',
+        'Nivel alto',
+      ]);
+      expect(component.bitCountFor('REG_H')).toBe(3);
+      expect(component.bitCountFor('REG_OTRO')).toBe(1);
+      expect(component.bitCountFor('REG_SIN_BITS')).toBe(0);
+    });
+
+    it('prepareVariableMap reconstruye el bit guardado', () => {
+      component.prepareVariableMap({
+        nombre_dato: 'REG_H',
+        valor_dato: 171,
+        timestamp_completo: '2026-01-01 00:00',
+        mapping: {
+          ...bitMapping('RM5', 'Falla térmico', 1),
+          parametros: {
+            bit: 1,
+            palabra_bits: 16,
+            invertido: true,
+            etiqueta_on: 'OK',
+            etiqueta_off: 'Falla',
+          },
+        },
+      });
+
+      const form = component.variableForm();
+      expect(form.transformacion).toBe('bit');
+      expect(form.bitIndex).toBe('1');
+      expect(form.palabraBits).toBe('16');
+      expect(form.bitInvertido).toBe('true');
+      expect(form.etiquetaOn).toBe('OK');
+      expect(form.etiquetaOff).toBe('Falla');
+      expect(component.isBitTransform()).toBe(true);
+    });
+  });
+
+  describe('cargador masivo de señales digitales', () => {
+    /** Espía sobre el POST de creación; devuelve las llamadas hechas. */
+    function espiarCreacion(fallarEnBits: number[] = []) {
+      const api = (component as unknown as { api: Record<string, unknown> }).api;
+      const spy = vi.fn((_siteId: string, payload: { parametros?: { bit?: number } }) =>
+        fallarEnBits.includes(payload.parametros?.bit ?? -1)
+          ? throwError(
+              () => new HttpErrorResponse({ status: 409, error: { message: 'bit ya usado' } }),
+            )
+          : of({ ok: true, message: 'creada', data: {} }),
+      );
+      api['createSiteVariableMap'] = spy;
+      // load() dispara dos GET que en el test nunca emiten; se neutralizan para
+      // que el forkJoin no quede colgado de HttpClientTesting.
+      api['getSiteTypeCatalog'] = () => of({ ok: false, data: {} });
+      api['getSiteVariables'] = () => of({ ok: false, data: {} });
+      return spy;
+    }
+
+    function abrirCon(valor = 7, mappings: unknown[] = []) {
+      component.siteId = 's1';
+      component.siteVariables.set({
+        ...variablesPayload([{ nombre_dato: 'REG_H', valor_dato: valor }]),
+        mappings: mappings as never,
+      });
+      component.variableForm.set(baseForm({ transformacion: 'bit', d1: 'REG_H', d2: '' }));
+      component.openBitBulk();
+    }
+
+    it('no abre sin dato original y avisa', () => {
+      component.variableForm.set(baseForm({ transformacion: 'bit', d1: '', d2: '' }));
+      component.openBitBulk();
+
+      expect(component.bitBulkOpen()).toBe(false);
+      expect(component.status().type).toBe('error');
+    });
+
+    it('arma una fila por bit del ancho declarado', () => {
+      abrirCon();
+
+      expect(component.bitBulkOpen()).toBe(true);
+      expect(component.bitBulkRows()).toHaveLength(16);
+      expect(component.bitBulkRows().map((row) => row.bit)).toEqual([
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+      ]);
+      expect(component.bitBulkD1()).toBe('REG_H');
+    });
+
+    it('cada fila muestra el estado en vivo de su bit', () => {
+      // 7 = 0b111 → bits 0, 1 y 2 activos.
+      abrirCon(7);
+
+      expect(component.bitBulkEstado(0)).toBe('1');
+      expect(component.bitBulkEstado(2)).toBe('1');
+      expect(component.bitBulkEstado(3)).toBe('0');
+      expect(component.bitBulkEstado(15)).toBe('0');
+    });
+
+    it('sin lectura válida las filas quedan neutras', () => {
+      abrirCon(70000);
+      expect(component.bitBulkEstado(0)).toBe('–');
+    });
+
+    it('los bits ya configurados quedan bloqueados y no se recrean', () => {
+      abrirCon(7, [bitMapping('RM1', 'Bomba activa', 0)]);
+
+      expect(component.bitBulkExistente(0)?.alias).toBe('Bomba activa');
+      expect(component.bitBulkExistente(1)).toBeNull();
+      // El alias se precarga para que la fila se vea, pero no cuenta como nueva.
+      expect(component.bitBulkRows()[0]?.alias).toBe('Bomba activa');
+      expect(component.bitBulkPendientes()).toBe(0);
+    });
+
+    it('solo cuenta como pendientes las filas con alias escrito', () => {
+      abrirCon();
+      expect(component.bitBulkPendientes()).toBe(0);
+
+      component.updateBitBulkAlias(0, 'Bomba activa');
+      component.updateBitBulkAlias(2, 'Falla térmico');
+      component.updateBitBulkAlias(5, '   ');
+
+      expect(component.bitBulkPendientes()).toBe(2);
+      expect(component.bitBulkSummary()).toContain('2 señales');
+    });
+
+    it('crea una variable por fila con alias, con su bit y el ancho', () => {
+      const spy = espiarCreacion();
+      abrirCon();
+      component.updateBitBulkAlias(0, 'Bomba activa');
+      component.updateBitBulkAlias(3, '  Falla térmico  ');
+      component.toggleBitBulkInvertido(3, true);
+
+      component.saveBitBulk();
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      const [, primera] = spy.mock.calls[0] as [string, Record<string, unknown>];
+      expect(primera['alias']).toBe('Bomba activa');
+      expect(primera['d1']).toBe('REG_H');
+      expect(primera['transformacion']).toBe('bit');
+      expect(primera['tipo_dato']).toBe('BOOLEAN');
+      expect(primera['rol_dashboard']).toBe('generico');
+      expect(primera['parametros']).toEqual({ bit: 0, palabra_bits: 16 });
+
+      const [, segunda] = spy.mock.calls[1] as [string, Record<string, unknown>];
+      expect(segunda['alias']).toBe('Falla térmico');
+      expect(segunda['parametros']).toEqual({ bit: 3, palabra_bits: 16, invertido: true });
+    });
+
+    it('cierra el cargador y avisa cuando salieron todas', () => {
+      espiarCreacion();
+      abrirCon();
+      component.updateBitBulkAlias(0, 'Bomba activa');
+
+      component.saveBitBulk();
+
+      expect(component.bitBulkOpen()).toBe(false);
+      expect(component.status().type).toBe('success');
+      expect(component.status().message).toContain('1 señal creada');
+    });
+
+    it('ante un fallo parcial deja el cargador abierto y nombra el bit', () => {
+      espiarCreacion([3]);
+      abrirCon();
+      component.updateBitBulkAlias(0, 'Bomba activa');
+      component.updateBitBulkAlias(3, 'Falla térmico');
+
+      component.saveBitBulk();
+
+      expect(component.bitBulkOpen()).toBe(true);
+      expect(component.status().type).toBe('error');
+      expect(component.status().message).toContain('1 de 2');
+      expect(component.status().message).toContain('bit 3');
+      // Lo escrito no se pierde: la fila que falló conserva su alias.
+      expect(component.bitBulkRows()[3]?.alias).toBe('Falla térmico');
+    });
+
+    it('sin ningún alias no llama a la API', () => {
+      const spy = espiarCreacion();
+      abrirCon();
+
+      component.saveBitBulk();
+
+      expect(spy).not.toHaveBeenCalled();
+      expect(component.status().type).toBe('error');
+    });
+
+    it('cerrar descarta las filas', () => {
+      abrirCon();
+      component.updateBitBulkAlias(0, 'Bomba activa');
+      component.closeBitBulk();
+
+      expect(component.bitBulkOpen()).toBe(false);
+      expect(component.bitBulkRows()).toEqual([]);
     });
   });
 

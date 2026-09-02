@@ -16,6 +16,17 @@ export interface VariableParameters {
   ing_min?: number | null;
   ing_max?: number | null;
   /**
+   * Señal digital: la palabra llega como un entero donde cada bit es un 0/1
+   * independiente. `bit` es el índice (0 = menos significativo), `palabra_bits`
+   * el ancho de la palabra e `invertido` marca las señales activas en 0. Las
+   * etiquetas son solo presentación; el valor transformado es 1 o 0.
+   */
+  bit?: number | null;
+  palabra_bits?: number | null;
+  invertido?: boolean | null;
+  etiqueta_on?: string | null;
+  etiqueta_off?: string | null;
+  /**
    * Complemento a 2: un registro Modbus no lleva signo, asi que el PLC manda
    * -449 como 65087. `signo_bits` es el ancho del registro (16 para uno
    * suelto, 32 para el par combinado).

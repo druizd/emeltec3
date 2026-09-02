@@ -2,7 +2,7 @@ const { calcularNivelFreatico } = require('../utils/nivelFreatico');
 const { VARIABLE_TRANSFORM_IDS } = require('../config/siteTypeCatalog');
 // Fuente única de la matemática de transformación (CommonJS, resuelve en dev
 // src/, dist/ y vitest sin ambigüedad de extensión).
-const { applyMappingTransform } = require('../utils/mappingTransform.js');
+const { applyMappingTransform, parseMappingParams } = require('../utils/mappingTransform.js');
 
 const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
 
@@ -388,6 +388,61 @@ function serializeHistoricalVariable(variable) {
   };
 }
 
+/**
+ * Los mapeos de bits del sitio, ordenados por dato original y número de bit.
+ *
+ * Las señales digitales NO pasan por `findHistoricalVariable`: esa función
+ * asigna UN mapping por rol con búsqueda difusa de tokens, y acá son N señales
+ * sin rol (una palabra de entradas digitales las tiene todas en `generico`).
+ * Se resuelven por transformación, que es exacta.
+ */
+function digitalMappings(mappings) {
+  return (mappings || [])
+    .filter((mapping) => normalizeTransform(mapping.transformacion) === 'bit')
+    .map((mapping) => ({
+      mapping,
+      key: responseKeyForMapping(mapping),
+      alias: mapping.alias || mapping.d1,
+      bit: numberOrNull(parseMappingParams(mapping.parametros).bit) ?? 0,
+    }))
+    .sort((a, b) => a.mapping.d1.localeCompare(b.mapping.d1, 'es-CL') || a.bit - b.bit);
+}
+
+/**
+ * Serializa las señales digitales de UNA fila cruda.
+ *
+ * Se calculan aparte de los roles históricos porque son por sitio y variables
+ * en número: un objeto `{ clave: {ok, valor, alias, bit} }` deja el shape de la
+ * fila estable aunque el sitio tenga 0 o 32 señales. `valor` es 1/0, nunca
+ * booleano — lo mismo que devuelve el dashboard en vivo.
+ */
+function serializeDigitalRow(digitales, rawData, telemetryError = null) {
+  const out = {};
+
+  for (const entry of digitales) {
+    try {
+      if (telemetryError) throw new Error(telemetryError);
+      out[entry.key] = {
+        ok: true,
+        valor: applyMappingTransform({ rawData, mapping: entry.mapping }),
+        alias: entry.alias,
+        bit: entry.bit,
+        error: null,
+      };
+    } catch (err) {
+      out[entry.key] = {
+        ok: false,
+        valor: null,
+        alias: entry.alias,
+        bit: entry.bit,
+        error: err.message,
+      };
+    }
+  }
+
+  return out;
+}
+
 function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
   const rawData = row?.data || {};
   const variables = buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData });
@@ -402,6 +457,7 @@ function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
     nivel_freatico: serializeHistoricalVariable(
       findHistoricalVariable(variables, 'nivel_freatico'),
     ),
+    digitales: serializeDigitalRow(digitalMappings(mappings), rawData),
   };
 }
 
@@ -430,6 +486,10 @@ function createHistoricalRowMapper({ site, mappings, pozoConfig, sampleRawData =
     pozoConfig,
     rawData: sampleRawData,
   });
+
+  // Las señales digitales se resuelven una sola vez, igual que los roles: por
+  // fila queda solo la aritmética del bit dentro de applyMappingTransform.
+  const digitales = digitalMappings(mappings);
 
   const mappingById = new Map(mappings.map((mapping) => [mapping.id, mapping]));
   const mappingByKey = new Map(
@@ -479,6 +539,8 @@ function createHistoricalRowMapper({ site, mappings, pozoConfig, sampleRawData =
       fecha: toUtcIsoString(row.time),
       received_at: toUtcIsoString(row.received_at),
     };
+
+    out.digitales = serializeDigitalRow(digitales, rawData);
 
     for (const role of HISTORICAL_ROLES) {
       const r = resolved[role];
@@ -531,4 +593,6 @@ module.exports = {
   buildSiteDashboardData,
   mapHistoricalDashboardRow,
   createHistoricalRowMapper,
+  digitalMappings,
+  serializeDigitalRow,
 };

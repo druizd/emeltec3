@@ -11,6 +11,11 @@ import type { PozoConfig, RegMap } from './types';
 export interface VariableParameters {
   factor?: number | null;
   offset?: number | null;
+  bit?: number | null;
+  palabra_bits?: number | null;
+  invertido?: boolean | null;
+  etiqueta_on?: string | null;
+  etiqueta_off?: string | null;
   con_signo?: boolean | null;
   signo_bits?: number | null;
   word_order?: string | null;

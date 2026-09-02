@@ -9,6 +9,7 @@
 | [ARQUITECTURA-FLUJO-DATOS.md](./ARQUITECTURA-FLUJO-DATOS.md)     | Flujo de datos end-to-end (ingesta → DB → frontend) |
 | [contadores-delta-algorithm.md](./contadores-delta-algorithm.md) | Algoritmo de contadores delta                       |
 | [mathei-simulation-worker.md](./mathei-simulation-worker.md)     | Worker de simulación Mathei                         |
+| [senales-digitales-bits.md](./senales-digitales-bits.md)         | Señales digitales: separar una palabra en bits      |
 
 ## DGA (cumplimiento regulatorio)
 

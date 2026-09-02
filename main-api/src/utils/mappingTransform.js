@@ -80,6 +80,43 @@ function applySignedWrap(value, bits) {
   return value >= modulo / 2 ? value - modulo : value;
 }
 
+/** Anchos de palabra soportados para separar bits. */
+const WORD_BITS = new Set([16, 32]);
+
+/**
+ * Extrae UN bit de una palabra de registros, donde cada bit es una senal
+ * digital independiente (marcha, falla, limite de carrera). La palabra se
+ * configura como N variables que comparten `d1` y difieren en
+ * `parametros.bit`; el bit 0 es el menos significativo.
+ *
+ * Devuelve 1/0 numerico y NO un boolean a proposito: contadores, alertas y el
+ * export CSV hacen Number() sobre el valor y un boolean se les cuela como NaN.
+ * Las etiquetas ("Marcha"/"Detenido") son presentacion y viven en el frontend.
+ *
+ * `invertido` es para las senales activas en 0 (un termico sano suele leer 1).
+ */
+function applyBitExtraction(value, params) {
+  const declarado = numberOrNull(params.palabra_bits);
+  const bits = WORD_BITS.has(declarado) ? declarado : 16;
+
+  const bit = numberOrNull(params.bit);
+  if (bit === null || !Number.isInteger(bit) || bit < 0 || bit >= bits) {
+    throw new Error(`bit ${params.bit} fuera de rango para una palabra de ${bits} bits`);
+  }
+
+  const raw = requireFiniteNumber(value, 'valor');
+  if (!Number.isInteger(raw) || raw < 0 || raw >= 2 ** bits) {
+    // Mismo criterio que applySignedWrap: un ancho mal elegido no falla solo.
+    // Los bits bajos seguirian dando 0/1 plausibles mientras los altos se
+    // pierden en silencio, y eso termina en un historico de senales inventado.
+    throw new Error(`${raw} no es una palabra sin signo de ${bits} bits`);
+  }
+
+  // Division en vez de `>>>` para no depender de la coercion a int32 de JS.
+  const encendido = Math.floor(raw / 2 ** bit) % 2 === 1;
+  return (parseBooleanParam(params.invertido, false) ? !encendido : encendido) ? 1 : 0;
+}
+
 /**
  * Devuelve el crudo ya reinterpretado con signo si `con_signo` esta activo.
  * `signo_bits` defaultea al ancho natural de la transformacion (16 para un
@@ -110,6 +147,9 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
   switch (transform) {
     case 'directo':
       return rawD1;
+
+    case 'bit':
+      return applyBitExtraction(rawD1, params);
 
     case 'lineal':
       return applyLinearTransform(applySignedParam(rawD1, params, 16), params);
@@ -178,6 +218,7 @@ module.exports = {
   applyMappingTransform,
   applyLinearTransform,
   applySignedWrap,
+  applyBitExtraction,
   normalizeTransform,
   parseMappingParams,
   readRawValue,

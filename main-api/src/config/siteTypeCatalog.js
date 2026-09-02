@@ -12,6 +12,13 @@ const COMMON_TRANSFORMS = [
     enabled: true,
   },
   {
+    id: 'bit',
+    label: 'Senal digital (un bit de la palabra)',
+    description:
+      'Separa un bit de un registro donde cada bit es una senal 0/1 (marcha, falla, limite). Se crea una variable por bit: todas comparten el mismo dato original y solo cambia el numero de bit.',
+    enabled: true,
+  },
+  {
     id: 'ieee754_32',
     label: 'IEEE754 32 bits',
     description:
@@ -480,6 +487,7 @@ const VARIABLE_ROLE_IDS = Object.freeze([
 ]);
 const VARIABLE_TRANSFORM_IDS = Object.freeze([
   'directo',
+  'bit',
   'ieee754',
   'ieee754_32',
   'lineal',
