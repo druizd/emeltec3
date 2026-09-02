@@ -8,7 +8,14 @@ export type AlertaCondicion =
   | 'igual_a'
   | 'fuera_rango'
   | 'sin_datos'
+  /** Sin comprobante SNIA: escala 24/48/72 h desde el último slot con folio. */
   | 'dga_atrasado'
+  /**
+   * Caudal instantáneo sobre el derecho DGA del pozo (`dga_caudal_max_lps` +
+   * tolerancia). Sin umbral ni variable: ambos salen de la config DGA y del
+   * mapeo con rol caudal. Sin derecho cargado la regla no evalúa.
+   */
+  | 'sobre_derecho_dga'
   /**
    * Delta del totalizador dentro del día calendario chileno (acumulado
    * parcial mientras el día transcurre), NO el valor acumulado del contador.
@@ -368,7 +375,8 @@ export const CONDICION_LABELS: Record<AlertaCondicion, string> = {
   igual_a: 'Igual a',
   fuera_rango: 'Fuera de rango',
   sin_datos: 'Sin datos',
-  dga_atrasado: 'Reporte DGA atrasado',
+  dga_atrasado: 'DGA sin comprobante',
+  sobre_derecho_dga: 'Caudal sobre el derecho DGA',
   consumo_diario: 'Consumo del día mayor que',
 };
 
