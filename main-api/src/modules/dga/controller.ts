@@ -48,6 +48,18 @@ import {
 import type { AuthUser } from '../../shared/permissions';
 import { getPozoDgaConfig, reconocerSensorDefectuoso } from './repo';
 import { formatRutForDga } from '../../utils/rut';
+import { query } from '../../config/dbHelpers';
+import { logger } from '../../config/logger';
+
+// Reglas de alerta estándar (CommonJS compartido con los controllers JS).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const alertasPorDefectoMod = require('../../services/alertasPorDefecto.js') as {
+  crearAlertasPorDefecto: (
+    db: { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }> },
+    input: { sitioId: string; userId?: string | null },
+  ) => Promise<{ creadas: string[]; existentes: string[]; omitidas: string[] }>;
+};
+const { crearAlertasPorDefecto } = alertasPorDefectoMod;
 
 function getUser(req: Request): AuthUser | undefined {
   return (req as Request & { user?: AuthUser }).user;
@@ -157,6 +169,17 @@ export async function patchPozoDgaConfigHandler(
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
     const result = await patchPozoDgaConfigService(siteId, parsed.data);
+    if (parsed.data.dga_activo === true) {
+      // Al activar DGA el pozo pasa a necesitar las reglas de comprobante y de
+      // derecho. Idempotente y sin await: no condiciona la respuesta del PATCH.
+      const userId = (req as { user?: { id?: string } }).user?.id ?? null;
+      crearAlertasPorDefecto({ query }, { sitioId: siteId, userId }).catch((err: Error) =>
+        logger.warn(
+          { site_id: siteId, err: err.message },
+          'dga: no se pudieron crear las alertas por defecto al activar DGA',
+        ),
+      );
+    }
     res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);

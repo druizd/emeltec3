@@ -845,3 +845,26 @@ exports.simulacionValores = async (req, res, next) => {
     next(err);
   }
 };
+
+/**
+ * POST /api/alertas/por-defecto  { sitio_id }
+ *
+ * Crea el set estándar de reglas del sitio (equipo mudo; y si tiene DGA
+ * activo, DGA sin comprobante y caudal sobre el derecho). Idempotente: las
+ * condiciones que ya existen se dejan como están.
+ */
+exports.crearPorDefecto = async (req, res, next) => {
+  try {
+    const sitioId = typeof req.body?.sitio_id === 'string' ? req.body.sitio_id.trim() : '';
+    if (!sitioId) return res.status(400).json({ ok: false, error: 'Falta sitio_id' });
+    if (!(await userCanAccessSiteId(pool, req.user, sitioId))) {
+      return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
+    }
+    const { crearAlertasPorDefecto } = require('../services/alertasPorDefecto');
+    const resultado = await crearAlertasPorDefecto(pool, { sitioId, userId: req.user.id });
+    res.status(resultado.creadas.length ? 201 : 200).json({ ok: true, data: resultado });
+  } catch (err) {
+    if (err && err.status === 404) return res.status(404).json({ ok: false, error: err.message });
+    next(err);
+  }
+};

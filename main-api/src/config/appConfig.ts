@@ -52,6 +52,20 @@ const Schema = z.object({
     .default('true')
     .transform((v) => v === 'true' || v === '1'),
 
+  // Guardia de alertas de Emeltec: a quién le llega el correo cuando una regla
+  // marca "avisar al equipo Emeltec". Antes era a TODOS los SuperAdmin (13
+  // activos), y eso es ruido, no una guardia. Lista de correos separada por
+  // comas; se compara en minúsculas contra usuario.email.
+  ALERT_EMELTEC_EMAILS: z
+    .string()
+    .default('druiz@emeltec.cl,nlira@emeltec.cl')
+    .transform((v) =>
+      v
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => s.length > 0),
+    ),
+
   ENABLE_HEALTH_DIGEST_WORKER: z
     .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
     .default('false')
@@ -217,6 +231,10 @@ export const config = {
   },
   monitor: {
     primaryEmail: env.MONITOR_PRIMARY_EMAIL,
+  },
+  alertas: {
+    /** Correos (minúsculas) de la guardia Emeltec para reglas con `notificar_superadmins`. */
+    emeltecEmails: env.ALERT_EMELTEC_EMAILS,
   },
   dga: {
     encryptionKey: env.DGA_ENCRYPTION_KEY,

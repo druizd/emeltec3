@@ -149,7 +149,12 @@ describe('evaluarAlerta — destinatarios del correo', () => {
       makeAlerta({ notificar_user_ids: ['U001', 'U002'], notificar_superadmins: true }),
     );
     await new Promise((r) => setTimeout(r, 0)); // notificarUsuarios corre sin await
-    expect(paramsNotificacion()).toEqual(['SA001', true, ['U001', 'U002']]);
+    expect(paramsNotificacion()).toEqual([
+      'SA001',
+      true,
+      ['U001', 'U002'],
+      ['druiz@emeltec.cl', 'nlira@emeltec.cl'],
+    ]);
   });
 
   it('puede dejar fuera al equipo Emeltec', async () => {
@@ -159,7 +164,12 @@ describe('evaluarAlerta — destinatarios del correo', () => {
       makeAlerta({ notificar_user_ids: ['U001'], notificar_superadmins: false }),
     );
     await new Promise((r) => setTimeout(r, 0));
-    expect(paramsNotificacion()).toEqual(['SA001', false, ['U001']]);
+    expect(paramsNotificacion()).toEqual([
+      'SA001',
+      false,
+      ['U001'],
+      ['druiz@emeltec.cl', 'nlira@emeltec.cl'],
+    ]);
   });
 
   it('sin destinatarios conserva el comportamiento historico: creador (+ SuperAdmin)', async () => {
@@ -170,6 +180,13 @@ describe('evaluarAlerta — destinatarios del correo', () => {
     );
     await new Promise((r) => setTimeout(r, 0));
     // Lista vacia → la query cae en `cardinality = 0 AND id = creado_por`.
-    expect(paramsNotificacion()).toEqual(['SA001', true, []]);
+    // El cuarto parametro es la guardia Emeltec: solo esos SuperAdmin reciben,
+    // no los 13.
+    expect(paramsNotificacion()).toEqual([
+      'SA001',
+      true,
+      [],
+      ['druiz@emeltec.cl', 'nlira@emeltec.cl'],
+    ]);
   });
 });

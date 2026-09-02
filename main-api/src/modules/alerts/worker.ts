@@ -41,6 +41,14 @@ const transformMod = require('../../utils/mappingTransform.js') as {
 const { applyMappingTransform, normalizeTransform } = transformMod;
 
 const POLL_INTERVAL_MS = Number(process.env.ALERT_POLL_MS ?? 60_000);
+
+/** Default espejo del de appConfig, para tests que mockean `config` sin `alertas`. */
+const GUARDIA_EMELTEC_DEFAULT = ['druiz@emeltec.cl', 'nlira@emeltec.cl'];
+
+function guardiaEmeltec(): string[] {
+  const lista = (config as { alertas?: { emeltecEmails?: string[] } }).alertas?.emeltecEmails;
+  return Array.isArray(lista) && lista.length > 0 ? lista : GUARDIA_EMELTEC_DEFAULT;
+}
 const DIAS_VALIDOS = [
   'domingo',
   'lunes',
@@ -212,7 +220,11 @@ async function notificarUsuarios(
   const elegidos = Array.isArray(alerta.notificar_user_ids)
     ? alerta.notificar_user_ids.filter((id) => typeof id === 'string' && id.length > 0)
     : [];
+  // "Avisar al equipo Emeltec" no es todos los SuperAdmin: es la guardia de
+  // alertas (ALERT_EMELTEC_EMAILS). Sigue exigiendo tipo SuperAdmin para que
+  // un correo mal escrito en la env no le mande alertas a un cliente.
   const avisarSuperadmins = alerta.notificar_superadmins !== false;
+  const guardia = guardiaEmeltec();
   const usuarios = await query<{
     id: string;
     email: string;
@@ -222,11 +234,11 @@ async function notificarUsuarios(
     `SELECT DISTINCT id, email, nombre, apellido FROM usuario
      WHERE COALESCE(activo, TRUE)
        AND (
-         ($2::boolean AND tipo = 'SuperAdmin')
+         ($2::boolean AND tipo = 'SuperAdmin' AND lower(email) = ANY($4::text[]))
          OR id = ANY($3::text[])
          OR (cardinality($3::text[]) = 0 AND id = $1)
        )`,
-    [alerta.creado_por, avisarSuperadmins, elegidos],
+    [alerta.creado_por, avisarSuperadmins, elegidos, guardia],
     { name: 'alerts__notify_users' },
   );
   for (const u of usuarios.rows) {

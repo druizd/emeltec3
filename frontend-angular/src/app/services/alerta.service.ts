@@ -101,6 +101,13 @@ export interface SimulacionLectura {
   error: string | null;
 }
 
+/** Resultado de POST /api/alertas/por-defecto: condiciones creadas, ya existentes y no aplicables. */
+export interface AlertasPorDefectoResultado {
+  creadas: AlertaCondicion[];
+  existentes: AlertaCondicion[];
+  omitidas: AlertaCondicion[];
+}
+
 export interface SimulacionValores {
   data: SimulacionLectura[];
   mapping: { alias: string; unidad: string | null; transformacion: string | null } | null;
@@ -243,6 +250,18 @@ export class AlertaService {
     if (filters.activa !== undefined) qs.set('activa', String(filters.activa));
     const url = `/api/alertas${qs.toString() ? `?${qs}` : ''}`;
     return this.http.get<ApiEnvelope<AlertaRow[]>>(url).pipe(map((r) => (r.ok ? r.data : [])));
+  }
+
+  /**
+   * Crea el set estándar de reglas del sitio (equipo mudo; con DGA activo,
+   * además DGA sin comprobante y caudal sobre el derecho). Idempotente.
+   */
+  crearPorDefecto(sitioId: string): Observable<AlertasPorDefectoResultado> {
+    return this.http
+      .post<ApiEnvelope<AlertasPorDefectoResultado>>('/api/alertas/por-defecto', {
+        sitio_id: sitioId,
+      })
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
   /** Usuarios de la empresa elegibles como destinatarios (sin SuperAdmin). */
