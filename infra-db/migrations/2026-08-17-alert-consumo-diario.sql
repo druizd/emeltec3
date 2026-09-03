@@ -22,11 +22,12 @@ BEGIN;
 
 -- ─── UP ──────────────────────────────────────────────────────────────────────
 
--- Esta es la migracion MAS RECIENTE que redefine alertas_condicion_check, asi
--- que es la que valida: las anteriores usan NOT VALID para no reventar el
--- deploy cuando ya existen filas con condiciones que ellas no conocian. Si en
--- el futuro se agrega otra condicion, la migracion nueva debe seguir el mismo
--- patron y ESTA deberia pasar a NOT VALID.
+-- NOT VALID desde 2026-09-03: este archivo se reaplica en CADA deploy y su
+-- lista es la de esta fecha. La migracion que valida con la lista completa es
+-- la MAS RECIENTE que redefine alertas_condicion_check
+-- (2026-09-03-alert-sobre-derecho-dga.sql). Si en el futuro se agrega otra
+-- condicion, la migracion nueva debe seguir el mismo patron y aquella pasar a
+-- NOT VALID.
 ALTER TABLE alertas DROP CONSTRAINT IF EXISTS alertas_condicion_check;
 
 ALTER TABLE alertas
@@ -41,7 +42,8 @@ ALTER TABLE alertas
         'dga_slots_fallidos',
         'review_queue_acumulacion',
         'consumo_diario'
-    ));
+    ))
+    NOT VALID;
 
 COMMENT ON COLUMN alertas.condicion IS
     'Condición de la alerta. '

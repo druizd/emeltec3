@@ -6,6 +6,12 @@
 -- crearla. Se repite el patrón de 2026-06-21-dga-alarmas-conditions.sql:
 -- soltar y recrear el CHECK con la lista completa.
 --
+-- Esta es la migración MÁS RECIENTE que redefine alertas_condicion_check, así
+-- que es la que VALIDA. Las anteriores (05-14, 06-21, 08-17) llevan NOT VALID
+-- porque los archivos se reaplican en cada deploy y su lista quedó vieja. Si
+-- en el futuro se agrega otra condición, la migración nueva valida y ésta debe
+-- pasar a NOT VALID.
+--
 -- DOWN-MIGRATION: recrear el CHECK sin 'sobre_derecho_dga' tras borrar las
 -- filas con esa condición:
 --   DELETE FROM alertas WHERE condicion = 'sobre_derecho_dga';
