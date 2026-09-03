@@ -27,8 +27,11 @@ const MAP_COLUMNS =
   'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
 const POZO_CONFIG_COLUMNS =
   'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
+// dga_caudal_max_lps / dga_caudal_tolerance_pct viajan en `pozo_config` del
+// dashboard para que Operación dibuje la línea del derecho DGA sobre el caudal
+// en tiempo real sin otra llamada. Sin derecho cargado llegan null y no se dibuja.
 const POZO_CONFIG_SELECT_COLUMNS =
-  'pc.sitio_id, pc.profundidad_pozo_m, pc.profundidad_sensor_m, pc.nivel_estatico_manual_m, pc.obra_dga, pc.slug, pc.created_at, pc.updated_at';
+  'pc.sitio_id, pc.profundidad_pozo_m, pc.profundidad_sensor_m, pc.nivel_estatico_manual_m, pc.obra_dga, pc.slug, pc.dga_caudal_max_lps, pc.dga_caudal_tolerance_pct, pc.created_at, pc.updated_at';
 const CONTACT_COLUMNS = `
   co.id::text,
   co.empresa_id,

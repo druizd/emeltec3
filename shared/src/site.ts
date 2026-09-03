@@ -103,6 +103,9 @@ export interface SiteDashboardData {
   pozo_config?: {
     profundidad_pozo_m?: number | string | null;
     profundidad_sensor_m?: number | string | null;
+    /** Derecho DGA (L/s). Operación dibuja la línea del límite en el caudal en vivo. */
+    dga_caudal_max_lps?: number | string | null;
+    dga_caudal_tolerance_pct?: number | string | null;
   } | null;
   ultima_lectura?: {
     time?: string | null;
