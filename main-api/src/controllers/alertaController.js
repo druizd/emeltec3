@@ -847,21 +847,54 @@ exports.simulacionValores = async (req, res, next) => {
 };
 
 /**
- * POST /api/alertas/por-defecto  { sitio_id }
+ * GET /api/alertas/recomendadas?sitio_id=
  *
- * Crea el set estándar de reglas del sitio (equipo mudo; y si tiene DGA
- * activo, DGA sin comprobante y caudal sobre el derecho). Idempotente: las
- * condiciones que ya existen se dejan como están.
+ * Catálogo de reglas recomendadas evaluado contra el sitio: cuáles aplican
+ * (y por qué no), cuáles ya existen. Es lo que muestra el selector.
  */
-exports.crearPorDefecto = async (req, res, next) => {
+exports.listarRecomendadas = async (req, res, next) => {
   try {
-    const sitioId = typeof req.body?.sitio_id === 'string' ? req.body.sitio_id.trim() : '';
+    const sitioId = typeof req.query.sitio_id === 'string' ? req.query.sitio_id.trim() : '';
     if (!sitioId) return res.status(400).json({ ok: false, error: 'Falta sitio_id' });
     if (!(await userCanAccessSiteId(pool, req.user, sitioId))) {
       return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
     }
+    const { listarAlertasRecomendadas } = require('../services/alertasPorDefecto');
+    res.json({ ok: true, data: await listarAlertasRecomendadas(pool, { sitioId }) });
+  } catch (err) {
+    if (err && err.status === 404) return res.status(404).json({ ok: false, error: err.message });
+    next(err);
+  }
+};
+
+/**
+ * POST /api/alertas/recomendadas  { sitio_id, condiciones?: string[] }
+ *
+ * Crea las reglas recomendadas marcadas (o todas las que apliquen si no se
+ * manda `condiciones`). Idempotente: una condición que ya existe se respeta.
+ */
+exports.crearRecomendadas = async (req, res, next) => {
+  try {
+    const sitioId = typeof req.body?.sitio_id === 'string' ? req.body.sitio_id.trim() : '';
+    if (!sitioId) return res.status(400).json({ ok: false, error: 'Falta sitio_id' });
+    const condiciones =
+      req.body?.condiciones === undefined
+        ? null
+        : Array.isArray(req.body.condiciones)
+          ? req.body.condiciones.filter((c) => typeof c === 'string')
+          : undefined;
+    if (condiciones === undefined) {
+      return res.status(400).json({ ok: false, error: 'condiciones debe ser una lista' });
+    }
+    if (!(await userCanAccessSiteId(pool, req.user, sitioId))) {
+      return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
+    }
     const { crearAlertasPorDefecto } = require('../services/alertasPorDefecto');
-    const resultado = await crearAlertasPorDefecto(pool, { sitioId, userId: req.user.id });
+    const resultado = await crearAlertasPorDefecto(pool, {
+      sitioId,
+      userId: req.user.id,
+      condiciones,
+    });
     res.status(resultado.creadas.length ? 201 : 200).json({ ok: true, data: resultado });
   } catch (err) {
     if (err && err.status === 404) return res.status(404).json({ ok: false, error: err.message });

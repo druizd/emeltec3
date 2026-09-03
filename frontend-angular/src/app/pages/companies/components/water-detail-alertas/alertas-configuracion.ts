@@ -22,6 +22,7 @@ import {
   DIAS_ORDEN,
   DIAS_SHORT,
   type DestinatarioPosible,
+  type ReglaRecomendada,
   SEVERIDAD_LABELS,
   type SimulacionLectura,
   UpdateAlertaPayload,
@@ -167,18 +168,15 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           <div class="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              (click)="crearPorDefecto()"
-              [disabled]="creandoPorDefecto()"
-              title="Crea las reglas estándar que falten: equipo sin comunicación y, con DGA activo, DGA sin comprobante y caudal sobre el derecho. No toca las que ya existen."
-              class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              (click)="toggleRecomendadas()"
+              [attr.aria-expanded]="mostrandoRecomendadas()"
+              title="Catálogo de reglas recomendadas para este sitio: elige cuáles agregar."
+              class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-[0.98]"
             >
-              <span
-                class="material-symbols-outlined text-[16px]"
-                [class.animate-spin]="creandoPorDefecto()"
-                aria-hidden="true"
-                >{{ creandoPorDefecto() ? 'progress_activity' : 'playlist_add_check' }}</span
-              >
-              Crear alertas por defecto
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">{{
+                mostrandoRecomendadas() ? 'close' : 'playlist_add_check'
+              }}</span>
+              Reglas recomendadas
             </button>
             <button
               type="button"
@@ -193,13 +191,92 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           </div>
         }
       </div>
-      @if (porDefectoMsg(); as msg) {
-        <p
-          class="rounded-xl bg-primary-tint-08 px-4 py-2.5 text-caption text-primary-container"
-          role="status"
+      <!-- Selector de reglas recomendadas -->
+      @if (mostrandoRecomendadas()) {
+        <section
+          class="space-y-3 rounded-2xl border border-slate-200 bg-white px-4 py-4"
+          aria-label="Reglas recomendadas"
         >
-          {{ msg }}
-        </p>
+          <div>
+            <p class="text-body-sm font-semibold text-slate-700">Reglas recomendadas</p>
+            <p class="text-caption-xs text-slate-500">
+              Marca las que quieras agregar. Se crean con la guardia Emeltec avisada y tú como
+              destinatario; después se editan como cualquier regla.
+            </p>
+          </div>
+          @if (recomendadasCargando()) {
+            <app-table-skeleton [rows]="3" [columns]="1" [showHeader]="false" />
+          } @else if (recomendadasError()) {
+            <app-inline-error [message]="recomendadasError()" />
+          } @else {
+            <div class="grid gap-2">
+              @for (r of recomendadas(); track r.condicion) {
+                <label
+                  class="flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors"
+                  [class]="
+                    r.existe || !r.aplica
+                      ? 'cursor-default border-slate-100 bg-slate-50 text-slate-400'
+                      : seleccion().has(r.condicion)
+                        ? 'cursor-pointer border-primary-tint-55 bg-primary-tint-08'
+                        : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50'
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    class="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary-tint-55 disabled:opacity-40"
+                    [checked]="seleccion().has(r.condicion)"
+                    [disabled]="r.existe || !r.aplica"
+                    (change)="toggleSeleccion(r.condicion)"
+                  />
+                  <span class="min-w-0 flex-1">
+                    <span class="flex flex-wrap items-center gap-2">
+                      <span
+                        class="font-semibold"
+                        [class]="r.existe || !r.aplica ? 'text-slate-500' : 'text-slate-800'"
+                        >{{ r.nombre }}</span
+                      >
+                      <span
+                        class="rounded-full px-2 py-0.5 text-caption-xs font-bold"
+                        [class]="severidadBadgeClass(r.severidad)"
+                        >{{ severidadLabel(r.severidad) }}</span
+                      >
+                      @if (r.existe) {
+                        <span class="text-caption-xs font-semibold text-emerald-700"
+                          >Ya existe</span
+                        >
+                      } @else if (!r.aplica) {
+                        <span class="text-caption-xs text-slate-500">{{ r.motivo_no_aplica }}</span>
+                      }
+                    </span>
+                    <span class="block text-caption-xs text-slate-500">{{ r.descripcion }}</span>
+                  </span>
+                </label>
+              }
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              @if (recomendadasMsg(); as msg) {
+                <p class="text-caption text-primary-container" role="status">{{ msg }}</p>
+              } @else {
+                <span></span>
+              }
+              <button
+                type="button"
+                (click)="crearSeleccionadas()"
+                [disabled]="seleccion().size === 0 || creandoRecomendadas()"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span
+                  class="material-symbols-outlined text-[16px]"
+                  [class.animate-spin]="creandoRecomendadas()"
+                  aria-hidden="true"
+                  >{{ creandoRecomendadas() ? 'progress_activity' : 'add' }}</span
+                >
+                Agregar
+                {{ seleccion().size === 1 ? '1 regla' : seleccion().size + ' reglas' }}
+              </button>
+            </div>
+          }
+        </section>
       }
 
       <!-- Loading / error -->
@@ -507,8 +584,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
       } @empty {
         @if (!loading()) {
           <p class="rounded-xl bg-slate-50 px-4 py-6 text-center text-caption text-slate-500">
-            No hay reglas configuradas para este sitio. Usa "Crear alertas por defecto" para el set
-            estándar, o "Nueva regla" para una a medida.
+            No hay reglas configuradas para este sitio. Empieza por "Reglas recomendadas", o crea
+            una a medida con "Nueva regla".
           </p>
         }
       }
@@ -1108,8 +1185,16 @@ export class AlertasConfiguracionComponent {
   readonly destinatarios = signal<DestinatarioPosible[]>([]);
   readonly destinatariosError = signal('');
 
-  readonly creandoPorDefecto = signal(false);
-  readonly porDefectoMsg = signal('');
+  // Selector de reglas recomendadas: catálogo evaluado contra el sitio y la
+  // selección del usuario. Se recarga cada vez que se abre, para reflejar lo
+  // que ya existe.
+  readonly mostrandoRecomendadas = signal(false);
+  readonly recomendadas = signal<ReglaRecomendada[]>([]);
+  readonly recomendadasCargando = signal(false);
+  readonly recomendadasError = signal('');
+  readonly seleccion = signal<Set<AlertaCondicion>>(new Set());
+  readonly creandoRecomendadas = signal(false);
+  readonly recomendadasMsg = signal('');
 
   /** Config DGA del pozo: de ahí sale el límite de `sobre_derecho_dga`. null si no hay. */
   readonly pozoDga = signal<PozoDgaConfig | null>(null);
@@ -1166,31 +1251,71 @@ export class AlertasConfiguracionComponent {
     });
   }
 
-  /** Crea las reglas estándar que falten y recarga la lista. */
-  crearPorDefecto(): void {
+  // ─── Reglas recomendadas ────────────────────────────────────────────
+
+  toggleRecomendadas(): void {
+    const abrir = !this.mostrandoRecomendadas();
+    this.mostrandoRecomendadas.set(abrir);
+    if (abrir) this.cargarRecomendadas();
+  }
+
+  /** Carga el catálogo y preselecciona las que aplican y aún no existen. */
+  private cargarRecomendadas(): void {
     const sid = this.sitioId();
-    if (!sid || this.creandoPorDefecto()) return;
-    this.creandoPorDefecto.set(true);
-    this.porDefectoMsg.set('');
-    this.errorMsg.set(null);
-    this.alertaService.crearPorDefecto(sid).subscribe({
-      next: (r) => {
-        this.creandoPorDefecto.set(false);
-        const nombres = (cs: AlertaCondicion[]) => cs.map((c) => CONDICION_LABELS[c] ?? c);
-        if (r.creadas.length === 0) {
-          this.porDefectoMsg.set(
-            r.existentes.length
-              ? `Este sitio ya tiene las reglas por defecto (${nombres(r.existentes).join(', ')}).`
-              : 'No hay reglas por defecto aplicables: el sitio no tiene equipo ni DGA activo.',
-          );
-        } else {
-          this.porDefectoMsg.set(`Reglas creadas: ${nombres(r.creadas).join(', ')}.`);
-          this.recargar();
-        }
+    if (!sid) return;
+    this.recomendadasCargando.set(true);
+    this.recomendadasError.set('');
+    this.recomendadasMsg.set('');
+    this.alertaService.reglasRecomendadas(sid).subscribe({
+      next: (rows) => {
+        this.recomendadas.set(rows);
+        this.seleccion.set(
+          new Set(rows.filter((r) => r.aplica && !r.existe).map((r) => r.condicion)),
+        );
+        this.recomendadasCargando.set(false);
       },
       error: (err) => {
-        this.creandoPorDefecto.set(false);
-        this.errorMsg.set(err?.error?.error || 'No se pudieron crear las reglas por defecto');
+        this.recomendadasCargando.set(false);
+        this.recomendadas.set([]);
+        this.recomendadasError.set(
+          err?.error?.error || 'No se pudo cargar el catálogo de reglas recomendadas',
+        );
+      },
+    });
+  }
+
+  toggleSeleccion(c: AlertaCondicion): void {
+    this.seleccion.update((s) => {
+      const next = new Set(s);
+      if (next.has(c)) next.delete(c);
+      else next.add(c);
+      return next;
+    });
+  }
+
+  /** Crea las marcadas, recarga la lista de reglas y refresca el catálogo. */
+  crearSeleccionadas(): void {
+    const sid = this.sitioId();
+    const condiciones = [...this.seleccion()];
+    if (!sid || condiciones.length === 0 || this.creandoRecomendadas()) return;
+    this.creandoRecomendadas.set(true);
+    this.recomendadasMsg.set('');
+    this.errorMsg.set(null);
+    this.alertaService.crearRecomendadas(sid, condiciones).subscribe({
+      next: (r) => {
+        this.creandoRecomendadas.set(false);
+        const nombres = (cs: AlertaCondicion[]) => cs.map((c) => CONDICION_LABELS[c] ?? c);
+        this.recomendadasMsg.set(
+          r.creadas.length
+            ? `Agregadas: ${nombres(r.creadas).join(', ')}.`
+            : 'No se agregó ninguna: las marcadas ya existían.',
+        );
+        if (r.creadas.length) this.recargar();
+        this.cargarRecomendadas();
+      },
+      error: (err) => {
+        this.creandoRecomendadas.set(false);
+        this.errorMsg.set(err?.error?.error || 'No se pudieron agregar las reglas recomendadas');
       },
     });
   }

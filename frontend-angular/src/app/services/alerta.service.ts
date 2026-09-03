@@ -101,8 +101,22 @@ export interface SimulacionLectura {
   error: string | null;
 }
 
-/** Resultado de POST /api/alertas/por-defecto: condiciones creadas, ya existentes y no aplicables. */
-export interface AlertasPorDefectoResultado {
+/** Una regla del catálogo recomendado, evaluada contra el sitio (GET /api/alertas/recomendadas). */
+export interface ReglaRecomendada {
+  condicion: AlertaCondicion;
+  nombre: string;
+  descripcion: string;
+  severidad: AlertaSeveridad;
+  cooldown_minutos: number;
+  /** false cuando el sitio no la puede usar (sin equipo, sin DGA activo). */
+  aplica: boolean;
+  motivo_no_aplica: string | null;
+  /** true cuando el sitio ya tiene una regla con esa condición. */
+  existe: boolean;
+}
+
+/** Resultado de POST /api/alertas/recomendadas: condiciones creadas, ya existentes y omitidas. */
+export interface AlertasRecomendadasResultado {
   creadas: AlertaCondicion[];
   existentes: AlertaCondicion[];
   omitidas: AlertaCondicion[];
@@ -252,14 +266,23 @@ export class AlertaService {
     return this.http.get<ApiEnvelope<AlertaRow[]>>(url).pipe(map((r) => (r.ok ? r.data : [])));
   }
 
-  /**
-   * Crea el set estándar de reglas del sitio (equipo mudo; con DGA activo,
-   * además DGA sin comprobante y caudal sobre el derecho). Idempotente.
-   */
-  crearPorDefecto(sitioId: string): Observable<AlertasPorDefectoResultado> {
+  /** Catálogo recomendado evaluado contra el sitio: qué aplica, qué ya existe. */
+  reglasRecomendadas(sitioId: string): Observable<ReglaRecomendada[]> {
+    const qs = new URLSearchParams({ sitio_id: sitioId });
     return this.http
-      .post<ApiEnvelope<AlertasPorDefectoResultado>>('/api/alertas/por-defecto', {
+      .get<ApiEnvelope<ReglaRecomendada[]>>(`/api/alertas/recomendadas?${qs}`)
+      .pipe(map((r) => (r.ok ? r.data : [])));
+  }
+
+  /** Crea las reglas recomendadas marcadas. Idempotente: una que ya existe se respeta. */
+  crearRecomendadas(
+    sitioId: string,
+    condiciones: AlertaCondicion[],
+  ): Observable<AlertasRecomendadasResultado> {
+    return this.http
+      .post<ApiEnvelope<AlertasRecomendadasResultado>>('/api/alertas/recomendadas', {
         sitio_id: sitioId,
+        condiciones,
       })
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
