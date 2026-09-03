@@ -45,7 +45,19 @@ interface DashboardData {
     timestamp_completo?: string | null;
     received_at?: string | null;
   } | null;
+  /** Config DGA del pozo. El derecho (L/s) dibuja la línea roja del gráfico en vivo. */
+  pozo_config?: {
+    dga_caudal_max_lps?: number | string | null;
+    dga_caudal_tolerance_pct?: number | string | null;
+  } | null;
   resumen?: Record<string, DashboardValue | undefined>;
+}
+
+/** Escala vertical compartida por la curva, el relleno y la línea del derecho. */
+interface RealtimeScale {
+  min: number;
+  max: number;
+  range: number;
 }
 
 interface HistoricalValue {
@@ -515,9 +527,20 @@ interface RealtimeChartPoint {
             <h3 class="text-body-sm font-semibold text-slate-800">
               Caudal en <span class="text-primary-container">Tiempo Real</span>
             </h3>
-            <span class="text-caption-xs font-semibold text-slate-500"
-              >Últimos {{ realtimePoints().length }} registros</span
-            >
+            <div class="flex items-center gap-3 text-caption-xs font-semibold text-slate-500">
+              @if (limiteLinea(); as lim) {
+                <span
+                  class="inline-flex items-center gap-1.5 text-rose-600"
+                  title="Caudal máximo del derecho de aprovechamiento cargado en la configuración DGA del pozo"
+                >
+                  <span
+                    class="inline-block h-0 w-4 border-t-2 border-dashed border-rose-500"
+                  ></span>
+                  Derecho DGA {{ lim.label }}
+                </span>
+              }
+              <span>Últimos {{ realtimePoints().length }} registros</span>
+            </div>
           </div>
           <div class="relative h-28 w-full">
             <svg
@@ -535,6 +558,20 @@ interface RealtimeChartPoint {
                 </linearGradient>
               </defs>
               <polygon [attr.points]="chartFill(realtimePoints())" fill="url(#rtFill)" />
+              <!-- Derecho DGA: solo si el pozo lo tiene cargado. Roja y
+                   punteada para no confundirse con la curva ni con el cursor. -->
+              @if (limiteLinea(); as lim) {
+                <line
+                  x1="0"
+                  [attr.x2]="1120"
+                  [attr.y1]="lim.y"
+                  [attr.y2]="lim.y"
+                  stroke="#DC2626"
+                  stroke-width="1.5"
+                  stroke-dasharray="8 5"
+                  vector-effect="non-scaling-stroke"
+                />
+              }
               @if (selectedRealtimePoint(); as point) {
                 <line
                   [attr.x1]="point.x"
@@ -727,14 +764,48 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return points.length ? points : [0, 0];
   });
 
+  /**
+   * Derecho de aprovechamiento DGA del pozo (L/s), desde la config DGA que
+   * viaja en dashboard-data. null cuando no está cargado: entonces no hay
+   * línea que dibujar. Es el derecho, no el derecho más tolerancia: la
+   * tolerancia es un margen de validación, el límite legal es este.
+   */
+  readonly limiteDga = computed<number | null>(() => {
+    const raw = this.dashboardData()?.pozo_config?.dga_caudal_max_lps;
+    const n = raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  });
+
+  /**
+   * Escala vertical del gráfico en vivo. Incluye el derecho DGA cuando existe:
+   * si el caudal anda lejos del límite, la línea igual tiene que verse.
+   */
+  readonly realtimeScale = computed<RealtimeScale>(() => {
+    const values = this.realtimePoints();
+    const limite = this.limiteDga();
+    const todos = limite === null ? values : [...values, limite];
+    const min = Math.min(...todos);
+    const max = Math.max(...todos);
+    return { min, max, range: max - min || 1 };
+  });
+
+  /** Posición de la línea del derecho en el SVG, o null si no hay derecho. */
+  readonly limiteLinea = computed<{ y: number; yPct: number; label: string } | null>(() => {
+    const limite = this.limiteDga();
+    if (limite === null) return null;
+    const y = this.yFor(limite, this.realtimeScale());
+    return { y, yPct: (y / 80) * 100, label: `${this.formatNumber(limite, 1)} L/s` };
+  });
+
+  private yFor(value: number, scale: RealtimeScale): number {
+    return this.chartHeight - ((value - scale.min) / scale.range) * (this.chartHeight - 10);
+  }
+
   readonly realtimeChartPoints = computed<RealtimeChartPoint[]>(() => {
     const rows = this.realtimeChartRows();
     if (!rows.length) return [];
 
-    const values = rows.map((row) => row.caudal ?? 0);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
+    const scale = this.realtimeScale();
     const step = rows.length > 1 ? this.chartWidth / (rows.length - 1) : 0;
 
     return rows
@@ -744,7 +815,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
       )
       .map((row, index) => {
         const x = rows.length > 1 ? index * step : this.chartWidth / 2;
-        const y = this.chartHeight - ((row.caudal - min) / range) * (this.chartHeight - 10);
+        const y = this.yFor(row.caudal, scale);
         return {
           timestampMs: row.timestampMs,
           caudal: row.caudal,
@@ -978,28 +1049,25 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return `${x} ${y}`;
   }
 
+  // Curva y relleno usan la MISMA escala que los puntos del tooltip y la línea
+  // del derecho (`realtimeScale`), no una propia: antes cada helper calculaba
+  // su min/max y bastaba con incluir el límite en la escala para que la curva
+  // y el cursor dejaran de coincidir.
   chartPolyline(points: number[]): string {
-    const W = this.chartWidth,
-      H = this.chartHeight;
+    const W = this.chartWidth;
+    const scale = this.realtimeScale();
     const safePoints = points.length > 1 ? points : [points[0] ?? 0, points[0] ?? 0];
-    const min = Math.min(...safePoints),
-      max = Math.max(...safePoints);
-    const range = max - min || 1;
     const step = W / (safePoints.length - 1);
-    return safePoints.map((v, i) => `${i * step},${H - ((v - min) / range) * (H - 10)}`).join(' ');
+    return safePoints.map((v, i) => `${i * step},${this.yFor(v, scale)}`).join(' ');
   }
 
   chartFill(points: number[]): string {
     const W = this.chartWidth,
       H = this.chartHeight;
+    const scale = this.realtimeScale();
     const safePoints = points.length > 1 ? points : [points[0] ?? 0, points[0] ?? 0];
-    const min = Math.min(...safePoints),
-      max = Math.max(...safePoints);
-    const range = max - min || 1;
     const step = W / (safePoints.length - 1);
-    const coords = safePoints
-      .map((v, i) => `${i * step},${H - ((v - min) / range) * (H - 10)}`)
-      .join(' ');
+    const coords = safePoints.map((v, i) => `${i * step},${this.yFor(v, scale)}`).join(' ');
     return `0,${H} ${coords} ${(safePoints.length - 1) * step},${H}`;
   }
 
