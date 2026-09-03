@@ -36,9 +36,42 @@ interface FlujoPunto {
   muestras: number;
 }
 
+type FlujoPresetDias = 30 | 60 | 90;
+type MesesFlujo = 12 | 24 | 36;
+
 /** Fecha ISO 'YYYY-MM-DD' de una fecha UTC. */
 function isoFecha(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+/** Fecha ISO 'YYYY-MM-DD' en la zona local del navegador (los `dia` de contadores son fecha Chile). */
+function isoLocal(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function restarDias(d: Date, dias: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() - dias);
+  return r;
+}
+
+function sumarDiasUtc(d: Date, dias: number): Date {
+  const r = new Date(d);
+  r.setUTCDate(r.getUTCDate() + dias);
+  return r;
+}
+
+/** Días calendario entre dos 'YYYY-MM-DD' (b − a). */
+function diasEntre(a: string, b: string): number {
+  const ms = Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`);
+  return Math.round(ms / 86_400_000);
+}
+
+/** 'YYYY-MM-DD' → 'DD/MM/YYYY'. */
+function fmtFechaCl(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
 }
 
 /**
@@ -400,40 +433,159 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
       </div>
 
       <!-- ══ Flujo: Diario / Semanal / Mensual ══
-           Tres series del mismo totalizador. La unidad (m³ o hL) es una sola
-           para las tres; cada gráfico se descarga en XLSX y en PNG. -->
-      <ng-template #selectorUnidad>
-        <div
-          class="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-caption-xs font-bold"
-          role="group"
-          aria-label="Unidad de volumen"
-        >
-          <button
-            type="button"
-            (click)="setUnidadVolumen('m3')"
-            [attr.aria-pressed]="unidadVolumen() === 'm3'"
-            [class]="
-              unidadVolumen() === 'm3'
-                ? 'rounded-md bg-white px-2 py-1 text-primary-container shadow-sm'
-                : 'rounded-md px-2 py-1 text-slate-500 hover:text-slate-700'
-            "
-          >
-            m³
-          </button>
-          <button
-            type="button"
-            (click)="setUnidadVolumen('hl')"
-            [attr.aria-pressed]="unidadVolumen() === 'hl'"
-            [class]="
-              unidadVolumen() === 'hl'
-                ? 'rounded-md bg-white px-2 py-1 text-primary-container shadow-sm'
-                : 'rounded-md px-2 py-1 text-slate-500 hover:text-slate-700'
-            "
-          >
-            hL
-          </button>
+           Tres series del mismo totalizador. Esta barra manda sobre las tres:
+           el período de diario y semanal, los meses del mensual y la unidad
+           (m³ o hL). Cada gráfico se descarga en XLSX y en PNG con el período
+           explícito en el subtítulo, el nombre de archivo y el pie del Excel. -->
+      <div
+        class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm"
+      >
+        <div>
+          <h3 class="text-body-sm font-semibold text-slate-800">Flujo de agua</h3>
+          <p class="mt-0.5 text-caption-xs text-slate-500">
+            Volumen acumulado del totalizador por día, semana y mes
+          </p>
         </div>
-      </ng-template>
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Período (diario + semanal) -->
+          <div
+            class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-caption-xs font-bold"
+            role="group"
+            aria-label="Período de los gráficos diario y semanal"
+          >
+            <span class="px-1.5 text-slate-400">Período</span>
+            @for (p of FLUJO_PRESETS; track p.dias) {
+              <button
+                type="button"
+                (click)="setFlujoPreset(p.dias)"
+                [attr.aria-pressed]="flujoPreset() === p.dias"
+                [class]="
+                  flujoPreset() === p.dias
+                    ? 'rounded-md bg-white px-2 py-1 text-primary-container shadow-sm'
+                    : 'rounded-md px-2 py-1 text-slate-500 hover:text-slate-700'
+                "
+              >
+                {{ p.label }}
+              </button>
+            }
+            <button
+              type="button"
+              (click)="flujoPersonalizadoOpen.update((v) => !v)"
+              [attr.aria-pressed]="flujoPreset() === 'custom'"
+              [attr.aria-expanded]="flujoPersonalizadoOpen()"
+              [class]="
+                flujoPreset() === 'custom'
+                  ? 'inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-primary-container shadow-sm'
+                  : 'inline-flex items-center gap-1 rounded-md px-2 py-1 text-slate-500 hover:text-slate-700'
+              "
+            >
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                >calendar_month</span
+              >
+              Fechas
+            </button>
+          </div>
+
+          <!-- Meses del gráfico mensual -->
+          <div
+            class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-caption-xs font-bold"
+            role="group"
+            aria-label="Meses del gráfico mensual"
+          >
+            <span class="px-1.5 text-slate-400">Meses</span>
+            @for (m of MESES_OPCIONES; track m) {
+              <button
+                type="button"
+                (click)="setMesesFlujo(m)"
+                [attr.aria-pressed]="mesesFlujo() === m"
+                [class]="
+                  mesesFlujo() === m
+                    ? 'rounded-md bg-white px-2 py-1 text-primary-container shadow-sm'
+                    : 'rounded-md px-2 py-1 text-slate-500 hover:text-slate-700'
+                "
+              >
+                {{ m }}
+              </button>
+            }
+          </div>
+
+          <!-- Unidad -->
+          <div
+            class="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-caption-xs font-bold"
+            role="group"
+            aria-label="Unidad de volumen"
+          >
+            <button
+              type="button"
+              (click)="setUnidadVolumen('m3')"
+              [attr.aria-pressed]="unidadVolumen() === 'm3'"
+              [class]="
+                unidadVolumen() === 'm3'
+                  ? 'rounded-md bg-white px-2 py-1 text-primary-container shadow-sm'
+                  : 'rounded-md px-2 py-1 text-slate-500 hover:text-slate-700'
+              "
+            >
+              m³
+            </button>
+            <button
+              type="button"
+              (click)="setUnidadVolumen('hl')"
+              [attr.aria-pressed]="unidadVolumen() === 'hl'"
+              [class]="
+                unidadVolumen() === 'hl'
+                  ? 'rounded-md bg-white px-2 py-1 text-primary-container shadow-sm'
+                  : 'rounded-md px-2 py-1 text-slate-500 hover:text-slate-700'
+              "
+            >
+              hL
+            </button>
+          </div>
+        </div>
+
+        <!-- Fechas personalizadas -->
+        @if (flujoPersonalizadoOpen()) {
+          <div
+            class="flex w-full flex-wrap items-end gap-3 rounded-xl border border-primary-tint-25 bg-primary-tint-08 p-3"
+          >
+            <label class="grid gap-1 text-caption-xs font-semibold text-slate-600">
+              Desde
+              <input
+                type="date"
+                [value]="flujoDesdeInput()"
+                [max]="hoyIso"
+                (change)="flujoDesdeInput.set($any($event.target).value)"
+                class="h-8 rounded-lg border border-slate-200 bg-white px-2 font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55"
+              />
+            </label>
+            <label class="grid gap-1 text-caption-xs font-semibold text-slate-600">
+              Hasta
+              <input
+                type="date"
+                [value]="flujoHastaInput()"
+                [max]="hoyIso"
+                (change)="flujoHastaInput.set($any($event.target).value)"
+                class="h-8 rounded-lg border border-slate-200 bg-white px-2 font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55"
+              />
+            </label>
+            <button
+              type="button"
+              (click)="applyFlujoRango()"
+              class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
+              Aplicar
+            </button>
+            <span class="text-caption-xs text-slate-500">
+              Máximo {{ MAX_DIAS_FLUJO }} días hacia atrás, hasta hoy.
+            </span>
+            @if (flujoRangoError()) {
+              <span class="text-caption-xs font-semibold text-rose-600">{{
+                flujoRangoError()
+              }}</span>
+            }
+          </div>
+        }
+      </div>
 
       <!-- Flujo Diario 30D -->
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -441,11 +593,10 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo Diario</h3>
             <p class="mt-0.5 text-caption-xs text-slate-500">
-              Últimos 30 días · {{ unidadLabel() }}/día · días sin operación en gris
+              {{ diarioRangoLabel() }} · {{ unidadLabel() }}/día · días sin operación en gris
             </p>
           </div>
           <div class="flex items-center gap-2">
-            <ng-container *ngTemplateOutlet="selectorUnidad"></ng-container>
             <button
               type="button"
               (click)="downloadDiarioXlsx()"
@@ -462,7 +613,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 downloadFlujoPng(
                   svgDiario()?.nativeElement,
                   'Flujo Diario',
-                  'Últimos 30 días · ' + unidadLabel() + '/día',
+                  diarioRangoLabel() + ' · ' + unidadLabel() + '/día',
                   'flujo-diario'
                 )
               "
@@ -551,12 +702,11 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo Semanal</h3>
             <p class="mt-0.5 text-caption-xs text-slate-500">
-              Últimas 12 semanas (lunes a domingo) · {{ unidadLabel() }} totales por semana · la
-              semana en curso se muestra parcial
+              {{ semanalRangoLabel() }} · semanas de lunes a domingo · {{ unidadLabel() }} totales
+              por semana · la semana en curso se muestra parcial
             </p>
           </div>
           <div class="flex items-center gap-2">
-            <ng-container *ngTemplateOutlet="selectorUnidad"></ng-container>
             <button
               type="button"
               (click)="downloadSemanalXlsx()"
@@ -573,7 +723,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 downloadFlujoPng(
                   svgSemanal()?.nativeElement,
                   'Flujo Semanal',
-                  'Últimas 12 semanas · ' + unidadLabel() + ' por semana',
+                  semanalRangoLabel() + ' · ' + unidadLabel() + ' por semana',
                   'flujo-semanal'
                 )
               "
@@ -669,11 +819,10 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo Mensual</h3>
             <p class="mt-0.5 text-caption-xs text-slate-500">
-              Últimos 12 meses · {{ unidadLabel() }} totales por mes
+              {{ mensualRangoLabel() }} · {{ unidadLabel() }} totales por mes
             </p>
           </div>
           <div class="flex items-center gap-2">
-            <ng-container *ngTemplateOutlet="selectorUnidad"></ng-container>
             <button
               type="button"
               (click)="downloadMensualXlsx()"
@@ -690,7 +839,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 downloadFlujoPng(
                   svgMensual()?.nativeElement,
                   'Flujo Mensual',
-                  'Últimos 12 meses · ' + unidadLabel() + ' por mes',
+                  mensualRangoLabel() + ' · ' + unidadLabel() + ' por mes',
                   'flujo-mensual'
                 )
               "
@@ -1161,9 +1310,109 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
   // Las tres se normalizan a FlujoPunto para que gráfico, tooltip, XLSX y PNG
   // sean el mismo código con distinta serie.
 
-  // Slice ultimos 30 dias para el chart (el state guarda 90 para cubrir el
-  // preset 90d del Resumen por Periodo y las 12 semanas del flujo semanal).
-  private readonly diarioPoints = computed(() => this.dailyCountersData().slice(-30));
+  // ── Período de los gráficos de flujo ─────────────────────
+  //
+  // Diario y semanal comparten un rango [desde, hasta] (hasta ≤ hoy, máximo
+  // MAX_DIAS_FLUJO hacia atrás, tope del API de contadores). Los presets son
+  // "últimos N días hasta hoy"; "Fechas" permite cualquier tramo. El state
+  // pide al API los días necesarios para cubrir `desde`.
+  readonly FLUJO_PRESETS: { dias: FlujoPresetDias; label: string }[] = [
+    { dias: 30, label: '30 días' },
+    { dias: 60, label: '60 días' },
+    { dias: 90, label: '90 días' },
+  ];
+  readonly MESES_OPCIONES: MesesFlujo[] = [12, 24, 36];
+  readonly MAX_DIAS_FLUJO = 120;
+  readonly hoyIso = isoLocal(new Date());
+
+  readonly flujoPreset = signal<FlujoPresetDias | 'custom'>(30);
+  readonly flujoDesde = signal<string>(isoLocal(restarDias(new Date(), 29)));
+  readonly flujoHasta = signal<string>(this.hoyIso);
+  readonly flujoPersonalizadoOpen = signal(false);
+  readonly flujoDesdeInput = signal<string>(this.flujoDesde());
+  readonly flujoHastaInput = signal<string>(this.flujoHasta());
+  readonly flujoRangoError = signal('');
+  readonly mesesFlujo = this.state.mesesContadores;
+
+  setFlujoPreset(dias: FlujoPresetDias): void {
+    this.flujoPreset.set(dias);
+    this.flujoPersonalizadoOpen.set(false);
+    this.flujoRangoError.set('');
+    const hasta = isoLocal(new Date());
+    const desde = isoLocal(restarDias(new Date(), dias - 1));
+    this.flujoDesde.set(desde);
+    this.flujoHasta.set(hasta);
+    this.flujoDesdeInput.set(desde);
+    this.flujoHastaInput.set(hasta);
+    this.state.diasContadores.set(dias);
+  }
+
+  applyFlujoRango(): void {
+    const desde = this.flujoDesdeInput();
+    const hasta = this.flujoHastaInput();
+    if (!desde || !hasta) {
+      this.flujoRangoError.set('Elige ambas fechas.');
+      return;
+    }
+    if (desde > hasta) {
+      this.flujoRangoError.set('"Desde" debe ser anterior o igual a "Hasta".');
+      return;
+    }
+    if (hasta > this.hoyIso) {
+      this.flujoRangoError.set('"Hasta" no puede ser posterior a hoy.');
+      return;
+    }
+    const diasAtras = diasEntre(desde, this.hoyIso) + 1;
+    if (diasAtras > this.MAX_DIAS_FLUJO) {
+      this.flujoRangoError.set(
+        `El rango no puede empezar hace más de ${this.MAX_DIAS_FLUJO} días.`,
+      );
+      return;
+    }
+    this.flujoRangoError.set('');
+    this.flujoPreset.set('custom');
+    this.flujoDesde.set(desde);
+    this.flujoHasta.set(hasta);
+    this.flujoPersonalizadoOpen.set(false);
+    // El state trae "últimos N días hasta hoy": N tiene que alcanzar `desde`.
+    this.state.diasContadores.set(diasAtras);
+  }
+
+  setMesesFlujo(m: MesesFlujo): void {
+    this.state.mesesContadores.set(m);
+  }
+
+  /** Texto del período, igual en subtítulo, PNG y pie del XLSX. */
+  readonly diarioRangoLabel = computed(() => {
+    const desde = this.flujoDesde();
+    const hasta = this.flujoHasta();
+    const n = diasEntre(desde, hasta) + 1;
+    return `${fmtFechaCl(desde)} – ${fmtFechaCl(hasta)} · ${n} ${n === 1 ? 'día' : 'días'}`;
+  });
+
+  readonly semanalRangoLabel = computed(() => {
+    const serie = this.semanalSerie();
+    if (serie.length === 0) return this.diarioRangoLabel();
+    const primera = serie[0]!.clave;
+    const ultimaLunes = serie[serie.length - 1]!.clave;
+    const ultimaDomingo = isoFecha(sumarDiasUtc(new Date(`${ultimaLunes}T00:00:00Z`), 6));
+    const fin = ultimaDomingo < this.flujoHasta() ? ultimaDomingo : this.flujoHasta();
+    return `${fmtFechaCl(primera)} – ${fmtFechaCl(fin)} · ${serie.length} ${serie.length === 1 ? 'semana' : 'semanas'}`;
+  });
+
+  readonly mensualRangoLabel = computed(() => {
+    const serie = this.mensualSerie();
+    if (serie.length === 0) return `Últimos ${this.mesesFlujo()} meses`;
+    return `${serie[0]!.labelLargo} – ${serie[serie.length - 1]!.labelLargo} · ${serie.length} meses`;
+  });
+
+  // Días del rango elegido (el state puede traer más: mínimo 90 para el
+  // Resumen por Período).
+  private readonly diarioPoints = computed(() => {
+    const desde = this.flujoDesde();
+    const hasta = this.flujoHasta();
+    return this.dailyCountersData().filter((p) => p.dia >= desde && p.dia <= hasta);
+  });
 
   readonly diarioSerie = computed<FlujoPunto[]>(() =>
     this.diarioPoints().map((p) => {
@@ -1179,17 +1428,18 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
   );
 
   /**
-   * Semanas ISO (lunes a domingo) construidas desde los 90 días de contadores
-   * diarios: se suman los deltas del día. Una semana con todos sus días sin
-   * dato queda en null; la semana en curso se muestra parcial y la etiqueta
-   * larga del tooltip lo dice. Últimas 12.
+   * Semanas ISO (lunes a domingo) construidas desde los contadores diarios del
+   * rango elegido: se suman los deltas del día. Una semana con todos sus días
+   * sin dato queda en null; una semana a la que el rango no cubre completa
+   * (la en curso, o los bordes de un rango personalizado) se marca
+   * "(parcial)" en el tooltip y el XLSX.
    */
   readonly semanalSerie = computed<FlujoPunto[]>(() => {
     const porSemana = new Map<
       string,
       { lunes: Date; delta: number | null; muestras: number; dias: number }
     >();
-    for (const p of this.dailyCountersData()) {
+    for (const p of this.diarioPoints()) {
       const lunes = lunesDeSemana(p.dia);
       if (!lunes) continue;
       const clave = isoFecha(lunes);
@@ -1201,7 +1451,6 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     }
     return [...porSemana.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-12)
       .map(([clave, acc]) => {
         const domingo = new Date(acc.lunes);
         domingo.setUTCDate(domingo.getUTCDate() + 6);
@@ -1467,6 +1716,8 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     columnaPeriodo: string,
     hoja: string,
     base: string,
+    periodo: string,
+    sufijoArchivo: string,
   ): Promise<void> {
     if (serie.length === 0) return;
     const XLSX = await this.loadXlsx();
@@ -1480,20 +1731,47 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
       };
     });
     const sheet = XLSX.utils.json_to_sheet(rows);
-    sheet['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 22 }];
+    sheet['!cols'] = [{ wch: 34 }, { wch: 14 }, { wch: 22 }];
+    // Pie con el período y el total, para que el archivo se explique solo:
+    // "últimos 30 días" no dice nada si se abre dentro de un mes.
+    const total = serie.reduce((acc, p) => acc + (this.enUnidad(p.delta) ?? 0), 0);
+    XLSX.utils.sheet_add_aoa(
+      sheet,
+      [
+        [],
+        ['Período', periodo],
+        [`Total (${unit})`, Number(total.toFixed(3))],
+        ['Sitio', this.resolveSiteId() || ''],
+        ['Generado', fmtFechaCl(this.hoyIso)],
+      ],
+      { origin: -1 },
+    );
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, sheet, hoja);
     const siteId = this.resolveSiteId();
-    const fileName = `${base}-${siteId || 'sitio'}-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    XLSX.writeFile(wb, `${base}-${siteId || 'sitio'}-${sufijoArchivo}.xlsx`);
   }
 
   downloadDiarioXlsx(): Promise<void> {
-    return this.downloadFlujoXlsx(this.diarioSerie(), 'Día', 'Flujo Diario', 'flujo-diario');
+    return this.downloadFlujoXlsx(
+      this.diarioSerie(),
+      'Día',
+      'Flujo Diario',
+      'flujo-diario',
+      this.diarioRangoLabel(),
+      `${this.flujoDesde()}_a_${this.flujoHasta()}`,
+    );
   }
 
   downloadSemanalXlsx(): Promise<void> {
-    return this.downloadFlujoXlsx(this.semanalSerie(), 'Semana', 'Flujo Semanal', 'flujo-semanal');
+    return this.downloadFlujoXlsx(
+      this.semanalSerie(),
+      'Semana',
+      'Flujo Semanal',
+      'flujo-semanal',
+      this.semanalRangoLabel(),
+      `${this.flujoDesde()}_a_${this.flujoHasta()}`,
+    );
   }
 
   downloadMensualXlsx(): Promise<void> {
@@ -1502,7 +1780,16 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
       ...p,
       labelLargo: this.formatMesLargo(p.clave),
     }));
-    return this.downloadFlujoXlsx(serie, 'Mes', 'Flujo Mensual', 'flujo-mensual');
+    const primero = serie[0]?.clave.slice(0, 7) ?? '';
+    const ultimo = serie[serie.length - 1]?.clave.slice(0, 7) ?? '';
+    return this.downloadFlujoXlsx(
+      serie,
+      'Mes',
+      'Flujo Mensual',
+      'flujo-mensual',
+      this.mensualRangoLabel(),
+      `${primero}_a_${ultimo}`,
+    );
   }
 
   /**
