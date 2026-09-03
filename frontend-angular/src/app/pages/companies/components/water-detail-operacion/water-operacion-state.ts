@@ -119,6 +119,14 @@ export class WaterOperacionStateService {
   private readonly jornadaInicio$ = toObservable(this.jornadaInicio);
   private readonly jornadaFin$ = toObservable(this.jornadaFin);
 
+  // Ventana de contadores que piden los gráficos de flujo. El diario nunca
+  // baja de 90 días (el Resumen por Período los necesita para su preset 90d)
+  // y el API tope en 120; el mensual admite 12/24/36 (tope del API: 36).
+  readonly diasContadores = signal(90);
+  readonly mesesContadores = signal(12);
+  private readonly diasContadores$ = toObservable(this.diasContadores);
+  private readonly mesesContadores$ = toObservable(this.mesesContadores);
+
   /**
    * Arranca polling de config + turnos. Liviano: 1 GET inicial + save loop on
    * change. SIEMPRE necesario en Operacion (incluso para la tab Hoy que usa
@@ -146,13 +154,17 @@ export class WaterOperacionStateService {
     this.countersSiteId = siteId;
 
     this.monthlyCountersLoading.set(true);
-    this.monthlySub = timer(0, 10 * 60_000)
+    this.monthlySub = combineLatest([timer(0, 10 * 60_000), this.mesesContadores$])
       .pipe(
-        switchMap(() =>
-          this.companyService
-            .getSiteMonthlyCounters(siteId, { rol: 'totalizador', meses: 12 })
-            .pipe(catchError(() => of(null))),
-        ),
+        switchMap(([, meses]) => {
+          this.monthlyCountersLoading.set(true);
+          return this.companyService
+            .getSiteMonthlyCounters(siteId, {
+              rol: 'totalizador',
+              meses: Math.min(Math.max(meses, 1), 36),
+            })
+            .pipe(catchError(() => of(null)));
+        }),
       )
       .subscribe((res) => {
         this.monthlyCountersLoading.set(false);
@@ -161,15 +173,21 @@ export class WaterOperacionStateService {
       });
 
     this.dailyCountersLoading.set(true);
-    // 90 dias: cubre el chart de 30 dias + el preset 90d del Resumen por
-    // Periodo. Sub-componentes filtran client-side al rango que necesitan.
-    this.dailySub = timer(0, 10 * 60_000)
+    // Minimo 90 dias: cubre el preset 90d del Resumen por Periodo. Los
+    // graficos de flujo piden mas cuando el usuario elige un rango mas largo
+    // (tope del API: 120). Sub-componentes filtran client-side al rango que
+    // necesitan.
+    this.dailySub = combineLatest([timer(0, 10 * 60_000), this.diasContadores$])
       .pipe(
-        switchMap(() =>
-          this.companyService
-            .getSiteDailyCounters(siteId, { rol: 'totalizador', dias: 90 })
-            .pipe(catchError(() => of(null))),
-        ),
+        switchMap(([, dias]) => {
+          this.dailyCountersLoading.set(true);
+          return this.companyService
+            .getSiteDailyCounters(siteId, {
+              rol: 'totalizador',
+              dias: Math.min(Math.max(dias, 90), 120),
+            })
+            .pipe(catchError(() => of(null)));
+        }),
       )
       .subscribe((res) => {
         this.dailyCountersLoading.set(false);
