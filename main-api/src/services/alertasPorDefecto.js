@@ -1,14 +1,15 @@
 /**
- * Reglas de alerta por defecto de un sitio.
+ * Reglas de alerta recomendadas de un sitio.
  *
  * Un sitio nuevo nacía sin ninguna regla, y las tres que todo pozo necesita
  * (equipo mudo, DGA sin comprobante, caudal sobre el derecho) había que
- * crearlas a mano una por una. Esto crea el set estándar, sin pisar nada:
- * una condición que el sitio ya tiene configurada (activa o pausada) se
- * respeta tal cual, así que llamar de nuevo es inofensivo.
+ * crearlas a mano una por una. Esto define el catálogo recomendado, dice
+ * cuáles aplican al sitio y cuáles ya existen, y crea las que se pidan sin
+ * pisar nada: una condición ya configurada (activa o pausada) se respeta.
  *
- * Se invoca al crear el sitio, al activar DGA en su pozo_config, y desde el
- * botón "Crear alertas por defecto" del panel de alertas.
+ * Se invoca al crear el sitio y al activar DGA en su pozo_config (todas las
+ * que apliquen), y desde el selector "Reglas recomendadas" del panel de
+ * alertas (solo las marcadas).
  *
  * CommonJS para que lo usen tanto los controllers JS como el módulo TS de DGA.
  */
@@ -16,18 +17,18 @@
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
 /**
- * Definición del set estándar. `aplica` decide según el sitio; `variable_key`
- * puede ser función porque `sin_datos` guarda la primera clave del reg_map
- * (el backend exige una, aunque la evaluación mire el payload completo).
+ * Catálogo. `aplica` decide según el sitio y devuelve el motivo cuando no;
+ * `variable_key` puede ser función porque `sin_datos` guarda la primera clave
+ * del reg_map (el backend exige una, aunque la evaluación mire el payload).
  */
-const REGLAS_POR_DEFECTO = [
+const REGLAS_RECOMENDADAS = [
   {
     condicion: 'sin_datos',
     nombre: 'Sin comunicación del equipo',
     descripcion: 'El equipo lleva más de 60 minutos sin transmitir.',
     severidad: 'critica',
     cooldown_minutos: 60,
-    aplica: (ctx) => Boolean(ctx.sitio.id_serial),
+    aplica: (ctx) => (ctx.sitio.id_serial ? null : 'El sitio no tiene equipo asociado.'),
     variable_key: (ctx) => ctx.primeraVariable || 'equipo',
   },
   {
@@ -36,7 +37,7 @@ const REGLAS_POR_DEFECTO = [
     descripcion: 'SNIA no ha devuelto comprobante en 24 h; escala a 48 h y 72 h.',
     severidad: 'media',
     cooldown_minutos: 60,
-    aplica: (ctx) => ctx.dgaActivo,
+    aplica: (ctx) => (ctx.dgaActivo ? null : 'Requiere DGA activo en el pozo.'),
     variable_key: () => 'dga',
   },
   {
@@ -45,18 +46,12 @@ const REGLAS_POR_DEFECTO = [
     descripcion: 'El caudal instantáneo supera el derecho de aprovechamiento más la tolerancia.',
     severidad: 'alta',
     cooldown_minutos: 60,
-    aplica: (ctx) => ctx.dgaActivo,
+    aplica: (ctx) => (ctx.dgaActivo ? null : 'Requiere DGA activo en el pozo.'),
     variable_key: () => 'caudal',
   },
 ];
 
-/**
- * @param {{ query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> }} db
- * @param {{ sitioId: string; userId?: string | null }} input
- * @returns {Promise<{ creadas: string[]; existentes: string[]; omitidas: string[] }>}
- *   condiciones creadas, ya existentes, y las que no aplican al sitio.
- */
-async function crearAlertasPorDefecto(db, { sitioId, userId = null }) {
+async function cargarContexto(db, sitioId) {
   const { rows: sitios } = await db.query(
     `SELECT s.id, s.empresa_id, s.sub_empresa_id, s.id_serial, s.tipo_sitio,
             COALESCE(pc.dga_activo, FALSE) AS dga_activo
@@ -74,21 +69,64 @@ async function crearAlertasPorDefecto(db, { sitioId, userId = null }) {
     db.query('SELECT condicion FROM alertas WHERE sitio_id = $1', [sitioId]),
     db.query('SELECT d1 FROM reg_map WHERE sitio_id = $1 ORDER BY alias LIMIT 1', [sitioId]),
   ]);
-  const yaTiene = new Set(existentes.map((r) => r.condicion));
 
-  const ctx = {
+  return {
     sitio,
     dgaActivo: sitio.dga_activo === true,
     primeraVariable: variables[0]?.d1 ?? null,
+    yaTiene: new Set(existentes.map((r) => r.condicion)),
   };
+}
+
+/**
+ * Catálogo recomendado evaluado contra el sitio: qué aplica, por qué no, y
+ * qué ya existe. Es lo que muestra el selector antes de crear nada.
+ *
+ * @returns {Promise<Array<{ condicion: string; nombre: string; descripcion: string;
+ *   severidad: string; cooldown_minutos: number; aplica: boolean;
+ *   motivo_no_aplica: string | null; existe: boolean }>>}
+ */
+async function listarAlertasRecomendadas(db, { sitioId }) {
+  const ctx = await cargarContexto(db, sitioId);
+  return REGLAS_RECOMENDADAS.map((regla) => {
+    const motivo = regla.aplica(ctx);
+    return {
+      condicion: regla.condicion,
+      nombre: regla.nombre,
+      descripcion: regla.descripcion,
+      severidad: regla.severidad,
+      cooldown_minutos: regla.cooldown_minutos,
+      aplica: motivo === null,
+      motivo_no_aplica: motivo,
+      existe: ctx.yaTiene.has(regla.condicion),
+    };
+  });
+}
+
+/**
+ * Crea las reglas recomendadas que falten. Con `condiciones` crea solo esas;
+ * sin ella, todas las que apliquen (uso automático al crear sitio/activar DGA).
+ *
+ * @param {{ query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> }} db
+ * @param {{ sitioId: string; userId?: string | null; condiciones?: string[] | null }} input
+ * @returns {Promise<{ creadas: string[]; existentes: string[]; omitidas: string[] }>}
+ *   condiciones creadas, ya existentes, y las que no aplican al sitio (o no se pidieron).
+ */
+async function crearAlertasPorDefecto(db, { sitioId, userId = null, condiciones = null }) {
+  const ctx = await cargarContexto(db, sitioId);
+  const pedidas = Array.isArray(condiciones) ? new Set(condiciones) : null;
 
   const out = { creadas: [], existentes: [], omitidas: [] };
-  for (const regla of REGLAS_POR_DEFECTO) {
-    if (!regla.aplica(ctx)) {
+  for (const regla of REGLAS_RECOMENDADAS) {
+    if (pedidas && !pedidas.has(regla.condicion)) {
       out.omitidas.push(regla.condicion);
       continue;
     }
-    if (yaTiene.has(regla.condicion)) {
+    if (regla.aplica(ctx) !== null) {
+      out.omitidas.push(regla.condicion);
+      continue;
+    }
+    if (ctx.yaTiene.has(regla.condicion)) {
       out.existentes.push(regla.condicion);
       continue;
     }
@@ -101,9 +139,9 @@ async function crearAlertasPorDefecto(db, { sitioId, userId = null }) {
       [
         regla.nombre,
         regla.descripcion,
-        sitio.id,
-        sitio.empresa_id,
-        sitio.sub_empresa_id ?? null,
+        ctx.sitio.id,
+        ctx.sitio.empresa_id,
+        ctx.sitio.sub_empresa_id ?? null,
         regla.variable_key(ctx),
         regla.condicion,
         regla.severidad,
@@ -117,4 +155,4 @@ async function crearAlertasPorDefecto(db, { sitioId, userId = null }) {
   return out;
 }
 
-module.exports = { crearAlertasPorDefecto, REGLAS_POR_DEFECTO };
+module.exports = { crearAlertasPorDefecto, listarAlertasRecomendadas, REGLAS_RECOMENDADAS };
