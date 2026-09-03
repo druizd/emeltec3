@@ -296,19 +296,35 @@ interface ConfigDraft {
                 class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
               >
                 Asociar informante (RUT)
+                <!-- La config y la lista de informantes llegan en paralelo. Si la
+                     config gana, [value] apunta a un RUT cuya opción todavía no
+                     existe y el select queda en "ninguno" aunque el borrador
+                     tenga el informante; cuando las opciones aparecen, el
+                     binding no cambió y no se reaplica. [selected] en cada
+                     opción se evalúa al crearse, así que siempre calza. -->
                 <select
                   [value]="draft().dga_informante_rut"
                   [disabled]="saving() || informantesLoading()"
                   (change)="onAsociarInformante($any($event.target).value)"
                   class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-accent/30"
                 >
-                  <option value="">— ninguno —</option>
+                  <option value="" [selected]="!draft().dga_informante_rut">— ninguno —</option>
                   @for (inf of informantes(); track inf.rut) {
-                    <option [value]="inf.rut">
+                    <option [value]="inf.rut" [selected]="inf.rut === draft().dga_informante_rut">
                       {{ inf.rut }}{{ inf.referencia ? ' · ' + inf.referencia : '' }}
                     </option>
                   }
                 </select>
+                @if (
+                  draft().dga_informante_rut &&
+                  !informantesLoading() &&
+                  !informanteEnLista(draft().dga_informante_rut)
+                ) {
+                  <span class="text-[10px] text-amber-700">
+                    El informante guardado ({{ draft().dga_informante_rut }}) no está en la lista:
+                    fue eliminado o no tienes permiso para verlo. Se conserva al guardar.
+                  </span>
+                }
                 <span class="text-[10px] text-slate-500">
                   Un mismo RUT puede asociarse a varios pozos. Se aplica al Guardar.
                 </span>
@@ -558,7 +574,17 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
       this.startLivePoll();
     } else if (changes['open'] && !this.open) {
       this.stopLivePoll();
+    } else if (changes['siteId'] && this.open && this.siteId) {
+      // El padre puede resolver el sitio después de abrir (o cambiarlo con el
+      // modal abierto). Sin esto, loadPozo() salía por `!this.siteId` y el
+      // formulario quedaba vacío hasta cerrar y volver a abrir.
+      this.loadAll();
     }
+  }
+
+  /** true si el RUT del borrador está entre los informantes cargados. */
+  informanteEnLista(rut: string): boolean {
+    return this.informantes().some((i) => i.rut === rut);
   }
 
   ngOnDestroy(): void {
