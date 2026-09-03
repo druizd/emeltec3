@@ -12,7 +12,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { catchError, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { VentisquerosComponent } from '../../ventisqueros/ventisqueros';
 import { OverviewNivelCaudalChartComponent } from './overview-nivel-caudal-chart';
 import { normalizeSiteType } from '../../../shared/site-type-ui';
@@ -27,6 +27,17 @@ import {
 import { AlertaService, type EventoRow } from '../../../services/alerta.service';
 import { DgaService, type DgaReviewSlot } from '../../../services/dga.service';
 import { IncidenciaService, type IncidenciaRow } from '../../../services/incidencia.service';
+import {
+  MAX_DIAS_AGREGADOS,
+  MAX_DIAS_CONTADORES,
+  MESES,
+  diasInclusivos,
+  hoyChileIso,
+  presetPeriodos,
+  sumarConsumo,
+  variacionPct,
+  type RangoPeriodo,
+} from './periodo-comparacion';
 
 interface KpiCard {
   label: string;
@@ -78,8 +89,12 @@ interface MetricaOperacional {
 }
 
 interface SitioComparacion {
+  /** `sitio.id` — clave estable para el @for (hay pozos con el mismo nombre). */
+  siteId: string;
   nombre: string;
   estado: 'online' | 'sinDatos' | 'offline';
+  /** true mientras no llegan los agregados de A y B de este sitio. */
+  cargando: boolean;
   caudalA: string;
   caudalB: string;
   caudalTend: number;
@@ -93,11 +108,21 @@ interface SitioComparacion {
 
 type PeriodoPreset = 'semana' | 'mes' | '7d' | 'custom';
 
-interface Periodo {
-  label: string;
-  desde: string;
-  hasta: string;
+/** Una métrica agregada de `period-aggregates`: máximo, promedio y muestras del rango. */
+interface AggStat {
+  max: number | null;
+  avg: number | null;
+  n: number;
+  unidad: string | null;
 }
+
+/** Respuesta de `CompanyService.getSitePeriodAggregates`. Solo los campos que usa este panel. */
+interface PeriodAggregatesResponse {
+  ok: boolean;
+  data?: { caudal: AggStat; nivel: AggStat; nivel_freatico: AggStat } | null;
+}
+
+type Periodo = RangoPeriodo;
 
 @Component({
   selector: 'app-companies-general-panel',
@@ -403,7 +428,7 @@ interface Periodo {
               <span
                 class="rounded-full border border-surface-container bg-surface-subtle px-3 py-1 text-caption-xs font-semibold text-on-surface-variant"
               >
-                Mayo 2026
+                {{ mesActualLabel() | titlecase }}
               </span>
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -441,9 +466,20 @@ interface Periodo {
                 Comparación de períodos por pozo
               </h3>
               <p class="mt-0.5 text-caption-xs text-slate-500">
-                Período A vs Período B · caudal, nivel y consumo
+                Período A vs Período B · caudal y nivel promedio, consumo acumulado
               </p>
             </div>
+            @if (comparacionLoading()) {
+              <span
+                class="flex items-center gap-1 text-caption-xs font-semibold text-slate-400"
+                role="status"
+              >
+                <span class="material-symbols-outlined animate-spin text-[14px]" aria-hidden="true"
+                  >progress_activity</span
+                >
+                Cargando períodos…
+              </span>
+            }
             <!-- Period labels -->
             <div class="flex items-center gap-2">
               <div class="rounded-lg px-3 py-1.5" style="background: rgba(13,175,189,0.08)">
@@ -599,6 +635,10 @@ interface Periodo {
             </div>
           }
 
+          @if (comparacionError(); as err) {
+            <p class="mb-3 text-caption-xs font-semibold text-red-600" role="alert">{{ err }}</p>
+          }
+
           <!-- Grid de pozos -->
           @if (sitiosComparacion.length === 0) {
             <div class="py-8 text-center">
@@ -607,8 +647,11 @@ interface Periodo {
             </div>
           } @else {
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              @for (s of sitiosComparacion; track s.nombre) {
-                <div class="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+              @for (s of sitiosComparacion; track s.siteId) {
+                <div
+                  class="rounded-xl border border-slate-100 bg-slate-50/60 p-4"
+                  [class.animate-pulse]="s.cargando"
+                >
                   <!-- Nombre del pozo -->
                   <div class="mb-3 flex items-center gap-1.5">
                     <span
@@ -836,12 +879,20 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   hiddenSites = signal<Set<number>>(new Set());
   periodosOpen = signal(false);
   periodoPreset = signal<PeriodoPreset>('semana');
-  periodoA = signal<Periodo>({ label: 'Esta semana', desde: '2026-05-11', hasta: '2026-05-11' });
-  periodoB = signal<Periodo>({
-    label: 'Semana anterior',
-    desde: '2026-05-04',
-    hasta: '2026-05-10',
-  });
+  // Los presets se calculan desde la fecha de hoy (Chile), no desde fechas
+  // fijas: antes estaban clavados en mayo 2026 y "Esta semana" nunca era la
+  // semana en curso.
+  private readonly presetInicial = presetPeriodos('semana', hoyChileIso());
+  periodoA = signal<Periodo>(this.presetInicial.a);
+  periodoB = signal<Periodo>(this.presetInicial.b);
+  // Estado del fetch de comparación: spinner en el header + mensaje de
+  // validación de rangos custom.
+  readonly comparacionLoading = signal(false);
+  readonly comparacionError = signal<string | null>(null);
+  // Generación del último fetch de comparación. Cada respuesta verifica que
+  // sigue siendo la vigente antes de escribir — si el operador cambia de
+  // preset mientras carga, las respuestas viejas se descartan.
+  private comparacionReq = 0;
 
   // Inputs locales para edición custom de fechas. El operador edita estos
   // sin disparar fetch; recién al click Aplicar se propaga a periodoA/B y
@@ -981,22 +1032,8 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
    * del KPI "Flujo acumulado mensual" para evitar el hardcoded "mayo 2026".
    */
   mesActualLabel(): string {
-    const meses = [
-      'enero',
-      'febrero',
-      'marzo',
-      'abril',
-      'mayo',
-      'junio',
-      'julio',
-      'agosto',
-      'septiembre',
-      'octubre',
-      'noviembre',
-      'diciembre',
-    ];
     const hoy = new Date();
-    return `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+    return `${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`;
   }
 
   private map: Leaflet.Map | null = null;
@@ -1076,7 +1113,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     this.puntosMensuales = this.buildMonthLabels(6);
     this.rebuildYTicks();
 
-    this.buildMetricasComparacion();
+    this.fetchComparacion();
 
     if (this.viewReady) {
       if (this.map) this.updateMarkers();
@@ -1178,7 +1215,6 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
             valores: [...p.valores],
           }));
           this.rebuildYTicks();
-          this.buildMetricasComparacion();
           flushArrays();
         });
 
@@ -1398,23 +1434,17 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       return;
     }
     this.periodoPreset.set(preset);
-    if (preset === 'semana') {
-      this.periodoA.set({ label: 'Esta semana', desde: '2026-05-11', hasta: '2026-05-11' });
-      this.periodoB.set({ label: 'Semana anterior', desde: '2026-05-04', hasta: '2026-05-10' });
-    } else if (preset === 'mes') {
-      this.periodoA.set({ label: 'Mayo 2026', desde: '2026-05-01', hasta: '2026-05-11' });
-      this.periodoB.set({ label: 'Abril 2026', desde: '2026-04-01', hasta: '2026-04-11' });
-    } else if (preset === '7d') {
-      this.periodoA.set({ label: 'Últimos 7 días', desde: '2026-05-05', hasta: '2026-05-11' });
-      this.periodoB.set({ label: '7 días anteriores', desde: '2026-04-28', hasta: '2026-05-04' });
-    }
+    const { a, b } = presetPeriodos(preset, hoyChileIso());
+    this.periodoA.set(a);
+    this.periodoB.set(b);
     // Sincronizar inputs locales con los nuevos valores del preset para que
     // el botón Aplicar quede deshabilitado (no hay cambios pendientes).
-    this.periodoAInputDesde.set(this.periodoA().desde);
-    this.periodoAInputHasta.set(this.periodoA().hasta);
-    this.periodoBInputDesde.set(this.periodoB().desde);
-    this.periodoBInputHasta.set(this.periodoB().hasta);
-    this.buildMetricasComparacion();
+    this.periodoAInputDesde.set(a.desde);
+    this.periodoAInputHasta.set(a.hasta);
+    this.periodoBInputDesde.set(b.desde);
+    this.periodoBInputHasta.set(b.hasta);
+    this.comparacionError.set(null);
+    this.fetchComparacion();
   }
 
   /**
@@ -1428,7 +1458,24 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     const bDesde = this.periodoBInputDesde();
     const bHasta = this.periodoBInputHasta();
     if (!aDesde || !aHasta || !bDesde || !bHasta) return;
-    if (aDesde > aHasta || bDesde > bHasta) return;
+    if (aDesde > aHasta || bDesde > bHasta) {
+      this.comparacionError.set('La fecha "Desde" no puede ser posterior a "Hasta".');
+      return;
+    }
+    const hoy = hoyChileIso();
+    if (aHasta > hoy || bHasta > hoy) {
+      this.comparacionError.set('No se pueden comparar fechas futuras.');
+      return;
+    }
+    // Tope del endpoint period-aggregates (1 año por consulta).
+    if (
+      diasInclusivos(aDesde, aHasta) > MAX_DIAS_AGREGADOS ||
+      diasInclusivos(bDesde, bHasta) > MAX_DIAS_AGREGADOS
+    ) {
+      this.comparacionError.set('Cada período puede cubrir como máximo 1 año.');
+      return;
+    }
+    this.comparacionError.set(null);
     this.periodoA.set({
       label: this.formatRangoLabel(aDesde, aHasta),
       desde: aDesde,
@@ -1440,7 +1487,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       hasta: bHasta,
     });
     this.periodoPreset.set('custom');
-    this.buildMetricasComparacion();
+    this.fetchComparacion();
   }
 
   /**
@@ -1570,27 +1617,120 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   // ── Private ────────────────────────────────────────────────────────────────
 
-  private buildMetricasComparacion(): void {
-    // NO fabricar el período B. Antes se derivaba de los valores del período A
-    // por un multiplicador inventado ("simulate realistic data") → mostraba
-    // cifras falsas como comparación real (crítico en cumplimiento DGA).
-    // Caudal/nivel son snapshots instantáneos y no hay histórico por período en
-    // este panel, así que el período B se muestra como "—" (sin dato). El
-    // período A es real. La comparación real por período requiere datos
-    // históricos del backend (pendiente).
-    this.sitiosComparacion = this.sitiosResumen.map((s) => ({
-      nombre: s.nombre,
-      estado: s.estado,
-      caudalA: s.caudal.toFixed(1),
+  /**
+   * Comparación real A vs B por sitio. Por cada sitio y cada período pide
+   * `period-aggregates` (promedio de caudal y nivel sobre equipo_5min en el
+   * rango) y, para el consumo, los contadores diarios del totalizador, que
+   * se suman dentro de cada rango. Los contadores diarios solo llegan hasta
+   * 120 días atrás: si alguno de los períodos empieza antes, el consumo queda
+   * en "—" y caudal/nivel se muestran igual.
+   *
+   * Antes este panel mostraba en A los valores instantáneos del sitio y en B
+   * siempre "—" (una versión previa inventaba B con un multiplicador, y se
+   * quitó por riesgo en cumplimiento DGA). Ahora los dos períodos salen del
+   * histórico real, o no se muestran.
+   */
+  private fetchComparacion(): void {
+    const req = ++this.comparacionReq;
+    const a = this.periodoA();
+    const b = this.periodoB();
+
+    this.sitiosComparacion = this.sites.map((site, i) => this.filaComparacionVacia(site, i, true));
+    this.cdr.markForCheck();
+    if (!this.sites.length) {
+      this.comparacionLoading.set(false);
+      return;
+    }
+    this.comparacionLoading.set(true);
+
+    const hoy = hoyChileIso();
+    const desdeMin = a.desde < b.desde ? a.desde : b.desde;
+    const diasCobertura = diasInclusivos(desdeMin, hoy);
+    const diasConsumo = diasCobertura <= MAX_DIAS_CONTADORES ? diasCobertura : 0;
+
+    let pendientes = this.sites.length;
+    this.sites.forEach((site, i) => {
+      forkJoin({
+        aggA: this.companyService
+          .getSitePeriodAggregates(site.id, a.desde, a.hasta)
+          .pipe(catchError(() => of(null))),
+        aggB: this.companyService
+          .getSitePeriodAggregates(site.id, b.desde, b.hasta)
+          .pipe(catchError(() => of(null))),
+        daily:
+          diasConsumo > 0
+            ? this.companyService
+                .getSiteDailyCounters(site.id, { rol: 'totalizador', dias: diasConsumo })
+                .pipe(catchError(() => of(null)))
+            : of(null),
+      }).subscribe(({ aggA, aggB, daily }) => {
+        if (req !== this.comparacionReq) return;
+        const dias = (daily?.ok ? daily.data : []) as ContadorDiarioPoint[];
+        const caudalA = this.aggCaudal(aggA);
+        const caudalB = this.aggCaudal(aggB);
+        const nivelA = this.aggNivel(aggA);
+        const nivelB = this.aggNivel(aggB);
+        const consumoA = diasConsumo > 0 ? sumarConsumo(dias, a) : null;
+        const consumoB = diasConsumo > 0 ? sumarConsumo(dias, b) : null;
+        const fila: SitioComparacion = {
+          ...this.filaComparacionVacia(site, i, false),
+          caudalA: this.fmtComparacion(caudalA, 1),
+          caudalB: this.fmtComparacion(caudalB, 1),
+          caudalTend: variacionPct(caudalA, caudalB),
+          nivelA: this.fmtComparacion(nivelA, 1),
+          nivelB: this.fmtComparacion(nivelB, 1),
+          nivelTend: variacionPct(nivelA, nivelB),
+          consumoA: consumoA !== null ? this.formatM3(consumoA) : '—',
+          consumoB: consumoB !== null ? this.formatM3(consumoB) : '—',
+          consumoTend: variacionPct(consumoA, consumoB),
+        };
+        this.sitiosComparacion = this.sitiosComparacion.map((f, j) => (j === i ? fila : f));
+        pendientes--;
+        if (pendientes === 0) this.comparacionLoading.set(false);
+        this.cdr.markForCheck();
+      });
+    });
+  }
+
+  private filaComparacionVacia(site: SiteRecord, i: number, cargando: boolean): SitioComparacion {
+    const resumen = this.sitiosResumen[i];
+    return {
+      siteId: site.id,
+      nombre:
+        resumen?.nombre ||
+        site.descripcion ||
+        (site as { nombre?: string }).nombre ||
+        site.id_serial ||
+        'Instalación',
+      estado: resumen?.estado ?? (site.activo ? 'online' : 'sinDatos'),
+      cargando,
+      caudalA: '—',
       caudalB: '—',
       caudalTend: 0,
-      nivelA: s.nivel.toFixed(1),
+      nivelA: '—',
       nivelB: '—',
       nivelTend: 0,
-      consumoA: Math.trunc(s.consumoMes).toString(),
+      consumoA: '—',
       consumoB: '—',
       consumoTend: 0,
-    }));
+    };
+  }
+
+  private aggCaudal(res: PeriodAggregatesResponse | null): number | null {
+    const d = res?.ok ? res.data : null;
+    return d && d.caudal.n > 0 ? d.caudal.avg : null;
+  }
+
+  /** Nivel freático proyectado si el sitio tiene pozo_config; si no, nivel crudo del sensor. */
+  private aggNivel(res: PeriodAggregatesResponse | null): number | null {
+    const d = res?.ok ? res.data : null;
+    if (!d) return null;
+    if (d.nivel_freatico.n > 0) return d.nivel_freatico.avg;
+    return d.nivel.n > 0 ? d.nivel.avg : null;
+  }
+
+  private fmtComparacion(v: number | null, decimales: number): string {
+    return v === null || !Number.isFinite(v) ? '—' : v.toFixed(decimales);
   }
 
   private async loadLeaflet(): Promise<typeof Leaflet> {
