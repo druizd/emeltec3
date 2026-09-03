@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 // xlsx (~150 kB minified) se importa dinámicamente solo cuando el operador
 // clickea exportar. Mantiene el chunk del Operación tab liviano para el
@@ -19,6 +19,40 @@ interface BarChart {
   bars: { x: number; y: number; w: number; h: number; fill: string }[];
   yTicks: { y: number; label: string }[];
   xLabels: { x: number; label: string }[];
+}
+
+/** Unidad de presentación de los gráficos de flujo. Los datos siempre llegan en m³. */
+type UnidadVolumen = 'm3' | 'hl';
+
+/** Un período (día, semana o mes) de una serie de flujo, ya en m³. */
+interface FlujoPunto {
+  /** Identidad del período: 'YYYY-MM-DD' del día o del lunes, o 'YYYY-MM-01'. */
+  clave: string;
+  /** Etiqueta corta del eje X. */
+  label: string;
+  /** Etiqueta del tooltip y de la columna del XLSX. */
+  labelLargo: string;
+  delta: number | null;
+  muestras: number;
+}
+
+/** Fecha ISO 'YYYY-MM-DD' de una fecha UTC. */
+function isoFecha(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Lunes (UTC, medianoche) de la semana ISO a la que pertenece un 'YYYY-MM-DD'.
+ * El día ya viene en fecha Chile, así que se trata como fecha calendario pura.
+ */
+function lunesDeSemana(dia: string): Date | null {
+  const [y, m, d] = dia.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const fecha = new Date(Date.UTC(y, m - 1, d));
+  // getUTCDay: 0 = domingo. Distancia al lunes: lun 0, mar 1, ..., dom 6.
+  const desdeLunes = (fecha.getUTCDay() + 6) % 7;
+  fecha.setUTCDate(fecha.getUTCDate() - desdeLunes);
+  return fecha;
 }
 
 type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
@@ -365,25 +399,309 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         </div>
       </div>
 
+      <!-- ══ Flujo: Diario / Semanal / Mensual ══
+           Tres series del mismo totalizador. La unidad (m³ o hL) es una sola
+           para las tres; cada gráfico se descarga en XLSX y en PNG. -->
+      <ng-template #selectorUnidad>
+        <div
+          class="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-caption-xs font-bold"
+          role="group"
+          aria-label="Unidad de volumen"
+        >
+          <button
+            type="button"
+            (click)="setUnidadVolumen('m3')"
+            [attr.aria-pressed]="unidadVolumen() === 'm3'"
+            [class]="
+              unidadVolumen() === 'm3'
+                ? 'rounded-md bg-white px-2 py-1 text-primary-container shadow-sm'
+                : 'rounded-md px-2 py-1 text-slate-500 hover:text-slate-700'
+            "
+          >
+            m³
+          </button>
+          <button
+            type="button"
+            (click)="setUnidadVolumen('hl')"
+            [attr.aria-pressed]="unidadVolumen() === 'hl'"
+            [class]="
+              unidadVolumen() === 'hl'
+                ? 'rounded-md bg-white px-2 py-1 text-primary-container shadow-sm'
+                : 'rounded-md px-2 py-1 text-slate-500 hover:text-slate-700'
+            "
+          >
+            hL
+          </button>
+        </div>
+      </ng-template>
+
+      <!-- Flujo Diario 30D -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="text-body-sm font-semibold text-slate-800">Flujo Diario</h3>
+            <p class="mt-0.5 text-caption-xs text-slate-500">
+              Últimos 30 días · {{ unidadLabel() }}/día · días sin operación en gris
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <ng-container *ngTemplateOutlet="selectorUnidad"></ng-container>
+            <button
+              type="button"
+              (click)="downloadDiarioXlsx()"
+              [disabled]="diarioLoading() || diarioEmpty()"
+              aria-label="Descargar Flujo Diario en Excel"
+              class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
+              >.XLSX
+            </button>
+            <button
+              type="button"
+              (click)="
+                downloadFlujoPng(
+                  svgDiario()?.nativeElement,
+                  'Flujo Diario',
+                  'Últimos 30 días · ' + unidadLabel() + '/día',
+                  'flujo-diario'
+                )
+              "
+              [disabled]="diarioLoading() || diarioEmpty()"
+              aria-label="Descargar Flujo Diario como imagen"
+              class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">image</span
+              >.PNG
+            </button>
+          </div>
+        </div>
+        <div class="h-44 w-full">
+          @if (diarioLoading()) {
+            <app-chart-skeleton [bars]="30" [height]="160" />
+          } @else if (diarioEmpty()) {
+            <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
+              Sin datos de totalizador para este sitio en los últimos 30 días.
+            </div>
+          } @else {
+            <div class="relative h-full w-full">
+              <svg
+                #svgDiario
+                viewBox="0 0 1100 220"
+                class="h-full w-full"
+                preserveAspectRatio="none"
+              >
+                @for (t of diario().yTicks; track t.y) {
+                  <line
+                    x1="55"
+                    [attr.y1]="t.y"
+                    x2="1090"
+                    [attr.y2]="t.y"
+                    stroke="#f1f5f9"
+                    stroke-width="1"
+                  />
+                  <text
+                    x="50"
+                    [attr.y]="t.y + 4"
+                    font-size="11"
+                    fill="#94a3b8"
+                    text-anchor="end"
+                    font-family="monospace"
+                  >
+                    {{ t.label }}
+                  </text>
+                }
+                @for (l of diario().xLabels; track l.x) {
+                  <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">
+                    {{ l.label }}
+                  </text>
+                }
+                @for (b of diario().bars; track b.x; let i = $index) {
+                  <rect
+                    [attr.x]="b.x"
+                    [attr.y]="b.y"
+                    [attr.width]="b.w"
+                    [attr.height]="b.h"
+                    [attr.fill]="b.fill"
+                    rx="2"
+                    [attr.opacity]="diarioHoverIndex() === i ? 1 : 0.85"
+                    (mouseenter)="diarioHoverIndex.set(i)"
+                    (mouseleave)="diarioHoverIndex.set(null)"
+                    class="cursor-pointer transition-opacity"
+                  />
+                }
+              </svg>
+              @if (diarioTooltip(); as tip) {
+                <div
+                  class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-caption-xs font-semibold text-white shadow-lg"
+                  [style.left.%]="tip.leftPct"
+                  [style.top.%]="tip.topPct"
+                >
+                  <div class="font-bold">{{ tip.label }}</div>
+                  <div class="font-mono">{{ tip.value }} {{ tip.unit }}</div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Flujo Semanal (12 semanas ISO, lunes a domingo, desde los contadores diarios) -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="text-body-sm font-semibold text-slate-800">Flujo Semanal</h3>
+            <p class="mt-0.5 text-caption-xs text-slate-500">
+              Últimas 12 semanas (lunes a domingo) · {{ unidadLabel() }} totales por semana · la
+              semana en curso se muestra parcial
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <ng-container *ngTemplateOutlet="selectorUnidad"></ng-container>
+            <button
+              type="button"
+              (click)="downloadSemanalXlsx()"
+              [disabled]="semanalLoading() || semanalEmpty()"
+              aria-label="Descargar Flujo Semanal en Excel"
+              class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
+              >.XLSX
+            </button>
+            <button
+              type="button"
+              (click)="
+                downloadFlujoPng(
+                  svgSemanal()?.nativeElement,
+                  'Flujo Semanal',
+                  'Últimas 12 semanas · ' + unidadLabel() + ' por semana',
+                  'flujo-semanal'
+                )
+              "
+              [disabled]="semanalLoading() || semanalEmpty()"
+              aria-label="Descargar Flujo Semanal como imagen"
+              class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">image</span
+              >.PNG
+            </button>
+          </div>
+        </div>
+        <div class="h-44 w-full">
+          @if (semanalLoading()) {
+            <app-chart-skeleton [bars]="12" [height]="160" />
+          } @else if (semanalEmpty()) {
+            <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
+              Sin datos de totalizador para este sitio en las últimas 12 semanas.
+            </div>
+          } @else {
+            <div class="relative h-full w-full">
+              <svg
+                #svgSemanal
+                viewBox="0 0 1100 220"
+                class="h-full w-full"
+                preserveAspectRatio="none"
+              >
+                @for (t of semanal().yTicks; track t.y) {
+                  <line
+                    x1="55"
+                    [attr.y1]="t.y"
+                    x2="1090"
+                    [attr.y2]="t.y"
+                    stroke="#f1f5f9"
+                    stroke-width="1"
+                  />
+                  <text
+                    x="50"
+                    [attr.y]="t.y + 4"
+                    font-size="11"
+                    fill="#94a3b8"
+                    text-anchor="end"
+                    font-family="monospace"
+                  >
+                    {{ t.label }}
+                  </text>
+                }
+                @for (l of semanal().xLabels; track l.x) {
+                  <text
+                    [attr.x]="l.x"
+                    y="212"
+                    font-size="11"
+                    fill="#64748b"
+                    text-anchor="middle"
+                    font-weight="600"
+                  >
+                    {{ l.label }}
+                  </text>
+                }
+                @for (b of semanal().bars; track b.x; let i = $index) {
+                  <rect
+                    [attr.x]="b.x"
+                    [attr.y]="b.y"
+                    [attr.width]="b.w"
+                    [attr.height]="b.h"
+                    [attr.fill]="b.fill"
+                    rx="4"
+                    [attr.opacity]="semanalHoverIndex() === i ? 1 : 0.85"
+                    (mouseenter)="semanalHoverIndex.set(i)"
+                    (mouseleave)="semanalHoverIndex.set(null)"
+                    class="cursor-pointer transition-opacity"
+                  />
+                }
+              </svg>
+              @if (semanalTooltip(); as tip) {
+                <div
+                  class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-caption-xs font-semibold text-white shadow-lg"
+                  [style.left.%]="tip.leftPct"
+                  [style.top.%]="tip.topPct"
+                >
+                  <div class="font-bold">{{ tip.label }}</div>
+                  <div class="font-mono">{{ tip.value }} {{ tip.unit }}</div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
       <!-- Flujo Mensual -->
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="mb-4 flex items-start justify-between gap-3">
+        <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo Mensual</h3>
             <p class="mt-0.5 text-caption-xs text-slate-500">
-              Últimos 12 meses · {{ mensualUnit() }} totales por mes
+              Últimos 12 meses · {{ unidadLabel() }} totales por mes
             </p>
           </div>
-          <button
-            type="button"
-            (click)="downloadMensualXlsx()"
-            [disabled]="mensualLoading() || mensualEmpty()"
-            aria-label="Descargar Flujo Mensual en Excel"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
-          >
-            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
-            >.XLSX
-          </button>
+          <div class="flex items-center gap-2">
+            <ng-container *ngTemplateOutlet="selectorUnidad"></ng-container>
+            <button
+              type="button"
+              (click)="downloadMensualXlsx()"
+              [disabled]="mensualLoading() || mensualEmpty()"
+              aria-label="Descargar Flujo Mensual en Excel"
+              class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
+              >.XLSX
+            </button>
+            <button
+              type="button"
+              (click)="
+                downloadFlujoPng(
+                  svgMensual()?.nativeElement,
+                  'Flujo Mensual',
+                  'Últimos 12 meses · ' + unidadLabel() + ' por mes',
+                  'flujo-mensual'
+                )
+              "
+              [disabled]="mensualLoading() || mensualEmpty()"
+              aria-label="Descargar Flujo Mensual como imagen"
+              class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">image</span
+              >.PNG
+            </button>
+          </div>
         </div>
         <div class="h-44 w-full">
           @if (mensualLoading()) {
@@ -394,7 +712,12 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             </div>
           } @else {
             <div class="relative h-full w-full">
-              <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
+              <svg
+                #svgMensual
+                viewBox="0 0 1100 220"
+                class="h-full w-full"
+                preserveAspectRatio="none"
+              >
                 @for (t of mensual().yTicks; track t.y) {
                   <line
                     x1="55"
@@ -443,91 +766,6 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 }
               </svg>
               @if (mensualTooltip(); as tip) {
-                <div
-                  class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-caption-xs font-semibold text-white shadow-lg"
-                  [style.left.%]="tip.leftPct"
-                  [style.top.%]="tip.topPct"
-                >
-                  <div class="font-bold">{{ tip.label }}</div>
-                  <div class="font-mono">{{ tip.value }} {{ tip.unit }}</div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </section>
-
-      <!-- Flujo Diario 30D -->
-      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h3 class="text-body-sm font-semibold text-slate-800">Flujo Diario</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-500">
-              Últimos 30 días · {{ diarioUnit() }}/día · días sin operación en gris
-            </p>
-          </div>
-          <button
-            type="button"
-            (click)="downloadDiarioXlsx()"
-            [disabled]="diarioLoading() || diarioEmpty()"
-            aria-label="Descargar Flujo Diario en Excel"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
-          >
-            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
-            >.XLSX
-          </button>
-        </div>
-        <div class="h-44 w-full">
-          @if (diarioLoading()) {
-            <app-chart-skeleton [bars]="30" [height]="160" />
-          } @else if (diarioEmpty()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
-              Sin datos de totalizador para este sitio en los últimos 30 días.
-            </div>
-          } @else {
-            <div class="relative h-full w-full">
-              <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
-                @for (t of diario().yTicks; track t.y) {
-                  <line
-                    x1="55"
-                    [attr.y1]="t.y"
-                    x2="1090"
-                    [attr.y2]="t.y"
-                    stroke="#f1f5f9"
-                    stroke-width="1"
-                  />
-                  <text
-                    x="50"
-                    [attr.y]="t.y + 4"
-                    font-size="11"
-                    fill="#94a3b8"
-                    text-anchor="end"
-                    font-family="monospace"
-                  >
-                    {{ t.label }}
-                  </text>
-                }
-                @for (l of diario().xLabels; track l.x) {
-                  <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">
-                    {{ l.label }}
-                  </text>
-                }
-                @for (b of diario().bars; track b.x; let i = $index) {
-                  <rect
-                    [attr.x]="b.x"
-                    [attr.y]="b.y"
-                    [attr.width]="b.w"
-                    [attr.height]="b.h"
-                    [attr.fill]="b.fill"
-                    rx="2"
-                    [attr.opacity]="diarioHoverIndex() === i ? 1 : 0.85"
-                    (mouseenter)="diarioHoverIndex.set(i)"
-                    (mouseleave)="diarioHoverIndex.set(null)"
-                    class="cursor-pointer transition-opacity"
-                  />
-                }
-              </svg>
-              @if (diarioTooltip(); as tip) {
                 <div
                   class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-caption-xs font-semibold text-white shadow-lg"
                   [style.left.%]="tip.leftPct"
@@ -900,19 +1138,142 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
 
   // ── Bar charts ────────────────────────────────────────────
 
-  readonly mensual = computed<BarChart>(() => {
-    const points = this.monthlyCountersData();
-    if (points.length === 0) return { bars: [], yTicks: [], xLabels: [] };
-    const vals = points.map((p) => p.delta ?? 0);
-    const labels = points.map((p) => {
-      const date = new Date(`${p.mes}T00:00:00-04:00`);
-      return this.monthShortNames[date.getUTCMonth()] ?? '';
-    });
-    return this.buildBars(vals, labels, '#0DAFBD', 1);
+  // ── Unidad de volumen (compartida por los tres gráficos de flujo) ─────
+  //
+  // Los contadores llegan en m³. 1 m³ = 10 hL: la conversión es solo de
+  // presentación (barras, tooltips, ejes y XLSX); los datos del state no se
+  // tocan. La elección no se persiste: es una lectura puntual.
+  readonly unidadVolumen = signal<UnidadVolumen>('m3');
+  readonly unidadLabel = computed(() => (this.unidadVolumen() === 'hl' ? 'hL' : 'm³'));
+  private readonly factorVolumen = computed(() => (this.unidadVolumen() === 'hl' ? 10 : 1));
+
+  setUnidadVolumen(u: UnidadVolumen): void {
+    this.unidadVolumen.set(u);
+  }
+
+  /** Volumen en la unidad elegida, o null si no hubo dato. */
+  private enUnidad(delta: number | null): number | null {
+    return delta == null ? null : delta * this.factorVolumen();
+  }
+
+  // ── Series de flujo: diario / semanal / mensual ───────────
+  //
+  // Las tres se normalizan a FlujoPunto para que gráfico, tooltip, XLSX y PNG
+  // sean el mismo código con distinta serie.
+
+  // Slice ultimos 30 dias para el chart (el state guarda 90 para cubrir el
+  // preset 90d del Resumen por Periodo y las 12 semanas del flujo semanal).
+  private readonly diarioPoints = computed(() => this.dailyCountersData().slice(-30));
+
+  readonly diarioSerie = computed<FlujoPunto[]>(() =>
+    this.diarioPoints().map((p) => {
+      const [, m, d] = p.dia.split('-');
+      return {
+        clave: p.dia,
+        label: `${Number(d)}/${Number(m)}`,
+        labelLargo: this.formatDiaLargo(p.dia),
+        delta: p.delta,
+        muestras: p.muestras,
+      };
+    }),
+  );
+
+  /**
+   * Semanas ISO (lunes a domingo) construidas desde los 90 días de contadores
+   * diarios: se suman los deltas del día. Una semana con todos sus días sin
+   * dato queda en null; la semana en curso se muestra parcial y la etiqueta
+   * larga del tooltip lo dice. Últimas 12.
+   */
+  readonly semanalSerie = computed<FlujoPunto[]>(() => {
+    const porSemana = new Map<
+      string,
+      { lunes: Date; delta: number | null; muestras: number; dias: number }
+    >();
+    for (const p of this.dailyCountersData()) {
+      const lunes = lunesDeSemana(p.dia);
+      if (!lunes) continue;
+      const clave = isoFecha(lunes);
+      const acc = porSemana.get(clave) ?? { lunes, delta: null, muestras: 0, dias: 0 };
+      if (p.delta != null) acc.delta = (acc.delta ?? 0) + p.delta;
+      acc.muestras += p.muestras;
+      acc.dias += 1;
+      porSemana.set(clave, acc);
+    }
+    return [...porSemana.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([clave, acc]) => {
+        const domingo = new Date(acc.lunes);
+        domingo.setUTCDate(domingo.getUTCDate() + 6);
+        const parcial = acc.dias < 7 ? ' (parcial)' : '';
+        return {
+          clave,
+          label: `${acc.lunes.getUTCDate()}/${acc.lunes.getUTCMonth() + 1}`,
+          labelLargo: `Semana del ${this.formatDiaCorto(acc.lunes)} al ${this.formatDiaCorto(domingo)}${parcial}`,
+          delta: acc.delta,
+          muestras: acc.muestras,
+        };
+      });
   });
-  readonly mensualUnit = computed(() => this.monthlyCountersData()[0]?.unidad ?? 'm³');
+
+  readonly mensualSerie = computed<FlujoPunto[]>(() =>
+    this.monthlyCountersData().map((p) => {
+      const date = new Date(`${p.mes}T00:00:00-04:00`);
+      const monthName = this.monthShortNames[date.getUTCMonth()] ?? '';
+      return {
+        clave: p.mes,
+        label: monthName,
+        labelLargo: `${monthName} ${date.getUTCFullYear()}`,
+        delta: p.delta,
+        muestras: p.muestras,
+      };
+    }),
+  );
+
+  private barrasDe(serie: FlujoPunto[], xStep: number): BarChart {
+    if (serie.length === 0) return { bars: [], yTicks: [], xLabels: [] };
+    const vals = serie.map((p) => this.enUnidad(p.delta) ?? 0);
+    return this.buildBars(
+      vals,
+      serie.map((p) => p.label),
+      '#0DAFBD',
+      xStep,
+    );
+  }
+
+  private tooltipDe(serie: FlujoPunto[], chart: BarChart, idx: number | null) {
+    if (idx === null) return null;
+    const point = serie[idx];
+    const bar = chart.bars[idx];
+    if (!point || !bar) return null;
+    const v = this.enUnidad(point.delta);
+    return {
+      label: point.labelLargo,
+      value: v != null ? this.formatVolume(v) : '—',
+      unit: this.unidadLabel(),
+      leftPct: ((bar.x + bar.w / 2) / 1100) * 100,
+      topPct: (bar.y / 220) * 100,
+    };
+  }
+
+  readonly diario = computed<BarChart>(() => this.barrasDe(this.diarioSerie(), 5));
+  readonly semanal = computed<BarChart>(() => this.barrasDe(this.semanalSerie(), 1));
+  readonly mensual = computed<BarChart>(() => this.barrasDe(this.mensualSerie(), 1));
+
+  readonly diarioLoading = computed(
+    () => this.dailyCountersLoading() && this.diarioPoints().length === 0,
+  );
+  readonly semanalLoading = computed(
+    () => this.dailyCountersLoading() && this.dailyCountersData().length === 0,
+  );
   readonly mensualLoading = computed(
     () => this.monthlyCountersLoading() && this.monthlyCountersData().length === 0,
+  );
+  readonly diarioEmpty = computed(
+    () => !this.dailyCountersLoading() && this.diarioPoints().every((p) => (p.delta ?? 0) === 0),
+  );
+  readonly semanalEmpty = computed(
+    () => !this.dailyCountersLoading() && this.semanalSerie().every((p) => (p.delta ?? 0) === 0),
   );
   readonly mensualEmpty = computed(
     () =>
@@ -920,28 +1281,25 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
       this.monthlyCountersData().every((p) => (p.delta ?? 0) === 0),
   );
 
+  readonly diarioHoverIndex = signal<number | null>(null);
+  readonly semanalHoverIndex = signal<number | null>(null);
   readonly mensualHoverIndex = signal<number | null>(null);
 
-  readonly mensualTooltip = computed(() => {
-    const idx = this.mensualHoverIndex();
-    if (idx === null) return null;
-    const point = this.monthlyCountersData()[idx];
-    const bar = this.mensual().bars[idx];
-    if (!point || !bar) return null;
-    const date = new Date(`${point.mes}T00:00:00-04:00`);
-    const monthName = this.monthShortNames[date.getUTCMonth()] ?? '';
-    const yr = date.getUTCFullYear();
-    const value = point.delta != null ? this.formatVolume(point.delta) : '—';
-    const leftPct = ((bar.x + bar.w / 2) / 1100) * 100;
-    const topPct = (bar.y / 220) * 100;
-    return {
-      label: `${monthName} ${yr}`,
-      value,
-      unit: this.mensualUnit(),
-      leftPct,
-      topPct,
-    };
-  });
+  // Los <svg> viven dentro de bloques @if, así que sus variables de plantilla
+  // no son visibles desde los botones del encabezado: se toman por viewChild.
+  readonly svgDiario = viewChild<ElementRef<SVGSVGElement>>('svgDiario');
+  readonly svgSemanal = viewChild<ElementRef<SVGSVGElement>>('svgSemanal');
+  readonly svgMensual = viewChild<ElementRef<SVGSVGElement>>('svgMensual');
+
+  readonly diarioTooltip = computed(() =>
+    this.tooltipDe(this.diarioSerie(), this.diario(), this.diarioHoverIndex()),
+  );
+  readonly semanalTooltip = computed(() =>
+    this.tooltipDe(this.semanalSerie(), this.semanal(), this.semanalHoverIndex()),
+  );
+  readonly mensualTooltip = computed(() =>
+    this.tooltipDe(this.mensualSerie(), this.mensual(), this.mensualHoverIndex()),
+  );
 
   private formatVolume(value: number): string {
     return new Intl.NumberFormat('es-CL', {
@@ -950,47 +1308,10 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     }).format(value);
   }
 
-  // Slice ultimos 30 dias para el chart (el state guarda 90 para cubrir el
-  // preset 90d del Resumen por Periodo).
-  private readonly diarioPoints = computed(() => this.dailyCountersData().slice(-30));
-
-  readonly diario = computed<BarChart>(() => {
-    const points = this.diarioPoints();
-    if (points.length === 0) return { bars: [], yTicks: [], xLabels: [] };
-    const vals = points.map((p) => p.delta ?? 0);
-    const labels = points.map((p) => {
-      const [, m, d] = p.dia.split('-');
-      return `${Number(d)}/${Number(m)}`;
-    });
-    return this.buildBars(vals, labels, '#0DAFBD', 5);
-  });
-  readonly diarioUnit = computed(() => this.diarioPoints()[0]?.unidad ?? 'm³');
-  readonly diarioLoading = computed(
-    () => this.dailyCountersLoading() && this.diarioPoints().length === 0,
-  );
-  readonly diarioEmpty = computed(
-    () => !this.dailyCountersLoading() && this.diarioPoints().every((p) => (p.delta ?? 0) === 0),
-  );
-
-  readonly diarioHoverIndex = signal<number | null>(null);
-
-  readonly diarioTooltip = computed(() => {
-    const idx = this.diarioHoverIndex();
-    if (idx === null) return null;
-    const point = this.diarioPoints()[idx];
-    const bar = this.diario().bars[idx];
-    if (!point || !bar) return null;
-    const value = point.delta != null ? this.formatVolume(point.delta) : '—';
-    const leftPct = ((bar.x + bar.w / 2) / 1100) * 100;
-    const topPct = (bar.y / 220) * 100;
-    return {
-      label: this.formatDiaLargo(point.dia),
-      value,
-      unit: this.diarioUnit(),
-      leftPct,
-      topPct,
-    };
-  });
+  private formatDiaCorto(d: Date): string {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}`;
+  }
 
   private formatDiaLargo(dia: string): string {
     if (!dia) return '';
@@ -1137,43 +1458,115 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     XLSX.writeFile(wb, fileName);
   }
 
-  async downloadDiarioXlsx(): Promise<void> {
-    const points = this.diarioPoints();
-    if (points.length === 0) return;
+  /**
+   * XLSX de una serie de flujo en la unidad elegida. La columna de período se
+   * llama según la serie (Día / Semana / Mes) y la de volumen lleva la unidad.
+   */
+  private async downloadFlujoXlsx(
+    serie: FlujoPunto[],
+    columnaPeriodo: string,
+    hoja: string,
+    base: string,
+  ): Promise<void> {
+    if (serie.length === 0) return;
     const XLSX = await this.loadXlsx();
-    const unit = this.diarioUnit();
-    const rows = points.map((p) => ({
-      Día: this.formatDiaLargo(p.dia),
-      [`Volumen (${unit})`]: p.delta != null ? Number(p.delta.toFixed(3)) : null,
-      'Cantidad de registros': p.muestras,
-    }));
+    const unit = this.unidadLabel();
+    const rows = serie.map((p) => {
+      const v = this.enUnidad(p.delta);
+      return {
+        [columnaPeriodo]: p.labelLargo,
+        [`Volumen (${unit})`]: v != null ? Number(v.toFixed(3)) : null,
+        'Cantidad de registros': p.muestras,
+      };
+    });
     const sheet = XLSX.utils.json_to_sheet(rows);
-    sheet['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 22 }];
+    sheet['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 22 }];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, sheet, 'Flujo Diario');
+    XLSX.utils.book_append_sheet(wb, sheet, hoja);
     const siteId = this.resolveSiteId();
-    const fileName = `flujo-diario-${siteId || 'sitio'}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const fileName = `${base}-${siteId || 'sitio'}-${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(wb, fileName);
   }
 
-  async downloadMensualXlsx(): Promise<void> {
-    const points = this.monthlyCountersData();
-    if (points.length === 0) return;
-    const XLSX = await this.loadXlsx();
-    const unit = this.mensualUnit();
-    const rows = points.map((p) => ({
-      Mes: this.formatMesLargo(p.mes),
-      [`Volumen (${unit})`]: p.delta != null ? Number(p.delta.toFixed(3)) : null,
-      'Cantidad de registros': p.muestras,
+  downloadDiarioXlsx(): Promise<void> {
+    return this.downloadFlujoXlsx(this.diarioSerie(), 'Día', 'Flujo Diario', 'flujo-diario');
+  }
+
+  downloadSemanalXlsx(): Promise<void> {
+    return this.downloadFlujoXlsx(this.semanalSerie(), 'Semana', 'Flujo Semanal', 'flujo-semanal');
+  }
+
+  downloadMensualXlsx(): Promise<void> {
+    // Mes largo ("Agosto 2026") como antes; labelLargo trae "Ago 2026".
+    const serie = this.mensualSerie().map((p) => ({
+      ...p,
+      labelLargo: this.formatMesLargo(p.clave),
     }));
-    const sheet = XLSX.utils.json_to_sheet(rows);
-    // Anchos de columna razonables.
-    sheet['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 22 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, sheet, 'Flujo Mensual');
-    const siteId = this.resolveSiteId();
-    const fileName = `flujo-mensual-${siteId || 'sitio'}-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    return this.downloadFlujoXlsx(serie, 'Mes', 'Flujo Mensual', 'flujo-mensual');
+  }
+
+  /**
+   * PNG del gráfico: serializa el <svg> tal como está en pantalla (los textos
+   * llevan sus atributos de fuente y color inline, así que sobreviven a la
+   * serialización), lo pinta en un canvas a 2x sobre fondo blanco con título y
+   * subtítulo, y lo descarga. Sin librerías: el SVG ya es la imagen.
+   */
+  async downloadFlujoPng(
+    svg: SVGSVGElement | null | undefined,
+    titulo: string,
+    subtitulo: string,
+    base: string,
+  ): Promise<void> {
+    if (!svg) return;
+    const escala = 2;
+    const W = 1100;
+    const H = 220;
+    const cabecera = 70;
+
+    const clon = svg.cloneNode(true) as SVGSVGElement;
+    clon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clon.setAttribute('width', String(W));
+    clon.setAttribute('height', String(H));
+    const svgBlob = new Blob([new XMLSerializer().serializeToString(clon)], {
+      type: 'image/svg+xml;charset=utf-8',
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error('No se pudo rasterizar el gráfico'));
+        i.src = url;
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = W * escala;
+      canvas.height = (H + cabecera) * escala;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.scale(escala, escala);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H + cabecera);
+      ctx.fillStyle = '#1e293b';
+      ctx.font = '600 20px "DM Sans", system-ui, sans-serif';
+      ctx.fillText(titulo, 24, 30);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '13px "DM Sans", system-ui, sans-serif';
+      ctx.fillText(subtitulo, 24, 52);
+      ctx.drawImage(img, 0, cabecera, W, H);
+
+      const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!png) return;
+      const siteId = this.resolveSiteId();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(png);
+      a.download = `${base}-${siteId || 'sitio'}-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   private readonly monthLongNames = [
