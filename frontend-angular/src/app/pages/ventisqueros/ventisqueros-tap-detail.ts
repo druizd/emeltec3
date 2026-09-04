@@ -833,7 +833,7 @@ interface SortState {
                     />
                   </svg>
                   <div class="empty-title">Sin resultados para "{{ query() }}"</div>
-                  <div class="empty-sub">Probá con otro id o nombre de área.</div>
+                  <div class="empty-sub">Prueba con otro id o nombre de área.</div>
                 </div>
               }
 

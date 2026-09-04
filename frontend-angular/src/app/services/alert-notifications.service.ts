@@ -2,7 +2,12 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import { Router } from '@angular/router';
 import { Subscription, timer } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
-import { AlertaService, type EventoReciente, type EventosResumen } from './alerta.service';
+import {
+  AlertaService,
+  etiquetaSitioEvento,
+  type EventoReciente,
+  type EventosResumen,
+} from './alerta.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
 import { getSiteTypeUi } from '../shared/site-type-ui';
@@ -103,7 +108,7 @@ export class AlertNotificationsService {
       this.conocidos.add(e.id);
       if (!SEVERIDADES_POPUP.has(e.severidad)) continue;
       this.toast.alerta({
-        title: `${e.severidad.toUpperCase()} · ${e.sitio_desc || e.sitio_id || 'Sitio'}`,
+        title: `${e.severidad.toUpperCase()} · ${etiquetaSitioEvento(e)}`,
         message: e.mensaje || e.alerta_nombre || 'Alerta activa',
         severidad: e.severidad,
         onClick: () => this.irAlEvento(e),

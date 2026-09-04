@@ -433,7 +433,9 @@ exports.listarEventos = async (req, res) => {
   const eventosFrom = `
     FROM alertas_eventos e
     JOIN alertas a ON a.id = e.alerta_id
-    LEFT JOIN sitio s ON s.id = e.sitio_id`;
+    LEFT JOIN sitio s ON s.id = e.sitio_id
+    LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
+    LEFT JOIN pozo_config pc ON pc.sitio_id = s.id`;
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
   const limitPh = countParams.length + 1;
@@ -446,7 +448,10 @@ exports.listarEventos = async (req, res) => {
             a.condicion,
             s.descripcion AS sitio_desc,
             s.id_serial,
+            s.tipo_sitio,
             emp.nombre AS empresa_nombre,
+            se.nombre AS sub_empresa_nombre,
+            pc.obra_dga,
             ua.nombre  AS asignado_nombre,
             ua.apellido AS asignado_apellido,
             ur.nombre  AS reconocido_nombre,
@@ -489,11 +494,15 @@ exports.obtenerEvento = async (req, res) => {
   const { rows } = await pool.query(
     `SELECT e.*,
             a.nombre AS alerta_nombre, a.condicion, a.umbral_bajo, a.umbral_alto,
-            s.descripcion AS sitio_desc, s.id_serial,
-            emp.nombre AS empresa_nombre
+            s.descripcion AS sitio_desc, s.id_serial, s.tipo_sitio,
+            emp.nombre AS empresa_nombre,
+            se.nombre AS sub_empresa_nombre,
+            pc.obra_dga
      FROM alertas_eventos e
      JOIN alertas a ON a.id = e.alerta_id
      LEFT JOIN sitio s ON s.id = e.sitio_id
+     LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
+     LEFT JOIN pozo_config pc ON pc.sitio_id = s.id
      LEFT JOIN empresa emp ON emp.id = e.empresa_id
      WHERE e.id = $1`,
     [id],
@@ -657,7 +666,9 @@ exports.resumen = async (req, res) => {
   const from = `
     FROM alertas_eventos e
     JOIN alertas a ON a.id = e.alerta_id
-    LEFT JOIN sitio s ON s.id = e.sitio_id`;
+    LEFT JOIN sitio s ON s.id = e.sitio_id
+    LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
+    LEFT JOIN pozo_config pc ON pc.sitio_id = s.id`;
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // "Sin revisar" = no resuelta y que nadie haya reconocido todavía. Es el
@@ -685,8 +696,12 @@ exports.resumen = async (req, res) => {
             e.repeticiones,
             a.nombre AS alerta_nombre,
             s.descripcion AS sitio_desc,
-            s.tipo_sitio
+            s.tipo_sitio,
+            emp.nombre AS empresa_nombre,
+            se.nombre AS sub_empresa_nombre,
+            pc.obra_dga
      ${from}
+     LEFT JOIN empresa emp ON emp.id = s.empresa_id
      ${where ? `${where} AND ${pendientes}` : `WHERE ${pendientes}`}
      ORDER BY e.triggered_at DESC
      LIMIT 15`,
