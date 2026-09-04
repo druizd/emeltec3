@@ -347,10 +347,23 @@ function findHistoricalVariable(
       }
     }
 
-    // A igual puntaje gana la variable que sí calculó. Dos mapeos con el mismo
-    // rol (típico resto de un recambio de equipo: el registro viejo ya no llega)
-    // no pueden dejar el rol en null solo porque el roto se ordena antes.
-    if (score > bestScore || (score === bestScore && best?.ok === false && variable.ok)) {
+    if (score === 0) continue;
+
+    // Entre candidatos al rol, la variable que sí calculó le gana a la rota
+    // aunque puntúe menos. Dos mapeos con el mismo rol son el resto típico de
+    // un recambio de equipo (el registro viejo ya no llega) y el bono del
+    // totalizador uint32 (110 vs 90 del rol) no puede premiar a un mapeo que
+    // está fallando: eso dejó a S128 declarando acumulado null a DGA el
+    // 04-09-2026. A igual salud manda el puntaje y, a igual puntaje, el orden.
+    // Mismo criterio que services/siteTelemetryService.js (#199).
+    const bestRoto = best !== null && best.ok === false;
+    const variableRota = variable.ok === false;
+    const gana =
+      best === null ||
+      (bestRoto && !variableRota) ||
+      (bestRoto === variableRota && score > bestScore);
+
+    if (gana) {
       best = variable;
       bestScore = score;
     }

@@ -85,6 +85,102 @@ describe('modules/sites/service · dos mapeos con el mismo rol', () => {
     }
   });
 
+  it('un totalizador uint32 roto no le gana al ieee754 sano por su bono de puntaje', () => {
+    // Caso real: S128 (Agrosuper Faenadora, pozo 1), 04-09-2026 01:00. Este es
+    // el módulo que usa el fill DGA: con el bono uint32 (110 vs 90) el
+    // "Totalizador" sobre REG372, que ya no llega, ganaba y el slot quedaba
+    // requires_review con flujo_acumulado null.
+    const siteS128 = {
+      id: 'S128',
+      descripcion: 'Pozo 1',
+      id_serial: '151.21.35.29',
+      tipo_sitio: 'pozo',
+    } as Site;
+    const rowS128 = {
+      data: {
+        AI24: 298,
+        AI132: 90,
+        REG4000: 37540,
+        REG4001: 15512,
+        REG4002: 33037,
+        REG4003: 17730,
+      },
+      time: '2026-09-04T05:00:00Z',
+      received_at: '2026-09-04T04:49:30Z',
+    };
+    const totalizadorRoto = mapping({
+      id: 'RM59830E7B',
+      alias: 'Totalizador',
+      d1: 'REG372',
+      d2: 'REG373',
+      unidad: 'm3',
+      rol_dashboard: 'totalizador',
+      transformacion: 'uint32_registros',
+      parametros: {},
+      sitio_id: 'S128',
+    });
+    const totalizadorSano = mapping({
+      id: 'RME0EA6423',
+      alias: 'REG4002',
+      d1: 'REG4002',
+      d2: 'REG4003',
+      unidad: 'm3',
+      rol_dashboard: 'totalizador',
+      parametros: { factor: 1, offset: 0, formato: 'float32', word_swap: true },
+      sitio_id: 'S128',
+    });
+
+    for (const mappings of [
+      [totalizadorRoto, totalizadorSano],
+      [totalizadorSano, totalizadorRoto],
+    ]) {
+      const hist = mapHistoricalDashboardRow({
+        row: rowS128 as never,
+        site: siteS128,
+        mappings,
+        pozoConfig: null,
+      });
+      expect(hist.totalizador.ok).toBe(true);
+      expect(hist.totalizador.alias).toBe('REG4002');
+      expect(hist.totalizador.valor).toBeCloseTo(3112.07, 2);
+    }
+  });
+
+  it('si los dos totalizadores calculan, el uint32 conserva su preferencia', () => {
+    const uint32Sano = mapping({
+      id: 'a',
+      alias: 'Totalizador',
+      d1: 'REG3001',
+      d2: 'REG3002',
+      unidad: 'm3',
+      rol_dashboard: 'totalizador',
+      transformacion: 'uint32_registros',
+      parametros: {},
+    });
+    const floatSano = mapping({
+      id: 'b',
+      alias: 'REG3003',
+      d1: 'REG3003',
+      d2: 'REG3004',
+      unidad: 'm3',
+      rol_dashboard: 'totalizador',
+      parametros: { factor: 1, offset: 0, formato: 'float32', word_swap: true },
+    });
+    for (const mappings of [
+      [uint32Sano, floatSano],
+      [floatSano, uint32Sano],
+    ]) {
+      const hist = mapHistoricalDashboardRow({
+        row: row as never,
+        site,
+        mappings,
+        pozoConfig: null,
+      });
+      expect(hist.totalizador.ok).toBe(true);
+      expect(hist.totalizador.alias).toBe('Totalizador');
+    }
+  });
+
   it('si ninguno calcula, el rol sigue reportando el error', () => {
     const otroRoto = mapping({ id: 'x', alias: 'REG9', d1: 'REG9', d2: 'REG10' });
     const live = buildSiteDashboardData({
