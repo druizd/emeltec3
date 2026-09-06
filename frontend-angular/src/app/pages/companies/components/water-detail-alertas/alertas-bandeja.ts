@@ -189,7 +189,7 @@ type FiltroEstado = EventoEstado | 'todos';
                       <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
                         >repeat</span
                       >
-                      Se repitio <strong>{{ ev.repeticiones }}</strong>
+                      Se repitió <strong>{{ ev.repeticiones }}</strong>
                       {{ ev.repeticiones === 1 ? 'vez' : 'veces' }} sin volver a avisar
                       @if (ev.ultima_repeticion_at) {
                         · ultima {{ formatFecha(ev.ultima_repeticion_at) }}

@@ -88,7 +88,7 @@ export class WaterOperacionStateService {
 
   // Preset puede ser null cuando el operador edita fechas manuales que no
   // matchean ninguno de los 3 presets canónicos (7d, 30d, 90d ending hoy).
-  // El UI dejá de resaltar cualquier botón cuando preset === null.
+  // El UI deja de resaltar cualquier botón cuando preset === null.
   readonly preset = signal<OperacionPreset | null>('30d');
   readonly fechaDesde = signal(this.isoTodayMinus(30));
   readonly fechaHasta = signal(this.isoTodayMinus(0));

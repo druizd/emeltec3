@@ -32,7 +32,7 @@ export class TwoFactorService {
   /** Código incorrecto: NO pide uno nuevo, deja reintentar el mismo. */
   again(): Promise<string | null> {
     this.validating.set(false);
-    this.error.set('Código incorrecto o vencido. Reintentá o reenviá uno nuevo.');
+    this.error.set('Código incorrecto o vencido. Reintenta o reenvía uno nuevo.');
     this.visible.set(true);
     return this.awaitInput();
   }
@@ -71,7 +71,7 @@ export class TwoFactorService {
       next: () => this.sending.set(false),
       error: () => {
         this.sending.set(false);
-        this.error.set('No se pudo enviar el código por email. Reintentá.');
+        this.error.set('No se pudo enviar el código por email. Reintenta.');
       },
     });
   }

@@ -178,13 +178,13 @@ const EXTRA_OPTION_HELP = [
   {
     title: 'Valor con signo (complemento a 2)',
     description:
-      'Marcala cuando la variable pueda ser negativa (temperatura, presión de vacío, nivel bajo la referencia). Un registro Modbus no lleva signo, así que el PLC manda el negativo sumándole 65536: todo lo que pase de 32767 es en realidad negativo. Elegí 32 bits solo si el equipo entrega el valor de 32 bits en un único dato.',
+      'Márcala cuando la variable pueda ser negativa (temperatura, presión de vacío, nivel bajo la referencia). Un registro Modbus no lleva signo, así que el PLC manda el negativo sumándole 65536: todo lo que pase de 32767 es en realidad negativo. Elige 32 bits solo si el equipo entrega el valor de 32 bits en un único dato.',
     example: '65087 → -449 · 65535 → -1 · 32768 → -32768',
   },
   {
     title: 'Escalar por rango (señal analógica)',
     description:
-      'Marcala cuando el PLC entrega la señal en unidades brutas en vez de unidades de ingeniería. Un 4-20 mA suele llegar como 4000-20000: escribí ese rango y el rango real del instrumento, y el factor se calcula solo. Fuera del rango se extrapola, así que un lazo cortado se ve como negativo en vez de como un cero legítimo.',
+      'Márcala cuando el PLC entrega la señal en unidades brutas en vez de unidades de ingeniería. Un 4-20 mA suele llegar como 4000-20000: escribí ese rango y el rango real del instrumento, y el factor se calcula solo. Fuera del rango se extrapola, así que un lazo cortado se ve como negativo en vez de como un cero legítimo.',
     example: '4000 → 0 bar · 20000 → 20 bar · 3200 → -1 bar',
   },
 ] as const;
@@ -205,7 +205,7 @@ const BIT_HELP = [
   {
     title: 'Cómo se numeran los bits',
     description:
-      'El bit 0 es el de más a la derecha (el menos significativo) y el 15 el de más a la izquierda. Muchos manuales de PLC numeran las entradas del 1 al 16: en ese caso restale 1. Si tenés dudas, accioná la señal en terreno y mirá qué celda del cuadro cambia de 0 a 1.',
+      'El bit 0 es el de más a la derecha (el menos significativo) y el 15 el de más a la izquierda. Muchos manuales de PLC numeran las entradas del 1 al 16: en ese caso réstale 1. Si tienes dudas, acciona la señal en terreno y mirá qué celda del cuadro cambia de 0 a 1.',
     example: 'Entrada 1 del manual → bit 0 · Entrada 16 → bit 15',
   },
   {
@@ -217,7 +217,7 @@ const BIT_HELP = [
   {
     title: 'Señal activa en 0',
     description:
-      'Los contactos normalmente cerrados marcan 1 cuando todo está bien y 0 cuando hay falla. Marcá "Señal activa en 0" para darla vuelta y que la variable valga 1 justo cuando querés que se vea la falla.',
+      'Los contactos normalmente cerrados marcan 1 cuando todo está bien y 0 cuando hay falla. Marca "Señal activa en 0" para darla vuelta y que la variable valga 1 justo cuando quieres que se vea la falla.',
     example: 'Térmico sano = bit en 1 → invertida, la variable vale 0 (sin falla).',
   },
 ] as const;
@@ -428,7 +428,7 @@ function emptyVariables(): SiteVariablesPayload {
                       Señales digitales de {{ bitBulkD1() }}
                     </p>
                     <p class="mt-1 text-caption font-semibold text-slate-500">
-                      Escribí el alias de las entradas que uses. Las que dejes en blanco no se
+                      Escribe el alias de las entradas que uses. Las que dejes en blanco no se
                       crean, y las que ya están configuradas aparecen bloqueadas — para cambiarlas,
                       editalas una por una.
                     </p>
@@ -757,9 +757,9 @@ function emptyVariables(): SiteVariablesPayload {
                       <div class="min-w-0">
                         <p class="text-caption font-bold text-slate-700">Bit de la palabra</p>
                         <p class="text-caption font-semibold text-slate-500">
-                          Elegí el bit que corresponde a esta señal. El bit 0 es el menos
+                          Elige el bit que corresponde a esta señal. El bit 0 es el menos
                           significativo (abajo a la derecha); si el manual del PLC los numera desde
-                          1, restale 1.
+                          1, réstale 1.
                         </p>
                       </div>
                       <select
@@ -810,7 +810,7 @@ function emptyVariables(): SiteVariablesPayload {
                         </span>
                         <span class="block text-caption font-semibold text-slate-500">
                           Para los contactos normalmente cerrados: un térmico sano lee 1 y lo que
-                          querés mostrar como falla es el 0.
+                          quieres mostrar como falla es el 0.
                         </span>
                       </span>
                     </label>
@@ -924,7 +924,7 @@ function emptyVariables(): SiteVariablesPayload {
                         Valor con signo (complemento a 2)
                       </span>
                       <span class="block text-caption font-semibold text-slate-500">
-                        Marcala cuando la variable pueda ser negativa. El registro no lleva signo,
+                        Márcala cuando la variable pueda ser negativa. El registro no lleva signo,
                         así que el PLC manda -449 como 65087 y sin esto lo verías como 65087.
                       </span>
                     </span>
@@ -1104,7 +1104,7 @@ function emptyVariables(): SiteVariablesPayload {
                   </div>
                   <p class="text-caption-xs text-slate-500">
                     Fórmula:
-                    <span class="font-mono">resultado = raw × factor / divisor + offset</span>. Usá
+                    <span class="font-mono">resultado = raw × factor / divisor + offset</span>. Usa
                     divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
                   </p>
                 }
@@ -1158,7 +1158,7 @@ function emptyVariables(): SiteVariablesPayload {
                     <span class="font-mono"
                       >resultado = ((registro alto × 65536) + registro bajo) × factor / divisor +
                       offset</span
-                    >. Usá divisor=100 para correr 2 decimales.
+                    >. Usa divisor=100 para correr 2 decimales.
                   </p>
                 }
 
@@ -1210,7 +1210,7 @@ function emptyVariables(): SiteVariablesPayload {
                     Fórmula:
                     <span class="font-mono"
                       >resultado = decimal IEEE754 × factor / divisor + offset</span
-                    >. Dejá factor=1 y offset=0 para el valor sin ajuste; usá offset para calibrar
+                    >. Deja factor=1 y offset=0 para el valor sin ajuste; usa offset para calibrar
                     el sensor.
                   </p>
                 }
@@ -1797,7 +1797,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     const bit = this.toNumber(form.bitIndex);
 
     if (bit === null || !Number.isInteger(bit) || bit < 0 || bit >= width) {
-      return `Elegí un bit entre 0 y ${width - 1}.`;
+      return `Elige un bit entre 0 y ${width - 1}.`;
     }
 
     const invertido =
@@ -1807,7 +1807,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     if (word === null) {
       const crudo = this.liveRawValueForPreview();
       if (!crudo) return `Bit ${bit} de ${form.d1 || 'la palabra'}.${invertido}`;
-      return `${crudo} no es una palabra sin signo de ${width} bits. Revisá el ancho.`;
+      return `${crudo} no es una palabra sin signo de ${width} bits. Revisa el ancho.`;
     }
 
     return `Ahora mismo ${word} = ${this.formatBinary(word, width)}.${invertido}`;
@@ -1838,7 +1838,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
   openBitBulk(): void {
     const d1 = this.variableForm().d1;
     if (!d1) {
-      this.setError('Elegí primero el dato original.');
+      this.setError('Elige primero el dato original.');
       return;
     }
 
@@ -1915,7 +1915,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
 
     const nuevas = this.bitBulkNuevas();
     if (!nuevas.length) {
-      this.setError('Escribí el alias de al menos una entrada.');
+      this.setError('Escribe el alias de al menos una entrada.');
       return;
     }
 
@@ -2007,7 +2007,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     if (crudo === null) return corte;
     const convertido = this.applySignedWrap(crudo, bits);
     if (convertido === null) {
-      return `El crudo en vivo (${this.formatPreviewNumber(crudo)}) no cabe en ${bits} bits. Revisá el ancho del registro.`;
+      return `El crudo en vivo (${this.formatPreviewNumber(crudo)}) no cabe en ${bits} bits. Revisa el ancho del registro.`;
     }
     return `${corte} Ahora mismo: ${this.formatPreviewNumber(crudo)} → ${this.formatPreviewNumber(convertido)}.`;
   }
@@ -2052,7 +2052,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     if (!scale) {
       return this.toNumber(form.rangoRawMin) === this.toNumber(form.rangoRawMax)
         ? 'El mínimo y el máximo brutos no pueden ser iguales.'
-        : 'Completá los cuatro valores para calcular la escala.';
+        : 'Completa los cuatro valores para calcular la escala.';
     }
     const unidad = form.unidad.trim() ? ` ${form.unidad.trim()}` : '';
     return (
@@ -2073,7 +2073,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     }
 
     if (this.isBitTransform() && this.selectedBitIndex() === null) {
-      this.setError(`Elegí un bit entre 0 y ${this.bitWordWidth() - 1}.`);
+      this.setError(`Elige un bit entre 0 y ${this.bitWordWidth() - 1}.`);
       return;
     }
 

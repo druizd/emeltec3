@@ -8,7 +8,7 @@ import { CompanyService } from '../../../services/company.service';
 import { ShortcutService } from '../../../services/shortcut.service';
 import { LayoutUiService } from '../layout-ui.service';
 import { AlertNotificationsService } from '../../../services/alert-notifications.service';
-import type { EventoReciente } from '../../../services/alerta.service';
+import { etiquetaSitioEvento, type EventoReciente } from '../../../services/alerta.service';
 import { getSiteTypeUi, siteTypesForModule } from '../../../shared/site-type-ui';
 import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
@@ -149,7 +149,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                         <span
                           class="block truncate text-caption-xs font-bold uppercase tracking-wide text-slate-400"
                         >
-                          {{ e.sitio_desc || e.sitio_id }}
+                          {{ etiquetaSitio(e) }}
                         </span>
                         <span class="mt-0.5 block text-body-sm leading-snug text-slate-700">
                           {{ e.mensaje || e.alerta_nombre }}
@@ -157,7 +157,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                         <span class="mt-0.5 block text-caption-xs text-slate-400">
                           {{ formatCuando(e.triggered_at) }}
                           @if (e.repeticiones && e.repeticiones > 0) {
-                            · se repitio {{ e.repeticiones }}
+                            · se repitió {{ e.repeticiones }}
                             {{ e.repeticiones === 1 ? 'vez' : 'veces' }}
                           }
                         </span>
@@ -470,6 +470,11 @@ export class HeaderComponent implements OnInit {
     const n = this.alerts.sinRevisar();
     if (n === 0) return 'Alertas: sin pendientes';
     return `Alertas: ${n} sin revisar`;
+  }
+
+  /** "CCU · Quilicura · Pozo 10 · OB-1306-98", no el serial del equipo. */
+  etiquetaSitio(e: EventoReciente): string {
+    return etiquetaSitioEvento(e);
   }
 
   severidadDot(sev: string): string {
