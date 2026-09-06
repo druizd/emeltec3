@@ -1736,11 +1736,22 @@ type OperationMode = 'realtime' | 'turnos';
             </div>
           }
 
+          <!--
+            Operacion vive FUERA de la cadena @if/@else de arriba a proposito: se
+            oculta con [class.hidden] en vez de destruirse para no perder el
+            estado de los graficos ni reiniciar el polling en vivo al cambiar de
+            pestana. Por eso la condicion tiene que mirar tambien los paneles:
+            sin settingsPanelOpen() / historyPanelOpen() se dibuja ADEMAS del
+            panel abierto, apilado debajo, con dos role="tabpanel" visibles a la
+            vez y el polling corriendo por detras.
+          -->
           <div
             role="tabpanel"
             id="tabpanel-operacion"
             aria-labelledby="tab-operacion"
-            [class.hidden]="activeDetailTab() !== 'operacion'"
+            [class.hidden]="
+              activeDetailTab() !== 'operacion' || settingsPanelOpen() || historyPanelOpen()
+            "
           >
             <app-water-detail-operacion />
           </div>
