@@ -86,6 +86,7 @@ function baseForm(overrides: Partial<VariableFormShape> = {}): VariableFormShape
 
 function variablesPayload(
   vars: { nombre_dato: string; valor_dato: number }[],
+  mappings: unknown[] = [],
 ): SiteVariablesPayload {
   return {
     site: {
@@ -105,8 +106,26 @@ function variablesPayload(
       timestamp_completo: '2026-01-01 00:00',
       mapping: null,
     })),
-    mappings: [],
+    mappings,
   } as unknown as SiteVariablesPayload;
+}
+
+/** Una fila del reg_map como la devuelve la API en `mappings`. */
+function mapping(over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'RM1',
+    alias: 'Caudal',
+    d1: 'REG3000',
+    d2: 'REG3001',
+    tipo_dato: 'FLOAT',
+    unidad: 'L/s',
+    rol_dashboard: 'caudal',
+    transformacion: 'ieee754_32',
+    parametros: {},
+    sitio_id: 's1',
+    contador_meses: 0,
+    ...over,
+  };
 }
 
 /** Un mapeo por bit sobre REG_H, como lo devuelve la API en `mappings`. */
@@ -250,6 +269,98 @@ describe('SiteVariableSettingsPanelComponent · lógica de transformación', () 
       expect(component.supportsCutOff()).toBe(false);
       component.variableForm.set(baseForm({ transformacion: 'ieee754_32' }));
       expect(component.supportsCutOff()).toBe(true);
+    });
+  });
+
+  /**
+   * Mapeos huérfanos y roles duplicados. El caso real que lo motivó: tras el
+   * recambio de caudalímetro de S128, `AI23` dejó de llegar pero su fila del
+   * reg_map siguió con el rol `caudal`, peleándoselo a la variable nueva. Desde
+   * la web era invisible porque la pantalla solo lista lo que el equipo manda.
+   */
+  describe('mapeos huérfanos y roles duplicados', () => {
+    it('marca como huérfano el mapeo cuyo d1 ya no llega', () => {
+      component.siteVariables.set(
+        variablesPayload(
+          [{ nombre_dato: 'REG3000', valor_dato: 1 }],
+          [
+            mapping({ id: 'RM_NEW', d1: 'REG3000' }),
+            mapping({ id: 'RM_OLD', alias: 'Flujometro', d1: 'AI23', d2: null }),
+          ],
+        ),
+      );
+      expect(component.orphanMappings().map((m) => m.id)).toEqual(['RM_OLD']);
+    });
+
+    it('no marca nada cuando todos los mapeos reciben dato', () => {
+      component.siteVariables.set(
+        variablesPayload(
+          [{ nombre_dato: 'REG3000', valor_dato: 1 }],
+          [mapping({ id: 'RM_NEW', d1: 'REG3000' })],
+        ),
+      );
+      expect(component.orphanMappings()).toEqual([]);
+    });
+
+    it('detecta dos mapeos peleando el mismo rol', () => {
+      component.siteVariables.set(
+        variablesPayload(
+          [{ nombre_dato: 'REG3000', valor_dato: 1 }],
+          [
+            mapping({ id: 'RM_NEW', d1: 'REG3000', rol_dashboard: 'caudal' }),
+            mapping({ id: 'RM_OLD', d1: 'AI23', rol_dashboard: 'caudal' }),
+          ],
+        ),
+      );
+      const grupos = component.duplicateRoleGroups();
+      expect(grupos.length).toBe(1);
+      expect(grupos[0]!.rol).toBe('caudal');
+      expect(grupos[0]!.mappings.map((m) => m.id).sort()).toEqual(['RM_NEW', 'RM_OLD']);
+    });
+
+    it('NO considera duplicado el rol generico: es el cajón de sastre', () => {
+      component.siteVariables.set(
+        variablesPayload(
+          [{ nombre_dato: 'REG3000', valor_dato: 1 }],
+          [
+            mapping({ id: 'A', d1: 'REG3000', rol_dashboard: 'generico' }),
+            mapping({ id: 'B', d1: 'AI23', rol_dashboard: 'generico' }),
+            mapping({ id: 'C', d1: 'AI24', rol_dashboard: null }),
+          ],
+        ),
+      );
+      expect(component.duplicateRoleGroups()).toEqual([]);
+    });
+
+    it('roles distintos no son duplicado', () => {
+      component.siteVariables.set(
+        variablesPayload(
+          [{ nombre_dato: 'REG3000', valor_dato: 1 }],
+          [
+            mapping({ id: 'A', d1: 'REG3000', rol_dashboard: 'caudal' }),
+            mapping({ id: 'B', d1: 'REG3002', rol_dashboard: 'totalizador' }),
+          ],
+        ),
+      );
+      expect(component.duplicateRoleGroups()).toEqual([]);
+    });
+
+    it('isOrphanMapping responde por mapeo', () => {
+      const vivo = mapping({ id: 'A', d1: 'REG3000' });
+      const muerto = mapping({ id: 'B', d1: 'AI23' });
+      component.siteVariables.set(
+        variablesPayload([{ nombre_dato: 'REG3000', valor_dato: 1 }], [vivo, muerto]),
+      );
+      expect(component.isOrphanMapping(vivo as never)).toBe(false);
+      expect(component.isOrphanMapping(muerto as never)).toBe(true);
+    });
+
+    it('el borrado pide confirmación en vez de borrar de una', () => {
+      const m = mapping({ id: 'RM_OLD', d1: 'AI23', contador_meses: 37 });
+      component.askDeleteVariableMap(m as never);
+      expect(component.pendingDelete()?.id).toBe('RM_OLD');
+      component.cancelDeleteVariableMap();
+      expect(component.pendingDelete()).toBeNull();
     });
   });
 
