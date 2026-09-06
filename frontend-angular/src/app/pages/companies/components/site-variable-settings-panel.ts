@@ -28,6 +28,7 @@ import {
   VariableParameters,
 } from '../../../services/administration.service';
 import { getSiteTypeUi } from '../../../shared/site-type-ui';
+import { CHILE_TIME_ZONE } from '../../../shared/timezone';
 import { SkeletonComponent } from '../../../components/ui/skeleton';
 
 interface SettingsStatus {
@@ -2459,7 +2460,35 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
    * si el equipo dejó de comunicar hace un mes, TODAS las variables aparecen
    * huérfanas y el problema es otro.
    */
-  lastSampleLabel = computed(() => this.siteVariables().variables[0]?.timestamp_completo || '');
+  lastSampleLabel = computed(() =>
+    this.formatChileDateTime(this.siteVariables().variables[0]?.timestamp_completo),
+  );
+
+  /**
+   * Fecha y hora en el formato del proyecto: DD/MM/YYYY HH:MM, en UTC-4 fijo.
+   *
+   * Se arma con `formatToParts` en vez de dejar que `es-CL` elija: el locale
+   * chileno separa la fecha con guiones (06-09-2026) y la convención acá es con
+   * barras. Si el valor no parsea se devuelve tal cual, que es más útil que un
+   * "Invalid Date" o un hueco.
+   */
+  private formatChileDateTime(value: string | null | undefined): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: CHILE_TIME_ZONE,
+    }).formatToParts(d);
+    const at = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((p) => p.type === type)?.value ?? '';
+    return `${at('day')}/${at('month')}/${at('year')} ${at('hour')}:${at('minute')}`;
+  }
 
   /** Etiqueta del rango de meses de contadores que cuelgan de un mapeo. */
   contadorRangeLabel(mapping: VariableMapping): string {
