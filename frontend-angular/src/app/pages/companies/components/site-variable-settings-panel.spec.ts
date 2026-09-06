@@ -35,6 +35,7 @@ interface VariableFormShape {
   factor: string;
   divisor: string;
   offset: string;
+  cutOff: string;
   wordSwap: string;
   sandboxRaw: string;
   escalaPorRango: string;
@@ -64,6 +65,7 @@ function baseForm(overrides: Partial<VariableFormShape> = {}): VariableFormShape
     factor: '1',
     divisor: '1',
     offset: '0',
+    cutOff: '',
     wordSwap: 'false',
     sandboxRaw: '',
     escalaPorRango: 'false',
