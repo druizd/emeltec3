@@ -23,6 +23,8 @@ export interface VariableParameters {
   wordSwap?: boolean | null;
   formato?: string | null;
   byteOrder?: string | null;
+  /** Umbral simetrico de cut-off en unidades de ingenieria. Ausente = sin corte. */
+  cut_off?: number | null;
 }
 
 export interface MappingTransformInput {
@@ -34,6 +36,7 @@ export interface MappingTransformInput {
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mappingTransformMod = require('../../utils/mappingTransform.js') as {
   applyMappingTransform: (input: MappingTransformInput) => number | unknown;
+  applyCutOff: (value: unknown, params: Record<string, unknown>) => unknown;
   applyLinearTransform: (value: unknown, params: Record<string, unknown>) => number;
   applySignedWrap: (value: number, bits: number) => number;
   normalizeTransform: (value: unknown) => string;
@@ -44,6 +47,7 @@ const mappingTransformMod = require('../../utils/mappingTransform.js') as {
 };
 
 export const applyMappingTransform = mappingTransformMod.applyMappingTransform;
+export const applyCutOff = mappingTransformMod.applyCutOff;
 export const applyLinearTransform = mappingTransformMod.applyLinearTransform;
 export const applySignedWrap = mappingTransformMod.applySignedWrap;
 export const normalizeTransform = mappingTransformMod.normalizeTransform;

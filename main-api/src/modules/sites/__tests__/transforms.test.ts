@@ -264,3 +264,81 @@ describe('applyMappingTransform · ieee754_32 con hex de un registro', () => {
     expect(out).toBeCloseTo(29.5, 5);
   });
 });
+
+/**
+ * Cut-off de caudal bajo (`parametros.cut_off`).
+ *
+ * Caso real que lo motivó: S128 (Pozo 1, OB-0601-444). El FMT020 en reposo
+ * oscila alrededor de cero — se midieron valores entre -0,066 y +0,061 L/s —
+ * contra un caudal de trabajo de 14,3 L/s. Los negativos disparaban
+ * `flow_negative` y mandaban el 26% de los slots DGA a `requires_review`.
+ */
+describe('applyMappingTransform · cut_off', () => {
+  /** Arma un mapeo lineal para probar el corte sobre un valor ya escalado. */
+  function lineal(raw: number, parametros: Record<string, unknown>) {
+    return applyMappingTransform({
+      rawData: { REG1: raw },
+      mapping: baseMapping({
+        d2: null,
+        transformacion: 'lineal',
+        parametros,
+      }),
+    });
+  }
+
+  it('sin cut_off no toca nada (retrocompatible)', () => {
+    expect(lineal(-4, { factor: 0.01 })).toBeCloseTo(-0.04, 6);
+  });
+
+  it('lleva a 0 el negativo que cae bajo el umbral', () => {
+    expect(lineal(-4, { factor: 0.01, cut_off: 0.1 })).toBe(0);
+  });
+
+  it('lleva a 0 el positivo diminuto: el corte es simétrico', () => {
+    // Cortar solo los negativos dejaría la serie sesgada hacia arriba y el
+    // promedio en reposo daría positivo en vez de cero.
+    expect(lineal(6, { factor: 0.01, cut_off: 0.1 })).toBe(0);
+  });
+
+  it('respeta el caudal de trabajo: 14,3 no se toca con umbral 0,1', () => {
+    expect(lineal(1430, { factor: 0.01, cut_off: 0.1 })).toBeCloseTo(14.3, 6);
+  });
+
+  it('el umbral es estricto: un valor igual al umbral sobrevive', () => {
+    expect(lineal(10, { factor: 0.01, cut_off: 0.1 })).toBeCloseTo(0.1, 6);
+  });
+
+  it('un cut_off de 0 o negativo se ignora en vez de anular la variable', () => {
+    expect(lineal(-4, { factor: 0.01, cut_off: 0 })).toBeCloseTo(-0.04, 6);
+    expect(lineal(-4, { factor: 0.01, cut_off: -5 })).toBeCloseTo(-0.04, 6);
+  });
+
+  it('un cut_off no numérico se ignora', () => {
+    expect(lineal(-4, { factor: 0.01, cut_off: 'mucho' })).toBeCloseTo(-0.04, 6);
+  });
+
+  it('se aplica DESPUÉS del factor, sobre unidades de ingeniería', () => {
+    // Crudo 51,5 (m3/h) con divisor 3,6 → 14,3 L/s. El umbral 0,1 está en L/s:
+    // si se aplicara sobre el crudo, 51,5 tampoco se cortaría, pero un umbral
+    // de 20 sí delata el orden. 14,3 < 20 → 0.
+    expect(lineal(515, { factor: 0.1 / 3.6, cut_off: 20 })).toBe(0);
+  });
+
+  it('funciona igual sobre ieee754_32', () => {
+    const { high, low } = float32ToWords(-0.0337);
+    const out = applyMappingTransform({
+      rawData: { REG1: high, REG2: low },
+      mapping: baseMapping({ parametros: { cut_off: 0.1 } }),
+    });
+    expect(out).toBe(0);
+  });
+
+  it('no toca las transformaciones que no devuelven un número', () => {
+    // `directo` devuelve el crudo tal cual, incluso si es texto.
+    const out = applyMappingTransform({
+      rawData: { REG1: 'ON' },
+      mapping: baseMapping({ d2: null, transformacion: 'directo', parametros: { cut_off: 5 } }),
+    });
+    expect(out).toBe('ON');
+  });
+});

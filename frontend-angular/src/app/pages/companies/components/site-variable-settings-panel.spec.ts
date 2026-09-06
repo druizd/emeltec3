@@ -170,6 +170,87 @@ describe('SiteVariableSettingsPanelComponent · lógica de transformación', () 
     });
   });
 
+  /**
+   * Cut-off de caudal bajo. A diferencia del divisor —que es solo ayuda de UI y
+   * se pliega dentro de `factor`— el cut-off SÍ se persiste con su propia llave,
+   * porque el backend lo aplica al leer y el técnico tiene que poder verlo y
+   * sacarlo. Caso real: S128, deriva de ±0,066 L/s en reposo contra 14,3 L/s de
+   * caudal de trabajo.
+   */
+  describe('cut-off de caudal bajo', () => {
+    it('persiste cut_off cuando se escribe un umbral', () => {
+      component.variableForm.set(baseForm({ transformacion: 'ieee754_32', cutOff: '0.1' }));
+      expect(buildParams()['cut_off']).toBeCloseTo(0.1, 6);
+    });
+
+    it('omite la llave cuando el campo queda vacío', () => {
+      component.variableForm.set(baseForm({ transformacion: 'ieee754_32', cutOff: '' }));
+      expect(buildParams()).not.toHaveProperty('cut_off');
+    });
+
+    it('omite la llave con 0 o negativo en vez de guardar un corte inerte', () => {
+      component.variableForm.set(baseForm({ transformacion: 'ieee754_32', cutOff: '0' }));
+      expect(buildParams()).not.toHaveProperty('cut_off');
+      component.variableForm.set(baseForm({ transformacion: 'ieee754_32', cutOff: '-1' }));
+      expect(buildParams()).not.toHaveProperty('cut_off');
+    });
+
+    it('también persiste en transformaciones lineales', () => {
+      component.variableForm.set(baseForm({ transformacion: 'lineal', cutOff: '0.05' }));
+      expect(buildParams()['cut_off']).toBeCloseTo(0.05, 6);
+    });
+
+    it('la vista previa muestra 0 cuando el valor cae bajo el umbral', () => {
+      const { high, low } = float32ToWords(-0.0337);
+      component.siteVariables.set(
+        variablesPayload([
+          { nombre_dato: 'REG_H', valor_dato: high },
+          { nombre_dato: 'REG_L', valor_dato: low },
+        ]),
+      );
+      component.variableForm.set(
+        baseForm({ transformacion: 'ieee754_32', cutOff: '0.1', unidad: 'L/s' }),
+      );
+      expect(component.previewResultText()).toContain('0');
+      expect(component.previewResultText()).not.toContain('-0,03');
+    });
+
+    it('la vista previa no toca el caudal de trabajo', () => {
+      const { high, low } = float32ToWords(14.3);
+      component.siteVariables.set(
+        variablesPayload([
+          { nombre_dato: 'REG_H', valor_dato: high },
+          { nombre_dato: 'REG_L', valor_dato: low },
+        ]),
+      );
+      component.variableForm.set(
+        baseForm({ transformacion: 'ieee754_32', cutOff: '0.1', unidad: 'L/s' }),
+      );
+      expect(component.previewResultText()).toContain('14,3');
+    });
+
+    it('el antes/después solo aparece cuando el corte efectivamente actúa', () => {
+      const { high, low } = float32ToWords(14.3);
+      component.siteVariables.set(
+        variablesPayload([
+          { nombre_dato: 'REG_H', valor_dato: high },
+          { nombre_dato: 'REG_L', valor_dato: low },
+        ]),
+      );
+      component.variableForm.set(baseForm({ transformacion: 'ieee754_32', cutOff: '0.1' }));
+      expect(component.cutOffPreviewNote()).toBe('');
+    });
+
+    it('no se ofrece en transformaciones que no devuelven un número', () => {
+      component.variableForm.set(baseForm({ transformacion: 'bit' }));
+      expect(component.supportsCutOff()).toBe(false);
+      component.variableForm.set(baseForm({ transformacion: 'directo' }));
+      expect(component.supportsCutOff()).toBe(false);
+      component.variableForm.set(baseForm({ transformacion: 'ieee754_32' }));
+      expect(component.supportsCutOff()).toBe(true);
+    });
+  });
+
   describe('previewResultText()', () => {
     it('ieee754_32 aplica el offset al float decodificado', () => {
       const { high, low } = float32ToWords(25.5);

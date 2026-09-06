@@ -67,6 +67,11 @@ interface VariableForm {
   factor: string;
   divisor: string;
   offset: string;
+  /**
+   * Umbral simétrico de cut-off en unidades de ingeniería (vacío = desactivado).
+   * Lo que quede por debajo en valor absoluto se lee como 0.
+   */
+  cutOff: string;
   wordSwap: string;
   sandboxRaw: string;
   /** 'true' cuando el técnico configura la escala por rango en vez de factor/offset. */
@@ -106,6 +111,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   factor: '1',
   divisor: '1',
   offset: '0',
+  cutOff: '',
   wordSwap: 'false',
   sandboxRaw: '',
   escalaPorRango: 'false',
@@ -1209,6 +1215,42 @@ function emptyVariables(): SiteVariablesPayload {
                   </p>
                 }
 
+                @if (supportsCutOff()) {
+                  <div class="rounded-lg border border-border-default bg-bg-subtle p-3">
+                    <label
+                      class="mb-1 block text-caption font-bold text-slate-500"
+                      for="settings-variable-cutoff"
+                    >
+                      Cut-off de caudal bajo
+                      {{ variableForm().unidad ? '(' + variableForm().unidad + ')' : '' }}
+                    </label>
+                    <input
+                      id="settings-variable-cutoff"
+                      type="number"
+                      step="any"
+                      min="0"
+                      name="settings-variable-cutoff"
+                      [ngModel]="variableForm().cutOff"
+                      (ngModelChange)="updateVariableForm('cutOff', $event)"
+                      class="field-control bg-white"
+                      placeholder="Vacio = sin corte"
+                    />
+                    <p class="mt-2 text-caption-xs text-slate-500">
+                      Todo lo que quede por debajo de este umbral
+                      <strong>en valor absoluto</strong> se lee como 0. Es el mismo corte que trae
+                      el caudalimetro: un electromagnetico en reposo oscila alrededor de cero, y ni
+                      los negativos son flujo inverso ni los positivos diminutos son extraccion. Se
+                      aplica <strong>al leer</strong>, asi que el dato crudo del equipo no se toca y
+                      vaciar el campo devuelve la serie original.
+                    </p>
+                    @if (cutOffPreviewNote()) {
+                      <p class="mt-2 font-mono text-caption-xs text-primary-container">
+                        {{ cutOffPreviewNote() }}
+                      </p>
+                    }
+                  </div>
+                }
+
                 <div class="rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3">
                   <div class="mb-3 flex items-center gap-2">
                     <span
@@ -2084,6 +2126,9 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       // so an admin can re-split a stored factor for editing decimals.
       divisor: '1',
       offset: this.configNumberToString(params?.offset) || '0',
+      // A diferencia del divisor, el cut-off SÍ se persiste tal cual, así que
+      // vuelve del backend y se muestra con el valor real que está aplicando.
+      cutOff: this.configNumberToString(params?.cut_off) || '',
       wordSwap: String(params?.word_swap ?? params?.wordSwap ?? false),
       // sandboxRaw is no longer an editable input; calculator reads from d1 live value.
       sandboxRaw: '',
@@ -2211,6 +2256,44 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     return typeof v === 'number' ? String(v) : String(v);
   }
 
+  /**
+   * Valor transformado de ahora, ANTES del cut-off, o null si no se puede
+   * calcular. Solo cubre los caminos numéricos: `bit` devuelve etiquetas y
+   * `directo` devuelve el crudo sin tocar, y a ninguno de los dos se le aplica
+   * corte. Sirve para el antes/después de `cutOffPreviewNote`.
+   */
+  private previewNumericValue(): number | null {
+    const form = this.variableForm();
+    if (form.transformacion === 'bit') return null;
+    const { factor, offset } = this.effectiveScale();
+
+    if (this.isLinearTransformValue(form.transformacion)) {
+      const raw = this.signedOrRaw(this.toNumber(this.liveRawValueForPreview()));
+      return raw === null ? null : raw * factor + offset;
+    }
+
+    if (form.transformacion === 'ieee754_32') {
+      const decoded = this.decodeFloat32FromRegisters(
+        this.valueForVariableKey(form.d1),
+        this.valueForVariableKey(form.d2),
+        form.wordSwap === 'true',
+      );
+      return decoded === null ? null : decoded * factor + offset;
+    }
+
+    if (form.transformacion === 'uint32_registros') {
+      const rawA = this.toRegisterWord(this.valueForVariableKey(form.d1));
+      const rawB = this.toRegisterWord(this.valueForVariableKey(form.d2));
+      if (rawA === null || rawB === null) return null;
+      const high = form.wordSwap === 'true' ? rawB : rawA;
+      const low = form.wordSwap === 'true' ? rawA : rawB;
+      const combinado = this.signedOrRaw(high * 65536 + low);
+      return combinado === null ? null : combinado * factor + offset;
+    }
+
+    return null;
+  }
+
   previewResultText(): string {
     const form = this.variableForm();
     const rawText = this.liveRawValueForPreview();
@@ -2233,7 +2316,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     if (this.isLinearTransformValue(form.transformacion)) {
       const raw = this.signedOrRaw(this.toNumber(rawText));
       if (raw === null) return this.rawPreviewError(this.toNumber(rawText));
-      return `${this.formatPreviewNumber(raw * factor + offset)}${unit}`;
+      return `${this.formatPreviewNumber(this.applyPreviewCutOff(raw * factor + offset))}${unit}`;
     }
 
     if (form.transformacion === 'ieee754_32') {
@@ -2243,7 +2326,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       if (decoded === null) {
         return form.d2 ? 'Registros no numéricos' : 'Selecciona segundo registro';
       }
-      return `${this.formatPreviewNumber(decoded * factor + offset)}${unit}`;
+      return `${this.formatPreviewNumber(this.applyPreviewCutOff(decoded * factor + offset))}${unit}`;
     }
 
     if (form.transformacion === 'uint32_registros') {
@@ -2256,7 +2339,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       const low = form.wordSwap === 'true' ? rawA : rawB;
       const combinado = this.signedOrRaw(high * 65536 + low);
       if (combinado === null) return this.rawPreviewError(high * 65536 + low);
-      return `${this.formatPreviewNumber(combinado * factor + offset)}${unit}`;
+      return `${this.formatPreviewNumber(this.applyPreviewCutOff(combinado * factor + offset))}${unit}`;
     }
 
     return `${rawText}${unit}`;
@@ -2308,6 +2391,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       return {
         word_swap: form.wordSwap === 'true',
         formato: form.transformacion === 'ieee754_32' ? 'float32' : 'uint32',
+        ...this.cutOffParameters(),
         // uint32_registros e ieee754_32 aplican factor/offset sobre el valor
         // combinado/decodificado. Mismo split UI factor/divisor que lineal: el
         // backend solo conoce factor, divisor es ayuda de UI para decimales.
@@ -2322,7 +2406,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     }
 
     if (this.isLinearTransformValue(form.transformacion)) {
-      const signo = this.signedParameters();
+      const signo = { ...this.signedParameters(), ...this.cutOffParameters() };
       const rango = this.rangeScaleParameters();
       if (rango) return { ...signo, ...rango };
       // Persisted factor = factor_ui / divisor_ui. The BD doesn't know about
@@ -2337,6 +2421,59 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     }
 
     return {};
+  }
+
+  /**
+   * El cut-off solo tiene sentido en las transformaciones que devuelven un
+   * número en unidades de ingeniería. `bit` devuelve etiquetas y `directo`
+   * devuelve el crudo del equipo: recortarlos sería mentir sobre la lectura.
+   */
+  supportsCutOff(): boolean {
+    const t = this.variableForm().transformacion;
+    return this.isLinearTransformValue(t) || this.transformRequiresD2(t) || t === 'caudal_m3h_lps';
+  }
+
+  /** Umbral de cut-off tipeado, o null si está vacío o no es un número > 0. */
+  cutOffValue(): number | null {
+    const n = this.toNumber(this.variableForm().cutOff);
+    return n !== null && Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  /**
+   * `parametros` del cut-off. Igual que el complemento a 2, se omite entero
+   * cuando está vacío: un `cut_off: 0` guardado sería indistinguible de "sin
+   * corte" para el backend, pero ensuciaría los mappings que ya existen.
+   */
+  private cutOffParameters(): VariableParameters {
+    const cutOff = this.cutOffValue();
+    return cutOff === null ? {} : { cut_off: cutOff };
+  }
+
+  /**
+   * Mismo corte simétrico que `applyCutOff` en el backend
+   * (`main-api/src/utils/mappingTransform.js`). Está duplicado a propósito:
+   * la vista previa tiene que poder calcular sin ir al servidor. Si cambia la
+   * regla allá, cambia acá.
+   */
+  private applyPreviewCutOff(value: number): number {
+    const cutOff = this.cutOffValue();
+    if (cutOff === null) return value;
+    return Math.abs(value) < cutOff ? 0 : value;
+  }
+
+  /**
+   * Texto del antes/después, solo cuando el corte efectivamente cambia el
+   * valor de ahora. Sin esto el técnico no tiene forma de ver qué hace el
+   * umbral que acaba de escribir.
+   */
+  cutOffPreviewNote(): string {
+    const cutOff = this.cutOffValue();
+    if (cutOff === null) return '';
+    const crudo = this.previewNumericValue();
+    if (crudo === null) return '';
+    if (Math.abs(crudo) >= cutOff) return '';
+    const unit = this.variableForm().unidad ? ` ${this.variableForm().unidad}` : '';
+    return `Ahora mismo: ${this.formatPreviewNumber(crudo)}${unit} → 0${unit} (|valor| < ${this.formatPreviewNumber(cutOff)}).`;
   }
 
   /**

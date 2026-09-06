@@ -231,6 +231,22 @@ const BIT_WORD_WIDTHS = new Set([16, 32]);
  * Valida los `parametros` de la transformacion `bit`. Devuelve el indice del
  * bit ya normalizado, o `{ error }` con el mensaje para el tecnico.
  */
+/**
+ * Valida `parametros.cut_off`. Devuelve un mensaje de error o null.
+ *
+ * `applyCutOff` ignora en silencio cualquier valor que no sea un número > 0, y
+ * ese silencio es justo lo que no queremos: el técnico escribe algo, guarda, no
+ * pasa nada y no hay forma de saber por qué. Preferimos rechazar con mensaje.
+ */
+function cutOffError(parametros) {
+  if (parametros.cut_off === undefined || parametros.cut_off === null) return null;
+  const n = Number(parametros.cut_off);
+  if (!Number.isFinite(n) || n < 0) {
+    return 'parametros.cut_off debe ser un numero mayor o igual a 0.';
+  }
+  return null;
+}
+
 function parseBitParams(parametros) {
   const declarado = Number(parametros.palabra_bits);
   const bits = BIT_WORD_WIDTHS.has(declarado) ? declarado : 16;
@@ -2897,6 +2913,11 @@ exports.createSiteVariableMap = async (req, res, next) => {
       return badRequest(res, rolError);
     }
 
+    const cutError = cutOffError(parametros);
+    if (cutError) {
+      return badRequest(res, cutError);
+    }
+
     let bitIndex = null;
     if (transformacion === 'bit') {
       const parsed = parseBitParams(parametros);
@@ -3016,6 +3037,11 @@ exports.updateSiteVariableMap = async (req, res, next) => {
     const nextRolError = bitRoleError(nextTransform, nextRol);
     if (nextRolError) {
       return badRequest(res, nextRolError);
+    }
+
+    const nextCutError = cutOffError(nextParametros);
+    if (nextCutError) {
+      return badRequest(res, nextCutError);
     }
 
     let nextBit = null;

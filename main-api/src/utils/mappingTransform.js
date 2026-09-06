@@ -138,8 +138,36 @@ function applyLinearTransform(value, params = {}) {
   return base * factor + offset;
 }
 
+/**
+ * Cut-off de caudal bajo — el mismo concepto que trae el propio caudalímetro
+ * (en el SITRANS FMT020 vive en el menú 2.2.2.5).
+ *
+ * Un electromagnético en reposo no marca cero: oscila alrededor de cero por
+ * deriva del punto de cero. En S128, con la bomba parada, esa deriva llega a
+ * ±0,066 L/s contra un caudal de trabajo de 14,3 L/s. Los negativos no son
+ * flujo inverso y los positivos diminutos no son extracción: los dos son ruido.
+ *
+ * Por eso el corte es SIMÉTRICO sobre el valor absoluto. Cortar solo los
+ * negativos dejaría la serie sesgada hacia arriba — el promedio en reposo daría
+ * positivo en vez de cero, que es justo lo que no queremos declarar a la DGA.
+ *
+ * Se aplica AL LEER, nunca al guardar: el crudo de `equipo` queda intacto y
+ * borrar el parámetro devuelve la serie original. Lo único que queda
+ * materializado es lo que ya escribieron el fill del DGA y los contadores.
+ *
+ * Opt-in por variable: sin `cut_off` en `parametros` esto es un no-op.
+ */
+function applyCutOff(value, params = {}) {
+  const cutOff = numberOrNull(params.cut_off);
+  if (cutOff === null || !(cutOff > 0)) return value;
+  // Las transformaciones de bit devuelven etiquetas de texto y `directo`
+  // devuelve el crudo sin tocar: solo recortamos números reales.
+  if (typeof value !== 'number' || !Number.isFinite(value)) return value;
+  return Math.abs(value) < cutOff ? 0 : value;
+}
+
 /** Devuelve el valor transformado o lanza Error si la transformación no aplica. */
-function applyMappingTransform({ rawData, mapping, pozoConfig }) {
+function computeMappingValue({ rawData, mapping, pozoConfig }) {
   const params = parseMappingParams(mapping.parametros);
   const transform = normalizeTransform(mapping.transformacion);
   const rawD1 = readRawValue(rawData, mapping.d1);
@@ -214,8 +242,20 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
   }
 }
 
+/**
+ * Punto de entrada público: transforma y luego aplica el cut-off si la variable
+ * lo tiene configurado. Todo el resto del backend pasa por acá — el histórico
+ * HTTP (`services/siteTelemetryService.js`), el fill del DGA, los contadores y
+ * las alertas — así que el cut-off vale para los cuatro sin tocar nada más.
+ */
+function applyMappingTransform({ rawData, mapping, pozoConfig }) {
+  const params = parseMappingParams(mapping.parametros);
+  return applyCutOff(computeMappingValue({ rawData, mapping, pozoConfig }), params);
+}
+
 module.exports = {
   applyMappingTransform,
+  applyCutOff,
   applyLinearTransform,
   applySignedWrap,
   applyBitExtraction,
