@@ -27,6 +27,21 @@ export interface VariableParameters {
   etiqueta_on?: string | null;
   etiqueta_off?: string | null;
   /**
+   * Cut-off de caudal bajo, en unidades de ingeniería y SIMÉTRICO: lo que
+   * quede por debajo en valor absoluto se lee como 0. Es el mismo corte que
+   * trae el propio caudalímetro (menú 2.2.2.5 en el SITRANS FMT020).
+   *
+   * Un electromagnético en reposo oscila alrededor de cero por deriva del
+   * punto de cero: ni los negativos son flujo inverso ni los positivos
+   * diminutos son extracción. Cortar solo los negativos dejaría la serie
+   * sesgada hacia arriba.
+   *
+   * Se aplica AL LEER (`applyCutOff` en `utils/mappingTransform.js`), así que
+   * el crudo de `equipo` queda intacto y borrar la llave devuelve la serie
+   * original. Ausente, 0 o negativo = sin corte.
+   */
+  cut_off?: number | null;
+  /**
    * Complemento a 2: un registro Modbus no lleva signo, asi que el PLC manda
    * -449 como 65087. `signo_bits` es el ancho del registro (16 para uno
    * suelto, 32 para el par combinado).
