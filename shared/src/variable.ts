@@ -68,6 +68,16 @@ export interface VariableMapping {
   sitio_id: string;
   created_at?: string;
   updated_at?: string;
+  /**
+   * Meses de `site_contador_mensual` que cuelgan de este mapeo, y su rango.
+   * Los adjunta `getSiteVariables` porque la FK tiene ON DELETE CASCADE:
+   * borrar el mapeo se lleva ese Flujo Mensual y no hay vuelta atras. El panel
+   * los usa para avisar antes de borrar y para ofrecer quitar el rol en su
+   * lugar. Ausentes en respuestas que no los calculan.
+   */
+  contador_meses?: number;
+  contador_desde?: string | null;
+  contador_hasta?: string | null;
 }
 
 export interface SiteVariable {

@@ -25,6 +25,10 @@ const SITE_COLUMNS =
   'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo, es_maleta_piloto';
 const MAP_COLUMNS =
   'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
+/** Igual que MAP_COLUMNS pero calificado con `r.`, para los SELECT que hacen JOIN. */
+const MAP_COLUMNS_R = MAP_COLUMNS.split(', ')
+  .map((col) => `r.${col}`)
+  .join(', ');
 const POZO_CONFIG_COLUMNS =
   'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
 // dga_caudal_max_lps / dga_caudal_tolerance_pct viajan en `pozo_config` del
@@ -2816,8 +2820,25 @@ exports.getSiteVariables = async (req, res, next) => {
       return forbidden(res, 'No tiene permisos para consultar este sitio.');
     }
 
+    // Se adjunta cuantos meses de contadores cuelgan de cada mapeo. El panel lo
+    // necesita para avisar antes de borrar: `site_contador_mensual.variable_id`
+    // tiene ON DELETE CASCADE, asi que eliminar un mapeo se lleva su Flujo
+    // Mensual completo en silencio. Son pocas filas por sitio (una por variable)
+    // y el agregado va sobre un indice por sitio, asi que no encarece el bundle.
     const mappingsRes = await db.query(
-      `SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`,
+      `SELECT ${MAP_COLUMNS_R},
+              COALESCE(c.meses, 0)::int AS contador_meses,
+              c.desde                   AS contador_desde,
+              c.hasta                   AS contador_hasta
+         FROM reg_map r
+         LEFT JOIN (
+           SELECT variable_id, count(*) AS meses, min(mes) AS desde, max(mes) AS hasta
+             FROM site_contador_mensual
+            WHERE sitio_id = $1
+            GROUP BY variable_id
+         ) c ON c.variable_id = r.id
+        WHERE r.sitio_id = $1
+        ORDER BY r.alias ASC`,
       [siteId],
     );
 

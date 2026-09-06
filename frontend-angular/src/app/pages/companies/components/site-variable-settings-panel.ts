@@ -889,7 +889,7 @@ function emptyVariables(): SiteVariablesPayload {
                                 </button>
                                 <button
                                   type="button"
-                                  (click)="deleteVariableMap(item.mapping)"
+                                  (click)="askDeleteVariableMap(item.mapping)"
                                   class="icon-button h-7 w-7 text-red-500"
                                   [attr.aria-label]="'Eliminar ' + item.mapping.alias"
                                 >
@@ -1328,6 +1328,166 @@ function emptyVariables(): SiteVariablesPayload {
             }
           </div>
 
+          @if (pendingDelete(); as target) {
+            <div class="rounded-xl border border-red-300 bg-red-50 p-4">
+              <div class="flex items-start gap-3">
+                <span
+                  class="material-symbols-outlined shrink-0 text-[20px] text-red-600"
+                  aria-hidden="true"
+                  >delete_forever</span
+                >
+                <div class="min-w-0 space-y-3">
+                  <h3 class="text-body-sm font-semibold text-red-800">
+                    ¿Eliminar "{{ target.alias }}"?
+                  </h3>
+                  @if (target.contador_meses) {
+                    <p class="text-caption text-red-700">
+                      Se borrarían también
+                      <strong
+                        >{{ target.contador_meses }}
+                        {{ target.contador_meses === 1 ? 'mes' : 'meses' }}</strong
+                      >
+                      de Flujo Mensual
+                      @if (contadorRangeLabel(target)) {
+                        ({{ contadorRangeLabel(target) }})
+                      }
+                      . Eso no se puede recuperar.
+                    </p>
+                    @if (target.rol_dashboard && target.rol_dashboard !== 'generico') {
+                      <p class="text-caption text-red-700">
+                        Si lo que buscas es que deje de usarse, <strong>quítale el rol</strong>: la
+                        saca de circulación y conserva el histórico.
+                      </p>
+                    }
+                  } @else {
+                    <p class="text-caption text-red-700">No tiene histórico mensual asociado.</p>
+                  }
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      (click)="confirmDeleteVariableMap()"
+                      class="rounded-md bg-red-600 px-3 py-2 text-caption font-semibold text-white transition-colors hover:bg-red-700 active:scale-95"
+                    >
+                      Eliminar de todos modos
+                    </button>
+                    @if (target.rol_dashboard && target.rol_dashboard !== 'generico') {
+                      <button
+                        type="button"
+                        (click)="cancelDeleteVariableMap(); quitarRolMapping(target)"
+                        class="secondary-button"
+                      >
+                        Quitar rol
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      (click)="cancelDeleteVariableMap()"
+                      class="secondary-button"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (duplicateRoleGroups().length) {
+            <div class="rounded-xl border border-red-200 bg-red-50 p-4">
+              <div class="flex items-start gap-3">
+                <span
+                  class="material-symbols-outlined shrink-0 text-[20px] text-red-600"
+                  aria-hidden="true"
+                  >error</span
+                >
+                <div class="min-w-0 space-y-2">
+                  <h3 class="text-body-sm font-semibold text-red-800">
+                    Rol duplicado: hay datos que no se están usando
+                  </h3>
+                  @for (grupo of duplicateRoleGroups(); track grupo.rol) {
+                    <p class="text-caption text-red-700">
+                      <strong>{{ displayRole(grupo.rol) }}</strong> lo reclaman
+                      {{ grupo.mappings.length }} variables —
+                      @for (m of grupo.mappings; track m.id) {
+                        <span class="font-mono"
+                          >{{ m.alias }} ({{ m.d1
+                          }}{{ isOrphanMapping(m) ? ', sin dato' : '' }})</span
+                        >{{ $last ? '' : ' · ' }}
+                      }
+                    </p>
+                  }
+                  <p class="text-caption text-red-700">
+                    El histórico y el DGA usan una sola, y cuál gana lo decide un puntaje interno.
+                    Quítale el rol a la que ya no recibe dato.
+                  </p>
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (orphanMappings().length) {
+            <div class="overflow-hidden rounded-xl border border-amber-200 bg-white">
+              <div
+                class="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 bg-amber-50 px-4 py-3"
+              >
+                <div>
+                  <h3 class="text-body-sm font-semibold text-slate-900">
+                    Variables sin dato del equipo
+                  </h3>
+                  <p class="text-caption font-semibold text-slate-500">
+                    Configuradas acá, pero el equipo ya no las envía. Suelen quedar de un recambio
+                    de instrumento.
+                  </p>
+                </div>
+                <p class="text-caption font-semibold text-slate-500">
+                  {{ orphanMappings().length }} sin dato
+                </p>
+              </div>
+              <ul class="divide-y divide-slate-100">
+                @for (m of orphanMappings(); track m.id) {
+                  <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <div class="min-w-0">
+                      <p class="font-bold text-slate-800">{{ m.alias }}</p>
+                      <p class="text-caption text-slate-500">
+                        <span class="font-mono">{{ m.d1 }}{{ m.d2 ? ' + ' + m.d2 : '' }}</span>
+                        · {{ displayRole(m.rol_dashboard) }}
+                        @if (m.contador_meses) {
+                          · {{ m.contador_meses }} {{ m.contador_meses === 1 ? 'mes' : 'meses' }} de
+                          histórico
+                          @if (contadorRangeLabel(m)) {
+                            ({{ contadorRangeLabel(m) }})
+                          }
+                        }
+                      </p>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2">
+                      @if (m.rol_dashboard && m.rol_dashboard !== 'generico') {
+                        <button
+                          type="button"
+                          (click)="quitarRolMapping(m)"
+                          [disabled]="busy() === 'rol-' + m.id"
+                          class="secondary-button"
+                        >
+                          {{ busy() === 'rol-' + m.id ? 'Quitando…' : 'Quitar rol' }}
+                        </button>
+                      }
+                      <button
+                        type="button"
+                        (click)="askDeleteVariableMap(m)"
+                        class="icon-button text-red-500 active:scale-95"
+                        aria-label="Eliminar variable"
+                      >
+                        <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                          >delete</span
+                        >
+                      </button>
+                    </div>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+
           <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div
               class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
@@ -1388,7 +1548,7 @@ function emptyVariables(): SiteVariablesPayload {
                             <button
                               type="button"
                               (click)="
-                                $event.stopPropagation(); deleteVariableMap(variable.mapping)
+                                $event.stopPropagation(); askDeleteVariableMap(variable.mapping)
                               "
                               class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 active:scale-95"
                               aria-label="Eliminar alias"
@@ -1587,6 +1747,47 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
   siteType = computed(() => this.displaySite().tipo_sitio || 'generico');
   siteTypeLabel = computed(() => getSiteTypeUi(this.siteType()).label);
   isPozoSite = computed(() => this.siteType() === 'pozo');
+
+  // ─── Mapeos huérfanos y roles duplicados ──────────────────────────────
+  //
+  // "Datos detectados del equipo" lista SOLO las claves que el equipo está
+  // mandando ahora. Tras un recambio de instrumento las claves viejas dejan de
+  // llegar, pero sus filas del reg_map siguen vivas y conservando su rol:
+  // invisibles desde la web y peleándole el rol a la variable nueva. Pasó en
+  // S127, S128, S130 y Kross — el histórico y el DGA tomaban la variable muerta
+  // y declaraban null, y no había forma de darse cuenta sin entrar a la base.
+
+  /** Claves que trajo la última muestra del equipo. */
+  private detectedKeys = computed(
+    () => new Set(this.siteVariables().variables.map((v) => v.nombre_dato)),
+  );
+
+  /** Mapeos configurados cuyo dato original ya no llega. */
+  orphanMappings = computed<VariableMapping[]>(() => {
+    const detectadas = this.detectedKeys();
+    return this.siteVariables().mappings.filter((m) => !detectadas.has(m.d1));
+  });
+
+  /**
+   * Roles (distintos de `generico`) reclamados por más de un mapeo. El
+   * resolvedor elige uno solo, así que el otro es dato que no se ve en ningún
+   * lado — y cuál gana depende de un puntaje interno, no de lo que el técnico
+   * cree haber configurado.
+   */
+  duplicateRoleGroups = computed<{ rol: string; mappings: VariableMapping[] }[]>(() => {
+    const porRol = new Map<string, VariableMapping[]>();
+    for (const m of this.siteVariables().mappings) {
+      const rol = m.rol_dashboard || 'generico';
+      if (rol === 'generico') continue;
+      porRol.set(rol, [...(porRol.get(rol) ?? []), m]);
+    }
+    return [...porRol.entries()]
+      .filter(([, mappings]) => mappings.length > 1)
+      .map(([rol, mappings]) => ({ rol, mappings }));
+  });
+
+  /** Mapeo esperando confirmación de borrado (inline, sin diálogo del navegador). */
+  pendingDelete = signal<VariableMapping | null>(null);
 
   selectedSiteCatalog = computed<SiteTypeCatalogItem>(() => {
     const type = this.siteType();
@@ -2148,6 +2349,71 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       etiquetaOn: params?.etiqueta_on || '',
       etiquetaOff: params?.etiqueta_off || '',
     });
+  }
+
+  /** true si el mapeo no recibe dato del equipo en la última muestra. */
+  isOrphanMapping(mapping: VariableMapping): boolean {
+    return !this.detectedKeys().has(mapping.d1);
+  }
+
+  /** Etiqueta del rango de meses de contadores que cuelgan de un mapeo. */
+  contadorRangeLabel(mapping: VariableMapping): string {
+    const desde = this.monthLabel(mapping.contador_desde);
+    const hasta = this.monthLabel(mapping.contador_hasta);
+    if (!desde || !hasta) return '';
+    return desde === hasta ? desde : `${desde} – ${hasta}`;
+  }
+
+  private monthLabel(value: string | null | undefined): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('es-CL', {
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(d);
+  }
+
+  /**
+   * Deja el mapeo en rol `generico`. Es la alternativa NO destructiva a
+   * borrarlo: resuelve la duplicación de rol y conserva los contadores
+   * mensuales, que el borrado se lleva por `ON DELETE CASCADE`.
+   */
+  quitarRolMapping(mapping: VariableMapping): void {
+    if (!this.siteId) return;
+
+    this.busy.set(`rol-${mapping.id}`);
+    this.api
+      .updateSiteVariableMap(this.siteId, mapping.id, { rol_dashboard: 'generico' })
+      .subscribe({
+        next: () => {
+          this.busy.set('');
+          this.setSuccess(`"${mapping.alias}" quedó sin rol. Su histórico se conserva.`);
+          this.load(true);
+          this.variableMapChanged.emit();
+        },
+        error: (err: unknown) => {
+          this.busy.set('');
+          this.setError(this.errorMessage(err, 'No fue posible quitar el rol.'));
+        },
+      });
+  }
+
+  /** Abre la confirmación de borrado en vez de borrar de una. */
+  askDeleteVariableMap(mapping: VariableMapping): void {
+    this.pendingDelete.set(mapping);
+  }
+
+  cancelDeleteVariableMap(): void {
+    this.pendingDelete.set(null);
+  }
+
+  confirmDeleteVariableMap(): void {
+    const mapping = this.pendingDelete();
+    if (!mapping) return;
+    this.pendingDelete.set(null);
+    this.deleteVariableMap(mapping);
   }
 
   deleteVariableMap(mapping: VariableMapping): void {
