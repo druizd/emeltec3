@@ -1328,257 +1328,344 @@ function emptyVariables(): SiteVariablesPayload {
             }
           </div>
 
-          @if (pendingDelete(); as target) {
-            <div class="rounded-xl border border-red-300 bg-red-50 p-4">
-              <div class="flex items-start gap-3">
-                <span
-                  class="material-symbols-outlined shrink-0 text-[20px] text-red-600"
-                  aria-hidden="true"
-                  >delete_forever</span
-                >
-                <div class="min-w-0 space-y-3">
-                  <h3 class="text-body-sm font-semibold text-red-800">
-                    ¿Eliminar "{{ target.alias }}"?
-                  </h3>
-                  @if (target.contador_meses) {
-                    <p class="text-caption text-red-700">
-                      Se borrarían también
-                      <strong
-                        >{{ target.contador_meses }}
-                        {{ target.contador_meses === 1 ? 'mes' : 'meses' }}</strong
-                      >
-                      de Flujo Mensual
-                      @if (contadorRangeLabel(target)) {
-                        ({{ contadorRangeLabel(target) }})
-                      }
-                      . Eso no se puede recuperar.
-                    </p>
-                    @if (target.rol_dashboard && target.rol_dashboard !== 'generico') {
-                      <p class="text-caption text-red-700">
-                        Si lo que buscas es que deje de usarse, <strong>quítale el rol</strong>: la
-                        saca de circulación y conserva el histórico.
-                      </p>
-                    }
-                  } @else {
-                    <p class="text-caption text-red-700">No tiene histórico mensual asociado.</p>
-                  }
-                  <div class="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      (click)="confirmDeleteVariableMap()"
-                      class="rounded-md bg-red-600 px-3 py-2 text-caption font-semibold text-white transition-colors hover:bg-red-700 active:scale-95"
-                    >
-                      Eliminar de todos modos
-                    </button>
-                    @if (target.rol_dashboard && target.rol_dashboard !== 'generico') {
-                      <button
-                        type="button"
-                        (click)="cancelDeleteVariableMap(); quitarRolMapping(target)"
-                        class="secondary-button"
-                      >
-                        Quitar rol
-                      </button>
-                    }
-                    <button
-                      type="button"
-                      (click)="cancelDeleteVariableMap()"
-                      class="secondary-button"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          }
-
-          @if (duplicateRoleGroups().length) {
-            <div class="rounded-xl border border-red-200 bg-red-50 p-4">
-              <div class="flex items-start gap-3">
-                <span
-                  class="material-symbols-outlined shrink-0 text-[20px] text-red-600"
-                  aria-hidden="true"
-                  >error</span
-                >
-                <div class="min-w-0 space-y-2">
-                  <h3 class="text-body-sm font-semibold text-red-800">
-                    Rol duplicado: hay datos que no se están usando
-                  </h3>
-                  @for (grupo of duplicateRoleGroups(); track grupo.rol) {
-                    <p class="text-caption text-red-700">
-                      <strong>{{ displayRole(grupo.rol) }}</strong> lo reclaman
-                      {{ grupo.mappings.length }} variables —
-                      @for (m of grupo.mappings; track m.id) {
-                        <span class="font-mono"
-                          >{{ m.alias }} ({{ m.d1
-                          }}{{ isOrphanMapping(m) ? ', sin dato' : '' }})</span
-                        >{{ $last ? '' : ' · ' }}
-                      }
-                    </p>
-                  }
-                  <p class="text-caption text-red-700">
-                    El histórico y el DGA usan una sola, y cuál gana lo decide un puntaje interno.
-                    Quítale el rol a la que ya no recibe dato.
-                  </p>
-                </div>
-              </div>
-            </div>
-          }
-
-          @if (orphanMappings().length) {
-            <div class="overflow-hidden rounded-xl border border-amber-200 bg-white">
+          <!--
+            Columna derecha. Los avisos van apilados ARRIBA de la tabla y dentro
+            de UN SOLO hijo del grid. Si cada bloque es hijo directo del grid de
+            dos columnas, el aviso cae en la celda de al lado del formulario y se
+            estira hasta su alto: queda un rectángulo rojo gigante y vacío.
+          -->
+          <div class="space-y-5">
+            @if (pendingDelete(); as target) {
               <div
-                class="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 bg-amber-50 px-4 py-3"
+                class="rounded-xl border border-red-300 bg-red-50 p-4"
+                role="alert"
+                aria-labelledby="confirmar-borrado-titulo"
+                aria-describedby="confirmar-borrado-detalle"
               >
-                <div>
-                  <h3 class="text-body-sm font-semibold text-slate-900">
-                    Variables sin dato del equipo
-                  </h3>
-                  <p class="text-caption font-semibold text-slate-500">
-                    Configuradas acá, pero el equipo ya no las envía. Suelen quedar de un recambio
-                    de instrumento.
-                  </p>
-                </div>
-                <p class="text-caption font-semibold text-slate-500">
-                  {{ orphanMappings().length }} sin dato
-                </p>
-              </div>
-              <ul class="divide-y divide-slate-100">
-                @for (m of orphanMappings(); track m.id) {
-                  <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                    <div class="min-w-0">
-                      <p class="font-bold text-slate-800">{{ m.alias }}</p>
-                      <p class="text-caption text-slate-500">
-                        <span class="font-mono">{{ m.d1 }}{{ m.d2 ? ' + ' + m.d2 : '' }}</span>
-                        · {{ displayRole(m.rol_dashboard) }}
-                        @if (m.contador_meses) {
-                          · {{ m.contador_meses }} {{ m.contador_meses === 1 ? 'mes' : 'meses' }} de
-                          histórico
-                          @if (contadorRangeLabel(m)) {
-                            ({{ contadorRangeLabel(m) }})
-                          }
-                        }
+                <div class="flex items-start gap-3">
+                  <span
+                    class="material-symbols-outlined shrink-0 text-[20px] text-red-600"
+                    aria-hidden="true"
+                    >delete_forever</span
+                  >
+                  <div class="min-w-0 space-y-3">
+                    <div>
+                      <h3
+                        id="confirmar-borrado-titulo"
+                        class="text-body-sm font-semibold text-red-800"
+                      >
+                        ¿Eliminar "{{ target.alias }}"?
+                      </h3>
+                      <p class="text-caption text-red-700">
+                        <span class="font-mono"
+                          >{{ target.d1 }}{{ target.d2 ? ' + ' + target.d2 : '' }}</span
+                        >
+                        · {{ displayRole(target.rol_dashboard) }} ·
+                        {{ displayTransform(target.transformacion) }}
                       </p>
                     </div>
-                    <div class="flex shrink-0 items-center gap-2">
-                      @if (m.rol_dashboard && m.rol_dashboard !== 'generico') {
+                    <div id="confirmar-borrado-detalle" class="space-y-2">
+                      @if (target.contador_meses) {
+                        <p class="text-caption text-red-700">
+                          Se borrarían también
+                          <strong
+                            >{{ target.contador_meses }}
+                            {{ target.contador_meses === 1 ? 'mes' : 'meses' }}</strong
+                          >
+                          de Flujo Mensual
+                          @if (contadorRangeLabel(target)) {
+                            ({{ contadorRangeLabel(target) }})
+                          }
+                          . Eso no se puede recuperar.
+                        </p>
+                        @if (target.rol_dashboard && target.rol_dashboard !== 'generico') {
+                          <p class="text-caption text-red-700">
+                            Si lo que buscas es que deje de usarse,
+                            <strong>quítale el rol</strong>: la saca de circulación y conserva el
+                            histórico.
+                          </p>
+                        }
+                      } @else {
+                        <p class="text-caption text-red-700">
+                          No tiene histórico mensual asociado: borrarla no pierde datos.
+                        </p>
+                      }
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        (click)="confirmDeleteVariableMap()"
+                        [attr.aria-label]="
+                          'Eliminar definitivamente ' +
+                          target.alias +
+                          (target.contador_meses
+                            ? ' y sus ' + target.contador_meses + ' meses de histórico'
+                            : '')
+                        "
+                        class="rounded-md bg-red-600 px-3 py-2 text-caption font-semibold text-white transition-colors hover:bg-red-700 active:scale-95"
+                      >
+                        Eliminar de todos modos
+                      </button>
+                      @if (target.rol_dashboard && target.rol_dashboard !== 'generico') {
                         <button
                           type="button"
-                          (click)="quitarRolMapping(m)"
-                          [disabled]="busy() === 'rol-' + m.id"
+                          (click)="cancelDeleteVariableMap(); quitarRolMapping(target)"
+                          [attr.aria-label]="
+                            'Quitar el rol a ' + target.alias + ' en vez de eliminarla'
+                          "
                           class="secondary-button"
                         >
-                          {{ busy() === 'rol-' + m.id ? 'Quitando…' : 'Quitar rol' }}
+                          Quitar rol
                         </button>
                       }
                       <button
                         type="button"
-                        (click)="askDeleteVariableMap(m)"
-                        class="icon-button text-red-500 active:scale-95"
-                        aria-label="Eliminar variable"
+                        (click)="cancelDeleteVariableMap()"
+                        class="secondary-button"
                       >
-                        <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
-                          >delete</span
-                        >
+                        Cancelar
                       </button>
                     </div>
-                  </li>
-                }
-              </ul>
-            </div>
-          }
-
-          <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div
-              class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
-            >
-              <div>
-                <h3 class="text-body-sm font-semibold text-slate-900">
-                  Datos detectados del equipo
-                </h3>
-                <p class="text-caption font-semibold text-slate-500">
-                  REG1, REG2 y similares se asignan manualmente por sitio.
-                </p>
+                  </div>
+                </div>
               </div>
-              <p class="text-caption font-semibold text-slate-500">
-                {{ siteVariables().variables.length }} variables
-              </p>
-            </div>
+            }
 
-            <div class="overflow-x-auto">
-              <table class="w-full min-w-175 text-left text-body-sm">
-                <thead
-                  class="bg-slate-100 text-caption font-semibold uppercase tracking-[0.12em] text-slate-500"
-                >
-                  <tr>
-                    <th class="px-4 py-3">Dato</th>
-                    <th class="px-4 py-3">Valor</th>
-                    <th class="px-4 py-3">Alias</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                    <tr
-                      class="group cursor-pointer bg-white transition-colors hover:bg-primary-tint-06"
-                      (click)="prepareVariableMap(variable)"
-                      title="Seleccionar variable"
-                    >
-                      <td class="px-4 py-3 font-mono text-caption font-bold text-slate-700">
-                        {{ variable.nombre_dato }}
-                      </td>
-                      <td class="px-4 py-3 font-bold text-slate-900">
-                        {{ displayValue(variable.valor_dato) }}
-                      </td>
-                      <td class="px-4 py-3">
-                        <div class="flex items-center justify-between gap-3">
-                          @if (variable.mapping) {
-                            <div>
-                              <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
-                              <p class="text-caption text-slate-500">
-                                {{ displayRole(variable.mapping.rol_dashboard) }} ·
-                                @if (bitCountFor(variable.nombre_dato); as bits) {
-                                  {{ bits }}
-                                  {{ bits === 1 ? 'señal digital' : 'señales digitales' }}
-                                } @else {
-                                  {{ displayTransform(variable.mapping.transformacion) }}
-                                  {{ variable.mapping.unidad || '' }}
-                                }
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              (click)="
-                                $event.stopPropagation(); askDeleteVariableMap(variable.mapping)
-                              "
-                              class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 active:scale-95"
-                              aria-label="Eliminar alias"
-                            >
-                              <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
-                                >delete</span
+            @if (duplicateRoleGroups().length) {
+              <div
+                class="rounded-xl border border-red-200 bg-red-50 p-4"
+                role="alert"
+                aria-labelledby="aviso-rol-duplicado"
+              >
+                <div class="flex items-start gap-3">
+                  <span
+                    class="material-symbols-outlined shrink-0 text-[20px] text-red-600"
+                    aria-hidden="true"
+                    >error</span
+                  >
+                  <div class="min-w-0 space-y-2">
+                    <h3 id="aviso-rol-duplicado" class="text-body-sm font-semibold text-red-800">
+                      Rol duplicado: hay datos que no se están usando
+                    </h3>
+                    @for (grupo of duplicateRoleGroups(); track grupo.rol) {
+                      <div class="text-caption text-red-700">
+                        <p>
+                          <strong>{{ displayRole(grupo.rol) }}</strong> lo reclaman
+                          {{ grupo.mappings.length }} variables:
+                        </p>
+                        <ul class="mt-1 space-y-0.5 pl-4">
+                          @for (m of grupo.mappings; track m.id) {
+                            <li class="list-disc">
+                              <span class="font-mono">{{ m.alias }}</span>
+                              <span class="font-mono"
+                                >({{ m.d1 }}{{ m.d2 ? ' + ' + m.d2 : '' }})</span
                               >
-                            </button>
-                          } @else {
+                              @if (isOrphanMapping(m)) {
+                                <span class="font-semibold">— sin dato del equipo</span>
+                              } @else {
+                                <span>— recibiendo dato</span>
+                              }
+                            </li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                    <p class="text-caption text-red-700">
+                      El histórico y el DGA usan una sola, y cuál gana lo decide un puntaje interno,
+                      no lo que quedó configurado acá. Quítale el rol a la que ya no recibe dato: la
+                      saca de circulación sin borrar nada.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if (orphanMappings().length) {
+              <section
+                class="overflow-hidden rounded-xl border border-amber-200 bg-white"
+                aria-labelledby="titulo-sin-dato"
+              >
+                <div
+                  class="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 bg-amber-50 px-4 py-3"
+                >
+                  <div>
+                    <h3 id="titulo-sin-dato" class="text-body-sm font-semibold text-slate-900">
+                      Variables sin dato del equipo
+                    </h3>
+                    <p class="text-caption font-semibold text-slate-500">
+                      Configuradas acá, pero el equipo ya no las envía. Suelen quedar de un recambio
+                      de instrumento.
+                      @if (lastSampleLabel()) {
+                        Última muestra recibida: {{ lastSampleLabel() }}.
+                      }
+                    </p>
+                  </div>
+                  <p class="text-caption font-semibold text-slate-500">
+                    {{ orphanMappings().length }} sin dato
+                  </p>
+                </div>
+                <ul class="divide-y divide-slate-100">
+                  @for (m of orphanMappings(); track m.id) {
+                    <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                      <div class="min-w-0">
+                        <p class="flex flex-wrap items-center gap-2 font-bold text-slate-800">
+                          {{ m.alias }}
+                          @if (hasConflictingRole(m)) {
                             <span
-                              class="rounded-md bg-slate-100 px-2 py-1 text-caption font-bold text-slate-500"
+                              class="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-caption-xs font-semibold text-red-700"
                             >
-                              Sin alias
+                              Rol en conflicto
                             </span>
                           }
-                        </div>
-                      </td>
-                    </tr>
-                  } @empty {
-                    <tr class="bg-white">
-                      <td
-                        colspan="3"
-                        class="px-4 py-8 text-center text-body-sm font-semibold text-slate-500"
-                      >
-                        Aún no hay variables detectadas para el serial de este sitio.
-                      </td>
-                    </tr>
+                        </p>
+                        <p class="text-caption text-slate-500">
+                          <span class="font-mono">{{ m.d1 }}{{ m.d2 ? ' + ' + m.d2 : '' }}</span>
+                          · {{ displayRole(m.rol_dashboard) }} ·
+                          {{ displayTransform(m.transformacion) }}
+                          @if (m.unidad) {
+                            {{ m.unidad }}
+                          }
+                          @if (m.contador_meses) {
+                            · {{ m.contador_meses }}
+                            {{ m.contador_meses === 1 ? 'mes' : 'meses' }} de histórico
+                            @if (contadorRangeLabel(m)) {
+                              ({{ contadorRangeLabel(m) }})
+                            }
+                          } @else {
+                            · sin histórico mensual
+                          }
+                        </p>
+                      </div>
+                      <div class="flex shrink-0 items-center gap-2">
+                        @if (m.rol_dashboard && m.rol_dashboard !== 'generico') {
+                          <button
+                            type="button"
+                            (click)="quitarRolMapping(m)"
+                            [disabled]="busy() === 'rol-' + m.id"
+                            [attr.aria-busy]="busy() === 'rol-' + m.id"
+                            [attr.aria-label]="
+                              'Quitar el rol ' +
+                              displayRole(m.rol_dashboard) +
+                              ' a ' +
+                              m.alias +
+                              '. Conserva su histórico.'
+                            "
+                            class="secondary-button"
+                          >
+                            {{ busy() === 'rol-' + m.id ? 'Quitando…' : 'Quitar rol' }}
+                          </button>
+                        }
+                        <button
+                          type="button"
+                          (click)="askDeleteVariableMap(m)"
+                          [attr.aria-label]="'Eliminar la variable ' + m.alias"
+                          class="icon-button text-red-500 active:scale-95"
+                        >
+                          <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                            >delete</span
+                          >
+                        </button>
+                      </div>
+                    </li>
                   }
-                </tbody>
-              </table>
+                </ul>
+              </section>
+            }
+
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div
+                class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
+              >
+                <div>
+                  <h3 class="text-body-sm font-semibold text-slate-900">
+                    Datos detectados del equipo
+                  </h3>
+                  <p class="text-caption font-semibold text-slate-500">
+                    REG1, REG2 y similares se asignan manualmente por sitio.
+                  </p>
+                </div>
+                <p class="text-caption font-semibold text-slate-500">
+                  {{ siteVariables().variables.length }} variables
+                </p>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full min-w-175 text-left text-body-sm">
+                  <thead
+                    class="bg-slate-100 text-caption font-semibold uppercase tracking-[0.12em] text-slate-500"
+                  >
+                    <tr>
+                      <th class="px-4 py-3">Dato</th>
+                      <th class="px-4 py-3">Valor</th>
+                      <th class="px-4 py-3">Alias</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    @for (variable of siteVariables().variables; track variable.nombre_dato) {
+                      <tr
+                        class="group cursor-pointer bg-white transition-colors hover:bg-primary-tint-06"
+                        (click)="prepareVariableMap(variable)"
+                        title="Seleccionar variable"
+                      >
+                        <td class="px-4 py-3 font-mono text-caption font-bold text-slate-700">
+                          {{ variable.nombre_dato }}
+                        </td>
+                        <td class="px-4 py-3 font-bold text-slate-900">
+                          {{ displayValue(variable.valor_dato) }}
+                        </td>
+                        <td class="px-4 py-3">
+                          <div class="flex items-center justify-between gap-3">
+                            @if (variable.mapping) {
+                              <div>
+                                <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
+                                <p class="text-caption text-slate-500">
+                                  {{ displayRole(variable.mapping.rol_dashboard) }} ·
+                                  @if (bitCountFor(variable.nombre_dato); as bits) {
+                                    {{ bits }}
+                                    {{ bits === 1 ? 'señal digital' : 'señales digitales' }}
+                                  } @else {
+                                    {{ displayTransform(variable.mapping.transformacion) }}
+                                    {{ variable.mapping.unidad || '' }}
+                                  }
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                (click)="
+                                  $event.stopPropagation(); askDeleteVariableMap(variable.mapping)
+                                "
+                                class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 active:scale-95"
+                                aria-label="Eliminar alias"
+                              >
+                                <span
+                                  class="material-symbols-outlined text-[18px]"
+                                  aria-hidden="true"
+                                  >delete</span
+                                >
+                              </button>
+                            } @else {
+                              <span
+                                class="rounded-md bg-slate-100 px-2 py-1 text-caption font-bold text-slate-500"
+                              >
+                                Sin alias
+                              </span>
+                            }
+                          </div>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr class="bg-white">
+                        <td
+                          colspan="3"
+                          class="px-4 py-8 text-center text-body-sm font-semibold text-slate-500"
+                        >
+                          Aún no hay variables detectadas para el serial de este sitio.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -2355,6 +2442,24 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
   isOrphanMapping(mapping: VariableMapping): boolean {
     return !this.detectedKeys().has(mapping.d1);
   }
+
+  /**
+   * true si el rol de este mapeo lo reclama también otro. Separa el huérfano
+   * inofensivo (dejó de llegar y ya, como una señal vieja) del que además le
+   * está peleando el rol a la variable nueva, que es el que hay que atender.
+   */
+  hasConflictingRole(mapping: VariableMapping): boolean {
+    const rol = mapping.rol_dashboard || 'generico';
+    if (rol === 'generico') return false;
+    return this.duplicateRoleGroups().some((g) => g.rol === rol);
+  }
+
+  /**
+   * Marca temporal de la última muestra del equipo. Da contexto al "sin dato":
+   * si el equipo dejó de comunicar hace un mes, TODAS las variables aparecen
+   * huérfanas y el problema es otro.
+   */
+  lastSampleLabel = computed(() => this.siteVariables().variables[0]?.timestamp_completo || '');
 
   /** Etiqueta del rango de meses de contadores que cuelgan de un mapeo. */
   contadorRangeLabel(mapping: VariableMapping): string {

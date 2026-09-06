@@ -355,6 +355,41 @@ describe('SiteVariableSettingsPanelComponent · lógica de transformación', () 
       expect(component.isOrphanMapping(muerto as never)).toBe(true);
     });
 
+    it('hasConflictingRole separa el huérfano peligroso del inofensivo', () => {
+      const enConflicto = mapping({ id: 'RM_OLD', d1: 'AI23', rol_dashboard: 'caudal' });
+      const inofensivo = mapping({ id: 'RM_SIG', d1: 'AI132', rol_dashboard: 'señal' });
+      component.siteVariables.set(
+        variablesPayload(
+          [{ nombre_dato: 'REG3000', valor_dato: 1 }],
+          [mapping({ id: 'RM_NEW', d1: 'REG3000' }), enConflicto, inofensivo],
+        ),
+      );
+      // AI23 le pelea el rol `caudal` a REG3000; AI132 es el unico con rol `señal`.
+      expect(component.hasConflictingRole(enConflicto as never)).toBe(true);
+      expect(component.hasConflictingRole(inofensivo as never)).toBe(false);
+    });
+
+    it('el rol generico nunca esta en conflicto', () => {
+      const generica = mapping({ id: 'G1', d1: 'AI23', rol_dashboard: 'generico' });
+      component.siteVariables.set(
+        variablesPayload(
+          [{ nombre_dato: 'REG3000', valor_dato: 1 }],
+          [generica, mapping({ id: 'G2', d1: 'AI24', rol_dashboard: 'generico' })],
+        ),
+      );
+      expect(component.hasConflictingRole(generica as never)).toBe(false);
+    });
+
+    it('lastSampleLabel da contexto al "sin dato"', () => {
+      component.siteVariables.set(variablesPayload([{ nombre_dato: 'REG3000', valor_dato: 1 }]));
+      expect(component.lastSampleLabel()).toBe('2026-01-01 00:00');
+    });
+
+    it('lastSampleLabel queda vacío si el equipo no mandó nada', () => {
+      component.siteVariables.set(variablesPayload([]));
+      expect(component.lastSampleLabel()).toBe('');
+    });
+
     it('el borrado pide confirmación en vez de borrar de una', () => {
       const m = mapping({ id: 'RM_OLD', d1: 'AI23', contador_meses: 37 });
       component.askDeleteVariableMap(m as never);
