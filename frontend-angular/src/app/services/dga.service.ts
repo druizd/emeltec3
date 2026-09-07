@@ -192,6 +192,30 @@ export interface DgaReviewActionPayload {
   admin_note: string;
 }
 
+/** Conteo por estado de los slots de un rango, previo a una acción en bloque. */
+export interface DgaSlotsResumen {
+  estados: { estatus: string; total: number }[];
+  total: number;
+  /** Tope de filas que la acción puede tocar en un solo request. */
+  limite: number;
+}
+
+export interface DgaBulkSlotActionPayload {
+  action: 'recalcular' | 'dar_de_baja';
+  desde: string;
+  hasta: string;
+  nota: string;
+}
+
+export interface DgaBulkSlotActionResult {
+  action: 'recalcular' | 'dar_de_baja';
+  /** Slots efectivamente modificados. */
+  afectados: number;
+  limite: number;
+  /** Conteo por estado ANTES de la acción: explica por qué afectados ≠ total. */
+  antes: { estatus: string; total: number }[];
+}
+
 // ============================================================================
 // Service
 // ============================================================================
@@ -368,6 +392,36 @@ export class DgaService {
       .post<
         ApiResponse<{ incidencia_id: number; slots_aceptados: number }>
       >(`/api/v2/dga/sites/${siteId}/reconocer-sensor-defectuoso`, { nota })
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  /**
+   * Conteo por estado de los slots del rango. Precede a una acción en bloque
+   * para que no se aplique a ciegas: es lectura, no pide 2FA.
+   */
+  slotsResumen(siteId: string, desdeIso: string, hastaIso: string): Observable<DgaSlotsResumen> {
+    const qs = new URLSearchParams({ desde: desdeIso, hasta: hastaIso }).toString();
+    return this.http
+      .get<ApiResponse<DgaSlotsResumen>>(`/api/v2/dga/sites/${siteId}/slots/resumen?${qs}`)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  /**
+   * Acción en bloque sobre un rango de slots.
+   *
+   * `recalcular` los devuelve a `vacio` para que el fill los recompute con la
+   * config actual del reg_map; `dar_de_baja` los cierra como fallido con la
+   * nota. Nunca toca `enviado` ni `enviando`.
+   *
+   * Exige 2FA en el backend: el interceptor global orquesta el step-up solo,
+   * así que acá no hay nada que manejar.
+   */
+  bulkSlotAction(
+    siteId: string,
+    payload: DgaBulkSlotActionPayload,
+  ): Observable<DgaBulkSlotActionResult> {
+    return this.http
+      .post<ApiResponse<DgaBulkSlotActionResult>>(`/api/v2/dga/sites/${siteId}/slots/bulk`, payload)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 }

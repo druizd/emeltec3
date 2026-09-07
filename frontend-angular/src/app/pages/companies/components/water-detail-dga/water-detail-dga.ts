@@ -1,5 +1,6 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
+import { DgaSlotsMantenimientoComponent } from './dga-slots-mantenimiento';
 import {
   Component,
   OnDestroy,
@@ -99,6 +100,7 @@ interface SiteDashboardData {
     ChartSkeletonComponent,
     TableSkeletonComponent,
     WellStatCardComponent,
+    DgaSlotsMantenimientoComponent,
   ],
   template: `
     <ng-container>
@@ -1001,6 +1003,11 @@ interface SiteDashboardData {
             </article>
           </div>
         </section>
+
+        <!-- Mantenimiento de slots: recalcular tras corregir un mapeo, o dar de
+             baja el tramo cuyo dato no es declarable. Antes solo por SQL. -->
+        <app-dga-slots-mantenimiento [siteId]="siteId()" (slotsChanged)="onSlotsChanged()" />
+
         <!-- Registros DGA -->
         <section
           class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
@@ -1948,6 +1955,16 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
     const obra = this.obraDga();
     if (!obra) return null;
     return `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas?codigoObra=${encodeURIComponent(obra)}&numeroComprobante=${encodeURIComponent(comprobante)}`;
+  }
+
+  /**
+   * Tras recalcular o dar de baja un rango, la tabla y el último envío quedaron
+   * viejos. El fill tarda minutos en repoblar lo recalculado, así que esto
+   * refresca lo que ya cambió (los estados) y no espera al relleno.
+   */
+  onSlotsChanged(): void {
+    void this.loadDgaReports();
+    this.loadUltimoEnvio(this.siteId());
   }
 
   private async loadDgaReports(): Promise<void> {
