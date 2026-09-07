@@ -13,10 +13,12 @@
 
 ## DGA (cumplimiento regulatorio)
 
-| Doc                                                | Tema                                                            |
-| -------------------------------------------------- | --------------------------------------------------------------- |
-| [dga-reporte-proceso.md](./dga-reporte-proceso.md) | Diseño del proceso de reporte DGA (workers, estados, lifecycle) |
-| [dga-smoke-tests.md](./dga-smoke-tests.md)         | Checklist de smoke tests del pipeline DGA                       |
+| Doc                                                                              | Tema                                                                                 |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [dga-reporte-proceso.md](./dga-reporte-proceso.md)                               | Diseño del proceso de reporte DGA (workers, estados, lifecycle)                      |
+| [dga-smoke-tests.md](./dga-smoke-tests.md)                                       | Checklist de smoke tests del pipeline DGA                                            |
+| [dga-mantenimiento-slots.md](./dga-mantenimiento-slots.md)                       | Recalcular y dar de baja slots por rango: endpoints, candados y auditoría            |
+| [s128-recambio-caudalimetro-2026-09.md](./s128-recambio-caudalimetro-2026-09.md) | Caso S128: recambio de caudalímetro, m³/h declarado como L/s y subdeclaración a SNIA |
 
 ## Operación
 
