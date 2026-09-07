@@ -87,6 +87,7 @@ function baseForm(overrides: Partial<VariableFormShape> = {}): VariableFormShape
 function variablesPayload(
   vars: { nombre_dato: string; valor_dato: number }[],
   mappings: unknown[] = [],
+  timestamp = '2026-01-01 00:00',
 ): SiteVariablesPayload {
   return {
     site: {
@@ -103,7 +104,7 @@ function variablesPayload(
     variables: vars.map((v) => ({
       nombre_dato: v.nombre_dato,
       valor_dato: v.valor_dato,
-      timestamp_completo: '2026-01-01 00:00',
+      timestamp_completo: timestamp,
       mapping: null,
     })),
     mappings,
@@ -380,9 +381,19 @@ describe('SiteVariableSettingsPanelComponent · lógica de transformación', () 
       expect(component.hasConflictingRole(generica as never)).toBe(false);
     });
 
-    it('lastSampleLabel da contexto al "sin dato"', () => {
-      component.siteVariables.set(variablesPayload([{ nombre_dato: 'REG3000', valor_dato: 1 }]));
-      expect(component.lastSampleLabel()).toBe('2026-01-01 00:00');
+    it('lastSampleLabel formatea DD/MM/YYYY HH:MM en UTC-4', () => {
+      component.siteVariables.set(
+        variablesPayload([{ nombre_dato: 'REG3000', valor_dato: 1 }], [], '2026-09-06T23:52:00Z'),
+      );
+      // 23:52 UTC en UTC-4 son las 19:52 del mismo dia.
+      expect(component.lastSampleLabel()).toBe('06/09/2026 19:52');
+    });
+
+    it('lastSampleLabel devuelve el crudo si no parsea, en vez de "Invalid Date"', () => {
+      component.siteVariables.set(
+        variablesPayload([{ nombre_dato: 'REG3000', valor_dato: 1 }], [], 'no es una fecha'),
+      );
+      expect(component.lastSampleLabel()).toBe('no es una fecha');
     });
 
     it('lastSampleLabel queda vacío si el equipo no mandó nada', () => {
