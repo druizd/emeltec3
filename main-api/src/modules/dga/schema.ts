@@ -119,11 +119,29 @@ export type ReviewSlotActionPayload = z.infer<typeof ReviewSlotActionPayload>;
  * también dentro del slot. Un rango sin explicación es exactamente lo que hace
  * imposible reconstruir después por qué un mes no se declaró.
  */
+/**
+ * Motivo tipificado de una baja. Va a `fail_reason` como `baja_<tipo>`, así
+ * queda consultable: "todas las bajas por recambio de instrumento" es una
+ * query, no una búsqueda de texto libre en las notas.
+ *
+ * Existe porque `fallido` se lee como "el sistema falló", y un slot cerrado
+ * porque estaban cambiando el caudalímetro es un evento esperado, no una falla.
+ */
+export const MotivoBaja = z.enum([
+  'recambio_instrumento',
+  'sin_dato_crudo',
+  'dato_no_confiable',
+  'otro',
+]);
+export type MotivoBaja = z.infer<typeof MotivoBaja>;
+
 export const BulkSlotActionPayload = z
   .object({
     action: z.enum(['recalcular', 'dar_de_baja']),
     desde: z.string().datetime({ offset: true }),
     hasta: z.string().datetime({ offset: true }),
+    /** Solo aplica a `dar_de_baja`; en `recalcular` se ignora. */
+    motivo_tipo: MotivoBaja.default('otro'),
     nota: z.string().trim().min(5).max(500),
   })
   .refine((v) => new Date(v.desde) < new Date(v.hasta), {
