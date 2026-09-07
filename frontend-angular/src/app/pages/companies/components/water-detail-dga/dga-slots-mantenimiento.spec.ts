@@ -167,6 +167,15 @@ describe('DgaSlotsMantenimientoComponent', () => {
     });
   });
 
+  describe('cierre del modal', () => {
+    it('emite cerrar sin tocar nada: el padre decide si sigue montado', () => {
+      let veces = 0;
+      c.cerrar.subscribe(() => veces++);
+      c.cerrar.emit();
+      expect(veces).toBe(1);
+    });
+  });
+
   describe('etiquetas de estado', () => {
     it('traduce los estados del backend', () => {
       expect(c.etiquetaEstado('requires_review')).toBe('Requiere revisión');
