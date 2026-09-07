@@ -53,7 +53,11 @@ describe('resetSlotsToVacio', () => {
     expect(sql).toContain('fail_reason = NULL');
     expect(sql).toContain('next_retry_at = NULL');
     // Los warnings hablaban de los valores viejos: quedarían mintiendo.
-    expect(sql).toContain('validation_warnings = NULL');
+    // A '[]' y NUNCA a NULL: la columna es JSONB NOT NULL DEFAULT '[]'
+    // (migración 2026-05-16), así que un NULL revienta la constraint y el
+    // endpoint devuelve 500. Pasó en producción con S128.
+    expect(sql).toContain("validation_warnings = '[]'::jsonb");
+    expect(sql).not.toContain('validation_warnings = NULL');
   });
 
   it('NUNCA toca enviado ni enviando', async () => {
@@ -85,6 +89,18 @@ describe('resetSlotsToVacio', () => {
   it('lleva tope de filas', async () => {
     await resetSlotsToVacio(RANGO);
     expect(ultimaLlamada().sql).toContain(`LIMIT ${BULK_SLOT_LIMIT}`);
+  });
+
+  it('no asigna NULL a ninguna columna NOT NULL de dato_dga', async () => {
+    // `estatus` y `validation_warnings` son NOT NULL; `fail_reason` y
+    // `next_retry_at` sí admiten NULL. Un test que solo mira el string del SQL
+    // no puede ejecutar la constraint, así que la lista va explícita: es la
+    // única red contra el 500 que ya nos pasó.
+    await resetSlotsToVacio(RANGO);
+    const { sql } = ultimaLlamada();
+    for (const col of ['estatus', 'validation_warnings']) {
+      expect(sql).not.toContain(`${col} = NULL`);
+    }
   });
 
   it('devuelve cuántas filas tocó', async () => {

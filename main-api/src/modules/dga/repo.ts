@@ -1272,6 +1272,10 @@ export const BULK_SLOT_LIMIT = 800;
  * fill vuelve a llenar el slot los reescribe igual (ver
  * `transitionSlotToPendiente`), pero si NO hay crudo el slot se queda en
  * `vacio` y unos warnings viejos sobre un valor que ya no está serían basura.
+ *
+ * OJO: se limpia a `'[]'::jsonb`, NO a NULL. La columna es
+ * `JSONB NOT NULL DEFAULT '[]'` (migración 2026-05-16), así que un NULL revienta
+ * la constraint y el endpoint devuelve 500.
  */
 export async function resetSlotsToVacio(input: {
   site_id: string;
@@ -1293,7 +1297,7 @@ export async function resetSlotsToVacio(input: {
         SET estatus             = 'vacio',
             fail_reason         = NULL,
             next_retry_at       = NULL,
-            validation_warnings = NULL
+            validation_warnings = '[]'::jsonb
        FROM objetivo o
       WHERE d.site_id = $1
         AND d.ts      = o.ts`,
