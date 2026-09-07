@@ -278,13 +278,14 @@ export async function applyBulkSlotAction(input: {
   action: 'recalcular' | 'dar_de_baja';
   desde: string;
   hasta: string;
+  motivo_tipo: string;
   nota: string;
   admin_email: string;
 }): Promise<{
   action: 'recalcular' | 'dar_de_baja';
   afectados: number;
   limite: number;
-  antes: { estatus: string; total: number }[];
+  antes: { estatus: string; baja_manual: boolean; total: number }[];
 }> {
   const antes = await countSlotsByEstado({
     site_id: input.site_id,
@@ -303,6 +304,7 @@ export async function applyBulkSlotAction(input: {
           site_id: input.site_id,
           desde: input.desde,
           hasta: input.hasta,
+          motivo_tipo: input.motivo_tipo,
           admin_note: input.nota,
           admin_email: input.admin_email,
         });

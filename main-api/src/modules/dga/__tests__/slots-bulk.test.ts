@@ -26,7 +26,13 @@ vi.mock('../../../config/dbHelpers', () => ({
 }));
 
 import { query } from '../../../config/dbHelpers';
-import { BULK_SLOT_LIMIT, bulkDiscardSlots, countSlotsByEstado, resetSlotsToVacio } from '../repo';
+import {
+  BAJA_MANUAL_PREFIX,
+  BULK_SLOT_LIMIT,
+  bulkDiscardSlots,
+  countSlotsByEstado,
+  resetSlotsToVacio,
+} from '../repo';
 import { BulkSlotActionPayload } from '../schema';
 
 /** SQL y args de la última llamada a query(), con el whitespace normalizado. */
@@ -112,6 +118,7 @@ describe('resetSlotsToVacio', () => {
 describe('bulkDiscardSlots', () => {
   const CON_NOTA = {
     ...RANGO,
+    motivo_tipo: 'dato_no_confiable',
     admin_note: 'Totalizador en modo neto, dato no declarable',
     admin_email: 'druiz@emeltec.cl',
   };
@@ -162,7 +169,9 @@ describe('countSlotsByEstado', () => {
       rows: [{ estatus: 'pendiente', total: '32' }],
       rowCount: 1,
     } as never);
-    await expect(countSlotsByEstado(RANGO)).resolves.toEqual([{ estatus: 'pendiente', total: 32 }]);
+    await expect(countSlotsByEstado(RANGO)).resolves.toEqual([
+      { estatus: 'pendiente', baja_manual: false, total: 32 },
+    ]);
   });
 });
 
@@ -199,5 +208,71 @@ describe('BulkSlotActionPayload', () => {
 
   it('exige fechas con offset explícito', () => {
     expect(BulkSlotActionPayload.safeParse({ ...base, desde: '2026-09-04' }).success).toBe(false);
+  });
+});
+
+/**
+ * Motivo tipificado de la baja.
+ *
+ * Un `fallido` puede ser "agoté los reintentos contra SNIA" o "lo cerré yo
+ * porque el dato no era declarable", y mostrar los dos igual hace que un
+ * recambio de instrumento —un evento esperado— se lea como una falla. El tipo
+ * va a `fail_reason` como `baja_<tipo>` para que sea consultable.
+ */
+describe('motivo tipificado', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('escribe fail_reason como baja_<tipo>, no un generico', async () => {
+    await bulkDiscardSlots({
+      ...RANGO,
+      motivo_tipo: 'recambio_instrumento',
+      admin_note: 'Cambio de caudalimetro el 04-09',
+      admin_email: 'druiz@emeltec.cl',
+    });
+    const { args } = ultimaLlamada();
+    expect(args[6]).toBe('baja_recambio_instrumento');
+    expect(args[7]).toBe('recambio_instrumento');
+  });
+
+  it('el tipo tambien queda dentro del warning del slot', async () => {
+    await bulkDiscardSlots({
+      ...RANGO,
+      motivo_tipo: 'sin_dato_crudo',
+      admin_note: 'El equipo no envio nada en esos slots',
+      admin_email: 'druiz@emeltec.cl',
+    });
+    expect(ultimaLlamada().sql).toContain("'motivo', $8::text");
+  });
+
+  it('el prefijo es el mismo que usa el conteo para detectar bajas manuales', async () => {
+    await countSlotsByEstado(RANGO);
+    // Si el prefijo del INSERT y el del LIKE se separan, las bajas dejan de
+    // reconocerse y la pantalla vuelve a mostrarlas como "Fallido".
+    expect(ultimaLlamada().args[3]).toBe(`${BAJA_MANUAL_PREFIX}%`);
+  });
+});
+
+describe('countSlotsByEstado — bajas manuales', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('agrupa tambien por si es baja manual', async () => {
+    await countSlotsByEstado(RANGO);
+    const { sql } = ultimaLlamada();
+    expect(sql).toContain('fail_reason LIKE $4');
+    expect(sql).toContain('GROUP BY estatus, 2');
+  });
+
+  it('distingue el fallido cerrado a mano del que agoto reintentos', async () => {
+    vi.mocked(query).mockResolvedValueOnce({
+      rows: [
+        { estatus: 'fallido', baja_manual: true, total: '11' },
+        { estatus: 'fallido', baja_manual: false, total: '2' },
+      ],
+      rowCount: 2,
+    } as never);
+    await expect(countSlotsByEstado(RANGO)).resolves.toEqual([
+      { estatus: 'fallido', baja_manual: true, total: 11 },
+      { estatus: 'fallido', baja_manual: false, total: 2 },
+    ]);
   });
 });

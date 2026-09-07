@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import {
   DgaService,
   type DgaBulkSlotActionResult,
+  type DgaMotivoBaja,
+  type DgaSlotEstadoCount,
   type DgaSlotsResumen,
 } from '../../../../services/dga.service';
 
@@ -22,6 +24,33 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   rechazado: 'Rechazado',
   fallido: 'Fallido',
 };
+
+/**
+ * Qué le pasa a cada estado si el pozo se pone en `rest`.
+ *
+ * Es la pregunta que uno trae al abrir el panel —"¿qué sale a la DGA?"— y que
+ * el desglose por estado a secas no responde: en S128 el conteo decía 14
+ * afectables cuando el único enviable era 1.
+ */
+const DESTINO_ENVIO: Record<string, string> = {
+  pendiente: 'se enviará a la DGA',
+  enviado: 'ya declarado',
+  enviando: 'envío en curso',
+  rechazado: 'rechazado por SNIA',
+  requires_review: 'retenido, no se envía',
+  fallido: 'cerrado, no se envía',
+  vacio: 'sin llenar todavía',
+};
+
+/** Estados que el worker de envío toma cuando el pozo está en `rest`. */
+const ENVIABLES = new Set(['pendiente']);
+
+const MOTIVOS: { id: DgaMotivoBaja; label: string }[] = [
+  { id: 'recambio_instrumento', label: 'Recambio de instrumento' },
+  { id: 'sin_dato_crudo', label: 'Sin dato crudo del equipo' },
+  { id: 'dato_no_confiable', label: 'Dato existe pero no es declarable' },
+  { id: 'otro', label: 'Otro (ver el motivo escrito)' },
+];
 
 /**
  * Mantenimiento de slots DGA de un pozo: recalcular o dar de baja un rango.
@@ -142,6 +171,29 @@ const ETIQUETA_ESTADO: Record<string, string> = {
             </p>
           </div>
 
+          <div class="mt-3">
+            <label
+              class="mb-1 block text-caption font-bold text-slate-500"
+              [attr.for]="'slots-motivo-tipo'"
+              >Tipo de baja</label
+            >
+            <select
+              id="slots-motivo-tipo"
+              [ngModel]="motivoTipo()"
+              (ngModelChange)="motivoTipo.set($event)"
+              name="slots-motivo-tipo"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
+            >
+              @for (m of motivos; track m.id) {
+                <option [value]="m.id">{{ m.label }}</option>
+              }
+            </select>
+            <p class="mt-1 text-caption-xs text-slate-500">
+              Queda consultable en el slot. Un recambio de instrumento es un evento esperado, no un
+              fallo del sistema, y así se puede distinguir después.
+            </p>
+          </div>
+
           <div class="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
@@ -169,21 +221,32 @@ const ETIQUETA_ESTADO: Record<string, string> = {
                 </p>
               } @else {
                 <ul class="mt-2 space-y-1">
-                  @for (e of r.estados; track e.estatus) {
-                    <li class="flex items-center justify-between gap-3 text-caption">
-                      <span class="text-slate-700">
-                        {{ etiquetaEstado(e.estatus) }}
+                  @for (e of r.estados; track etiquetaFila(e)) {
+                    <li class="flex items-start justify-between gap-3 text-caption">
+                      <span class="min-w-0 text-slate-700">
+                        {{ etiquetaFila(e) }}
+                        <span class="text-slate-500">— {{ destinoEnvio(e.estatus) }}</span>
                         @if (!esTocable(e.estatus)) {
-                          <span class="font-semibold text-slate-500">— no se toca</span>
+                          <span class="font-semibold text-slate-500">· no se toca</span>
                         }
                       </span>
-                      <span class="font-mono text-slate-900">{{ e.total }}</span>
+                      <span class="shrink-0 font-mono text-slate-900">{{ e.total }}</span>
                     </li>
                   }
                 </ul>
-                <p class="mt-2 text-caption font-semibold text-slate-700">
-                  Se van a afectar {{ tocables() }} {{ tocables() === 1 ? 'slot' : 'slots' }}.
-                </p>
+                <div class="mt-3 space-y-1 border-t border-slate-200 pt-2">
+                  <p class="text-caption font-semibold text-slate-800">
+                    Saldrían a la DGA al poner en envío: {{ enviables() }}
+                    {{ enviables() === 1 ? 'slot' : 'slots' }}
+                  </p>
+                  <p class="text-caption text-slate-600">
+                    La acción afectaría {{ tocables() }} {{ tocables() === 1 ? 'slot' : 'slots' }}
+                    @if (yaDeBaja() > 0) {
+                      , de los cuales <strong>{{ yaDeBaja() }}</strong> ya están dados de baja
+                    }
+                    .
+                  </p>
+                </div>
                 @if (r.total > r.limite) {
                   <p class="mt-1 text-caption text-amber-700">
                     El rango supera el tope de {{ r.limite }} por operación: se procesan los más
@@ -270,6 +333,7 @@ export class DgaSlotsMantenimientoComponent {
   desde = signal('');
   hasta = signal('');
   nota = signal('');
+  motivoTipo = signal<DgaMotivoBaja>('recambio_instrumento');
   busy = signal('');
   error = signal('');
   resumen = signal<DgaSlotsResumen | null>(null);
@@ -279,6 +343,24 @@ export class DgaSlotsMantenimientoComponent {
   tocables = computed(() =>
     (this.resumen()?.estados ?? [])
       .filter((e) => TOCABLES.has(e.estatus))
+      .reduce((acc, e) => acc + e.total, 0),
+  );
+
+  /**
+   * Los que el worker de envío realmente tomaría. Es la pregunta que uno trae
+   * al abrir el panel, y no coincide con los afectables: en S128 eran 1 de 829
+   * mientras el conteo de afectables decía 14.
+   */
+  enviables = computed(() =>
+    (this.resumen()?.estados ?? [])
+      .filter((e) => ENVIABLES.has(e.estatus))
+      .reduce((acc, e) => acc + e.total, 0),
+  );
+
+  /** Afectables que ya están cerrados: volver a darlos de baja no aporta. */
+  yaDeBaja = computed(() =>
+    (this.resumen()?.estados ?? [])
+      .filter((e) => e.estatus === 'fallido' && e.baja_manual)
       .reduce((acc, e) => acc + e.total, 0),
   );
 
@@ -292,8 +374,25 @@ export class DgaSlotsMantenimientoComponent {
     () => this.rangoValido() && this.notaValida() && this.busy() === '' && this.tocables() > 0,
   );
 
+  readonly motivos = MOTIVOS;
+
   etiquetaEstado(estatus: string): string {
     return ETIQUETA_ESTADO[estatus] ?? estatus;
+  }
+
+  /**
+   * Etiqueta de la fila del desglose. Un `fallido` cerrado a mano se muestra
+   * como "Dado de baja": llamarlo "Fallido" hace que un recambio de instrumento
+   * —un evento esperado y documentado— se lea como una falla del sistema.
+   */
+  etiquetaFila(e: DgaSlotEstadoCount): string {
+    if (e.estatus === 'fallido' && e.baja_manual) return 'Dado de baja';
+    return this.etiquetaEstado(e.estatus);
+  }
+
+  /** Qué le pasa a ese estado si el pozo se pone en envío. */
+  destinoEnvio(estatus: string): string {
+    return DESTINO_ENVIO[estatus] ?? 'sin clasificar';
   }
 
   esTocable(estatus: string): boolean {
@@ -343,6 +442,7 @@ export class DgaSlotsMantenimientoComponent {
         action,
         desde: this.desdeIso(),
         hasta: this.hastaIso(),
+        motivo_tipo: this.motivoTipo(),
         nota: this.nota().trim(),
       })
       .subscribe({

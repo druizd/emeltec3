@@ -1260,6 +1260,16 @@ const BULK_TOUCHABLE_ESTADOS = ['pendiente', 'requires_review', 'fallido'] as co
 export const BULK_SLOT_LIMIT = 800;
 
 /**
+ * Prefijo que marca una baja hecha a mano desde la plataforma.
+ *
+ * Un `fallido` puede ser dos cosas muy distintas: un slot que agotó sus
+ * reintentos contra SNIA, o uno que un operador cerró a propósito porque el
+ * dato no era declarable. Mostrar los dos como "Fallido" hace que un evento
+ * esperado —un recambio de instrumento— se lea como una falla del sistema.
+ */
+export const BAJA_MANUAL_PREFIX = 'baja_';
+
+/**
  * Devuelve los slots a `vacio` para que el fill los recompute con la
  * configuración actual del `reg_map`.
  *
@@ -1319,6 +1329,8 @@ export async function bulkDiscardSlots(input: {
   site_id: string;
   desde: string;
   hasta: string;
+  /** Motivo tipificado. Va a `fail_reason` como `baja_<tipo>`, consultable. */
+  motivo_tipo: string;
   admin_note: string;
   admin_email: string;
 }): Promise<number> {
@@ -1335,11 +1347,12 @@ export async function bulkDiscardSlots(input: {
      )
      UPDATE dato_dga d
         SET estatus             = 'fallido',
-            fail_reason         = 'baja_manual_rango',
+            fail_reason         = $7::text,
             next_retry_at       = NULL,
             validation_warnings = COALESCE(d.validation_warnings, '[]'::jsonb)
                                   || jsonb_build_array(jsonb_build_object(
                                        'code', 'admin_discarded_bulk',
+                                       'motivo', $8::text,
                                        'reason', $4::text,
                                        'by', $5::text,
                                        'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
@@ -1354,30 +1367,44 @@ export async function bulkDiscardSlots(input: {
       input.admin_note,
       input.admin_email,
       [...BULK_TOUCHABLE_ESTADOS],
+      `${BAJA_MANUAL_PREFIX}${input.motivo_tipo}`,
+      input.motivo_tipo,
     ],
     { name: 'dga__bulk_discard_slots' },
   );
   return r.rowCount ?? 0;
 }
 
-/** Conteo por estado del rango, para previsualizar qué tocaría la acción. */
+/**
+ * Conteo por estado del rango, distinguiendo las bajas manuales.
+ *
+ * `baja_manual` sale de `fail_reason LIKE 'baja\_%'`. No cubre los descartes de
+ * a uno viejos, porque `markReviewSlotFailedManual` guarda la nota del admin
+ * como `fail_reason` en vez de un código — ahí no hay nada que matchear.
+ */
 export async function countSlotsByEstado(input: {
   site_id: string;
   desde: string;
   hasta: string;
-}): Promise<{ estatus: string; total: number }[]> {
-  const r = await query<{ estatus: string; total: string }>(
-    `SELECT estatus, count(*) AS total
+}): Promise<{ estatus: string; baja_manual: boolean; total: number }[]> {
+  const r = await query<{ estatus: string; baja_manual: boolean; total: string }>(
+    `SELECT estatus,
+            COALESCE(fail_reason LIKE $4, FALSE) AS baja_manual,
+            count(*)                             AS total
        FROM dato_dga
       WHERE site_id = $1
         AND ts >= $2
         AND ts <  $3
-      GROUP BY estatus
-      ORDER BY estatus`,
-    [input.site_id, input.desde, input.hasta],
+      GROUP BY estatus, 2
+      ORDER BY estatus, 2`,
+    [input.site_id, input.desde, input.hasta, `${BAJA_MANUAL_PREFIX}%`],
     { name: 'dga__count_slots_by_estado' },
   );
-  return r.rows.map((row) => ({ estatus: row.estatus, total: Number(row.total) }));
+  return r.rows.map((row) => ({
+    estatus: row.estatus,
+    baja_manual: row.baja_manual === true,
+    total: Number(row.total),
+  }));
 }
 
 // ============================================================================

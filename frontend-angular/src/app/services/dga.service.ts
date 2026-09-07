@@ -192,9 +192,23 @@ export interface DgaReviewActionPayload {
   admin_note: string;
 }
 
+/** Motivo tipificado de una baja. Va a fail_reason como baja_<tipo>. */
+export type DgaMotivoBaja =
+  | 'recambio_instrumento'
+  | 'sin_dato_crudo'
+  | 'dato_no_confiable'
+  | 'otro';
+
+/** Una fila del desglose. `baja_manual` separa el fallido cerrado a mano. */
+export interface DgaSlotEstadoCount {
+  estatus: string;
+  baja_manual: boolean;
+  total: number;
+}
+
 /** Conteo por estado de los slots de un rango, previo a una acción en bloque. */
 export interface DgaSlotsResumen {
-  estados: { estatus: string; total: number }[];
+  estados: DgaSlotEstadoCount[];
   total: number;
   /** Tope de filas que la acción puede tocar en un solo request. */
   limite: number;
@@ -204,6 +218,8 @@ export interface DgaBulkSlotActionPayload {
   action: 'recalcular' | 'dar_de_baja';
   desde: string;
   hasta: string;
+  /** Solo aplica a `dar_de_baja`. */
+  motivo_tipo: DgaMotivoBaja;
   nota: string;
 }
 
@@ -213,7 +229,7 @@ export interface DgaBulkSlotActionResult {
   afectados: number;
   limite: number;
   /** Conteo por estado ANTES de la acción: explica por qué afectados ≠ total. */
-  antes: { estatus: string; total: number }[];
+  antes: DgaSlotEstadoCount[];
 }
 
 // ============================================================================

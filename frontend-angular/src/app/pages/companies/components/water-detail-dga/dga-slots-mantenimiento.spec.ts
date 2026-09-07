@@ -26,8 +26,11 @@ function crear(): DgaSlotsMantenimientoComponent {
   return ref.componentInstance;
 }
 
-function resumen(estados: { estatus: string; total: number }[]): DgaSlotsResumen {
-  return { estados, total: estados.reduce((a, e) => a + e.total, 0), limite: 800 };
+function resumen(
+  estados: { estatus: string; total: number; baja_manual?: boolean }[],
+): DgaSlotsResumen {
+  const filas = estados.map((e) => ({ baja_manual: false, ...e }));
+  return { estados: filas, total: filas.reduce((a, e) => a + e.total, 0), limite: 800 };
 }
 
 /** `desdeIso`/`hastaIso` son privados: se acceden por cast, como en otros specs. */
@@ -148,9 +151,9 @@ describe('DgaSlotsMantenimientoComponent', () => {
         afectados: 11,
         limite: 800,
         antes: [
-          { estatus: 'pendiente', total: 6 },
-          { estatus: 'requires_review', total: 5 },
-          { estatus: 'enviado', total: 1 },
+          { estatus: 'pendiente', baja_manual: false, total: 6 },
+          { estatus: 'requires_review', baja_manual: false, total: 5 },
+          { estatus: 'enviado', baja_manual: false, total: 1 },
         ],
       };
       expect(c.noTocados(res)).toBe(1);
@@ -161,7 +164,7 @@ describe('DgaSlotsMantenimientoComponent', () => {
         action: 'recalcular',
         afectados: 55,
         limite: 800,
-        antes: [{ estatus: 'pendiente', total: 55 }],
+        antes: [{ estatus: 'pendiente', baja_manual: false, total: 55 }],
       };
       expect(c.noTocados(res)).toBe(0);
     });
@@ -173,6 +176,79 @@ describe('DgaSlotsMantenimientoComponent', () => {
       c.cerrar.subscribe(() => veces++);
       c.cerrar.emit();
       expect(veces).toBe(1);
+    });
+  });
+
+  /**
+   * La pregunta real al abrir el panel es "¿qué sale a la DGA si pongo rest?".
+   * El conteo de afectables no la responde: en S128 eran 14 afectables y 1 solo
+   * enviable, y esa diferencia es la que llevó a casi dar de baja 11 slots que
+   * ya estaban cerrados.
+   */
+  describe('qué saldría realmente a la DGA', () => {
+    it('cuenta solo los pendiente, no todo lo afectable', () => {
+      c.resumen.set(
+        resumen([
+          { estatus: 'enviado', total: 815 },
+          { estatus: 'fallido', total: 11, baja_manual: true },
+          { estatus: 'pendiente', total: 1 },
+          { estatus: 'requires_review', total: 2 },
+        ]),
+      );
+      expect(c.enviables()).toBe(1);
+      expect(c.tocables()).toBe(14);
+    });
+
+    it('avisa cuántos afectables ya están dados de baja', () => {
+      c.resumen.set(
+        resumen([
+          { estatus: 'fallido', total: 11, baja_manual: true },
+          { estatus: 'pendiente', total: 1 },
+        ]),
+      );
+      expect(c.yaDeBaja()).toBe(11);
+    });
+
+    it('un fallido que agotó reintentos NO cuenta como dado de baja', () => {
+      c.resumen.set(resumen([{ estatus: 'fallido', total: 3, baja_manual: false }]));
+      expect(c.yaDeBaja()).toBe(0);
+      expect(c.tocables()).toBe(3);
+    });
+
+    it('el fallido cerrado a mano se muestra como "Dado de baja", no "Fallido"', () => {
+      expect(c.etiquetaFila({ estatus: 'fallido', baja_manual: true, total: 1 })).toBe(
+        'Dado de baja',
+      );
+      expect(c.etiquetaFila({ estatus: 'fallido', baja_manual: false, total: 1 })).toBe('Fallido');
+    });
+
+    it('cada estado dice qué le pasa en el envío', () => {
+      expect(c.destinoEnvio('pendiente')).toContain('se enviará');
+      expect(c.destinoEnvio('requires_review')).toContain('no se envía');
+      expect(c.destinoEnvio('fallido')).toContain('no se envía');
+      expect(c.destinoEnvio('enviado')).toContain('ya declarado');
+    });
+
+    it('un estado nuevo del backend no rompe la fila', () => {
+      expect(c.destinoEnvio('estado_futuro')).toBe('sin clasificar');
+      expect(c.etiquetaFila({ estatus: 'estado_futuro', baja_manual: false, total: 1 })).toBe(
+        'estado_futuro',
+      );
+    });
+  });
+
+  describe('motivo tipificado', () => {
+    it('arranca en recambio de instrumento, el caso mas comun', () => {
+      expect(c.motivoTipo()).toBe('recambio_instrumento');
+    });
+
+    it('ofrece los cuatro tipos', () => {
+      expect(c.motivos.map((m) => m.id)).toEqual([
+        'recambio_instrumento',
+        'sin_dato_crudo',
+        'dato_no_confiable',
+        'otro',
+      ]);
     });
   });
 
