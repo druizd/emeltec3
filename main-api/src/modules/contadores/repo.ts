@@ -51,6 +51,49 @@ export async function listCounterVariablesForSite(siteId: string): Promise<Count
   return result.rows;
 }
 
+/**
+ * Variables contador de un sitio para UN rol, incluyendo las **retiradas**.
+ *
+ * Un recambio de caudalimetro se resuelve creando el mapeo nuevo con el rol y
+ * degradando el viejo a `generico`, para que el dashboard lea uno solo. Pero
+ * el historico del viejo sigue vivo en `site_contador_*`: la columna `rol` de
+ * esas filas quedo congelada en el valor que tenia al escribirse. Reconstruir
+ * la serie completa exige considerar los dos equipos — el que hoy tiene el rol
+ * y el que alguna vez lo tuvo.
+ *
+ * Filtrar solo por `reg_map.rol_dashboard` (lo que hacia
+ * `listCounterVariablesForSite`) deja el fallback on-demand ciego a todo lo
+ * anterior al recambio: S128 Pozo 1 devolvia `contadores-diarios` en cero para
+ * junio, julio y agosto 2026 aunque el crudo estaba completo.
+ *
+ * El `rol` devuelto es el pedido, no el actual del mapeo: para este modulo la
+ * variable ES de ese rol en los periodos que tiene materializados.
+ */
+export async function listCounterVariablesForSiteAndRol(
+  siteId: string,
+  rol: string,
+): Promise<CounterVariable[]> {
+  const result = await query<CounterVariable>(
+    `
+    SELECT s.id AS sitio_id, s.id_serial, r.id AS variable_id, r.alias, $2::text AS rol, r.unidad
+    FROM reg_map r
+    JOIN sitio s ON s.id = r.sitio_id
+    WHERE r.sitio_id = $1
+      AND (
+        r.rol_dashboard = $2
+        OR EXISTS (
+          SELECT 1 FROM site_contador_mensual c
+          WHERE c.sitio_id = r.sitio_id AND c.variable_id = r.id AND c.rol = $2
+        )
+      )
+    ORDER BY r.alias
+    `,
+    [siteId, rol],
+    { name: 'contadores__list_counter_vars_site_rol' },
+  );
+  return result.rows;
+}
+
 export async function upsertContadorMensual(row: {
   sitio_id: string;
   variable_id: string;

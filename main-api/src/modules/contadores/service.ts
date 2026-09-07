@@ -26,15 +26,14 @@ import {
   getMappingsBySiteId,
   getSiteById,
   listContadoresBySiteAndRol,
-  listCounterVariablesForSite,
+  listCounterVariablesForSiteAndRol,
   type CounterVariable,
   upsertContadorMensual,
 } from './repo';
 import {
+  diaToIso,
   listContadorDiarioBySiteRolDias,
   listContadorJornadaBySiteRolDias,
-  diarioRowToPoint,
-  jornadaRowToPoint,
 } from './daily-repo';
 import type {
   ContadorDiarioPoint,
@@ -56,6 +55,103 @@ function mesToIsoDay(mes: unknown): string {
 }
 
 export const CHILE_TZ = 'America/Santiago';
+
+/**
+ * Milisegundos de un timestamp que puede venir como Date (node-pg parsea
+ * TIMESTAMPTZ asi, aunque los tipos de fila digan `string`) o como ISO.
+ * Devuelve -Infinity para null/invalido, para que gane cualquier valor real
+ * en las comparaciones de maximo.
+ */
+function tsMs(value: unknown): number {
+  if (value == null) return Number.NEGATIVE_INFINITY;
+  const ms = value instanceof Date ? value.getTime() : Date.parse(String(value));
+  return Number.isNaN(ms) ? Number.NEGATIVE_INFINITY : ms;
+}
+
+/** Fila materializada de contador, en lo que tienen en comun mes/dia/jornada. */
+interface CounterRowLike {
+  variable_id: string;
+  delta: number | string | null;
+  unidad: string | null;
+  muestras: number;
+  ultimo_dato: string | null;
+  resets_detectados: number;
+  actualizado_at?: string | null;
+}
+
+interface CounterAggregate {
+  delta: number | null;
+  unidad: string | null;
+  muestras: number;
+  ultimo_dato: string | null;
+  resets_detectados: number;
+}
+
+/**
+ * Colapsa en un punto las filas de un mismo periodo (mes, dia o jornada).
+ *
+ * Un sitio puede tener VARIAS variables con el mismo rol contador para el mismo
+ * periodo: al recambiar un caudalimetro el mapeo nuevo entra con el rol y el
+ * viejo se degrada a `generico`, pero las filas ya escritas conservan su `rol`
+ * congelado. El consumo del periodo es la SUMA de lo que midio cada equipo — el
+ * viejo hasta el recambio, el nuevo desde el recambio.
+ *
+ * Antes cada lectura hacia `map.set(periodo, fila)` y ganaba la ultima fila que
+ * devolvia Postgres, en un orden que no esta garantizado. Con el mapeo nuevo
+ * escribiendo una fila vacia para el mes anterior (el worker recomputa el mes
+ * previo mientras siga dentro de la ventana de 7 dias del cagg), esa fila vacia
+ * tapaba la real: S128 Pozo 1 mostraba agosto 2026 en blanco teniendo 11.886 m3
+ * medidos.
+ *
+ * `delta` queda en null solo si NINGUNA fila trae dato, para que un periodo sin
+ * mediciones siga siendo un hueco en el grafico y no un cero.
+ */
+function aggregateCounterRows(
+  rows: CounterRowLike[],
+  ctx: { sitioId: string; rol: string; periodo: string },
+): CounterAggregate | null {
+  if (rows.length === 0) return null;
+
+  let usable = rows;
+  const unidades = new Set(rows.map((r) => r.unidad).filter((u): u is string => u != null));
+  if (unidades.size > 1) {
+    // Sumar m3 con L daria un numero sin sentido. Nos quedamos con la fila de
+    // mas muestras y dejamos rastro para corregir la unidad en el reg_map.
+    logger.warn(
+      { sitio_id: ctx.sitioId, rol: ctx.rol, periodo: ctx.periodo, unidades: [...unidades] },
+      'contadores: unidades distintas en el mismo periodo, no se suman',
+    );
+    usable = [rows.reduce((mejor, r) => (r.muestras > mejor.muestras ? r : mejor), rows[0]!)];
+  }
+
+  let delta: number | null = null;
+  let unidad: string | null = null;
+  let muestras = 0;
+  let resets = 0;
+  let ultimoDato: string | null = null;
+
+  for (const row of usable) {
+    if (row.delta != null) delta = (delta ?? 0) + Number(row.delta);
+    if (unidad == null) unidad = row.unidad;
+    muestras += row.muestras ?? 0;
+    resets += row.resets_detectados ?? 0;
+    if (tsMs(row.ultimo_dato) > tsMs(ultimoDato)) ultimoDato = row.ultimo_dato;
+  }
+
+  return { delta, unidad, muestras, ultimo_dato: ultimoDato, resets_detectados: resets };
+}
+
+/** Agrupa filas por periodo preservando todas las de cada clave. */
+function groupCounterRows<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
+  const out = new Map<string, T[]>();
+  for (const row of rows) {
+    const k = key(row);
+    const bucket = out.get(k);
+    if (bucket) bucket.push(row);
+    else out.set(k, [row]);
+  }
+  return out;
+}
 
 /**
  * Devuelve `[start, end)` del mes que contiene a `ref` en zona Chile, como
@@ -482,7 +578,10 @@ export async function computeDailyDeltasForVariable(opts: {
  * Fallback (on-demand): para días sin fila materializada, computa desde
  * equipo_5min (cold path, ~1s/30 días). Combina ambos resultados.
  *
- * Solo procesa la primera variable contador del sitio con `rol` match.
+ * Procesa TODAS las variables del sitio que tengan el rol — incluidas las
+ * retiradas en un recambio — y suma sus deltas por día. Con el filtro anterior
+ * (primera variable con el rol vigente en reg_map) la serie quedaba en cero
+ * para todo lo anterior al recambio.
  */
 export async function getDailySeries(opts: {
   sitioId: string;
@@ -503,9 +602,9 @@ export async function getDailySeries(opts: {
     }
   }
 
-  const counters = await listCounterVariablesForSite(sitioId);
-  const counter = counters.find((c) => c.rol === rol && c.id_serial);
-  if (!counter || !counter.id_serial) return emptyDailySeries(dias);
+  const counters = await listCounterVariablesForSiteAndRol(sitioId, rol);
+  const targets = counters.filter((c) => c.id_serial);
+  if (targets.length === 0) return emptyDailySeries(dias);
 
   const days = lastNDays(dias);
   if (days.length === 0) return [];
@@ -514,44 +613,64 @@ export async function getDailySeries(opts: {
 
   // ── Fast path: lectura de tabla materializada ────────────────────────────
   const materialized = await listContadorDiarioBySiteRolDias(sitioId, rol, diaIsos);
+  const materializedByDay = groupCounterRows(materialized, (r) => diaToIso(r.dia));
 
-  // Días sin fila materializada necesitan fallback on-demand.
-  const missingDays = days.filter((d) => !materialized.has(getDayRangeChile(d).diaIso));
+  // Los días pendientes se calculan POR VARIABLE: el equipo nuevo puede tener
+  // fila materializada en un día y el retirado no (o al revés).
+  const pendientes = targets
+    .map((counter) => ({
+      counter,
+      missingDays: days.filter((d) => {
+        const iso = getDayRangeChile(d).diaIso;
+        return !materializedByDay.get(iso)?.some((r) => r.variable_id === counter.variable_id);
+      }),
+    }))
+    .filter((p) => p.missingDays.length > 0);
 
-  let onDemandByDay = new Map<string, MonthDeltaResult>();
+  const onDemand: { counter: CounterVariable; byDay: Map<string, MonthDeltaResult> }[] = [];
 
-  if (missingDays.length > 0) {
+  if (pendientes.length > 0) {
     // Solo carga mappings/config si hace falta el fallback.
     const mappings = await getMappingsBySiteId(sitioId);
-    const mapping = mappings.find((m) => m.id === counter.variable_id);
-    if (mapping) {
-      const site = await getSiteById(sitioId);
-      const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
-      const firstMissing = missingDays[0]!;
-      const lastMissing = missingDays[missingDays.length - 1]!;
-      const start = getDayRangeChile(firstMissing).start;
-      const end = getDayRangeChile(lastMissing).end;
-      onDemandByDay = await computeDailyDeltasForVariable({
-        idSerial: counter.id_serial,
-        mapping,
-        pozoConfig,
-        start,
-        end,
+    const site = await getSiteById(sitioId);
+    const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
+
+    for (const { counter, missingDays } of pendientes) {
+      const mapping = mappings.find((m) => m.id === counter.variable_id);
+      if (!mapping) continue;
+      const start = getDayRangeChile(missingDays[0]!).start;
+      const end = getDayRangeChile(missingDays[missingDays.length - 1]!).end;
+      onDemand.push({
+        counter,
+        byDay: await computeDailyDeltasForVariable({
+          idSerial: counter.id_serial!,
+          mapping,
+          pozoConfig,
+          start,
+          end,
+        }),
       });
     }
   }
 
+  const unidadFallback = targets.find((t) => t.unidad)?.unidad ?? null;
+
   const series = diaIsos.map((diaIso) => {
-    const mat = materialized.get(diaIso);
-    if (mat) return diarioRowToPoint(mat, counter.unidad);
-    const r = onDemandByDay.get(diaIso);
+    const filas: CounterRowLike[] = [
+      ...(materializedByDay.get(diaIso) ?? []),
+      ...onDemand.flatMap(({ counter, byDay }) => {
+        const r = byDay.get(diaIso);
+        return r ? [{ ...r, variable_id: counter.variable_id, unidad: counter.unidad }] : [];
+      }),
+    ];
+    const agg = aggregateCounterRows(filas, { sitioId, rol, periodo: diaIso });
     return {
       dia: diaIso,
-      delta: r?.delta ?? null,
-      unidad: counter.unidad,
-      muestras: r?.muestras ?? 0,
-      ultimo_dato: r?.ultimo_dato ?? null,
-      resets_detectados: r?.resets_detectados ?? 0,
+      delta: agg?.delta ?? null,
+      unidad: agg?.unidad ?? unidadFallback,
+      muestras: agg?.muestras ?? 0,
+      ultimo_dato: agg?.ultimo_dato ?? null,
+      resets_detectados: agg?.resets_detectados ?? 0,
     };
   });
 
@@ -757,9 +876,9 @@ export async function getJornadaSeries(opts: {
 }): Promise<ContadorJornadaPoint[]> {
   const { sitioId, rol, dias, inicio, fin } = opts;
 
-  const counters = await listCounterVariablesForSite(sitioId);
-  const counter = counters.find((c) => c.rol === rol && c.id_serial);
-  if (!counter || !counter.id_serial) return emptyJornadaSeries(dias, inicio, fin);
+  const counters = await listCounterVariablesForSiteAndRol(sitioId, rol);
+  const targets = counters.filter((c) => c.id_serial);
+  if (targets.length === 0) return emptyJornadaSeries(dias, inicio, fin);
 
   const days = lastNDays(dias);
   if (days.length === 0) return [];
@@ -768,42 +887,67 @@ export async function getJornadaSeries(opts: {
 
   // ── Fast path: lectura de tabla materializada ────────────────────────────
   const materialized = await listContadorJornadaBySiteRolDias(sitioId, rol, inicio, fin, diaIsos);
+  const materializedByDay = groupCounterRows(materialized, (r) => diaToIso(r.dia));
 
-  // Días sin fila materializada necesitan fallback on-demand.
-  const missingDays = days.filter((d) => !materialized.has(getDayRangeChile(d).diaIso));
+  // Pendientes por variable, igual que en getDailySeries.
+  const pendientes = targets
+    .map((counter) => ({
+      counter,
+      missingDays: days.filter((d) => {
+        const iso = getDayRangeChile(d).diaIso;
+        return !materializedByDay.get(iso)?.some((r) => r.variable_id === counter.variable_id);
+      }),
+    }))
+    .filter((p) => p.missingDays.length > 0);
 
-  let onDemandByDay = new Map<string, MonthDeltaResult>();
+  const onDemand: { counter: CounterVariable; byDay: Map<string, MonthDeltaResult> }[] = [];
 
-  if (missingDays.length > 0) {
+  if (pendientes.length > 0) {
     const mappings = await getMappingsBySiteId(sitioId);
-    const mapping = mappings.find((m) => m.id === counter.variable_id);
-    if (mapping) {
-      const site = await getSiteById(sitioId);
-      const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
-      onDemandByDay = await computeJornadasForVariable({
-        idSerial: counter.id_serial,
-        mapping,
-        pozoConfig,
-        days: missingDays,
-        inicio,
-        fin,
+    const site = await getSiteById(sitioId);
+    const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
+
+    for (const { counter, missingDays } of pendientes) {
+      const mapping = mappings.find((m) => m.id === counter.variable_id);
+      if (!mapping) continue;
+      onDemand.push({
+        counter,
+        byDay: await computeJornadasForVariable({
+          idSerial: counter.id_serial!,
+          mapping,
+          pozoConfig,
+          days: missingDays,
+          inicio,
+          fin,
+        }),
       });
     }
   }
 
+  const unidadFallback = targets.find((t) => t.unidad)?.unidad ?? null;
+
   return diaIsos.map((diaIso) => {
-    const mat = materialized.get(diaIso);
-    if (mat) return jornadaRowToPoint(mat, counter.unidad);
-    const r = onDemandByDay.get(diaIso);
+    const filas: CounterRowLike[] = [
+      ...(materializedByDay.get(diaIso) ?? []),
+      ...onDemand.flatMap(({ counter, byDay }) => {
+        const r = byDay.get(diaIso);
+        return r ? [{ ...r, variable_id: counter.variable_id, unidad: counter.unidad }] : [];
+      }),
+    ];
+    const agg = aggregateCounterRows(filas, {
+      sitioId,
+      rol,
+      periodo: `${diaIso} ${inicio}-${fin}`,
+    });
     return {
       dia: diaIso,
       inicio,
       fin,
-      delta: r?.delta ?? null,
-      unidad: counter.unidad,
-      muestras: r?.muestras ?? 0,
-      ultimo_dato: r?.ultimo_dato ?? null,
-      resets_detectados: r?.resets_detectados ?? 0,
+      delta: agg?.delta ?? null,
+      unidad: agg?.unidad ?? unidadFallback,
+      muestras: agg?.muestras ?? 0,
+      ultimo_dato: agg?.ultimo_dato ?? null,
+      resets_detectados: agg?.resets_detectados ?? 0,
     };
   });
 }
@@ -890,12 +1034,18 @@ function projectCurrentMonth(point: {
  * matcheen `rol`. Reusa la misma logica que el worker, limitada a 1 mes para
  * costo acotado (~150ms por variable).
  *
+ * Incluye las variables retiradas: si el recambio cayo dentro del mes actual,
+ * el equipo que salio igual midio parte del mes y su fila tiene que quedar
+ * actualizada hasta el minuto en que dejo de responder. Recomputarla es seguro
+ * — lee el mismo crudo de `equipo`, que sigue ahi — a diferencia del worker,
+ * que solo barre las vigentes para no escribir filas muertas para siempre.
+ *
  * No lanza: cualquier fallo se logea y se devuelve 0. Caller debe poder
  * tolerar que el refresh haya fallado y caer a la fila vieja (si existe).
  */
 async function refreshCurrentMonthForSite(sitioId: string, rol: string): Promise<number> {
-  const counters = await listCounterVariablesForSite(sitioId);
-  const targets = counters.filter((c) => c.rol === rol && c.id_serial);
+  const counters = await listCounterVariablesForSiteAndRol(sitioId, rol);
+  const targets = counters.filter((c) => c.id_serial);
   if (targets.length === 0) return 0;
 
   const mappings = await getMappingsBySiteId(sitioId);
@@ -933,27 +1083,25 @@ export async function getMonthlySeries(opts: {
 }): Promise<ContadorMensualPoint[]> {
   const { sitioId, rol, meses } = opts;
   let rows = await listContadoresBySiteAndRol(sitioId, rol, meses);
+  let byMonth = groupCounterRows(rows, (r) => mesToIsoDay(r.mes));
 
-  const indexByMonth = (input: typeof rows) => {
-    const map = new Map<string, (typeof rows)[number]>();
-    for (const r of input) map.set(mesToIsoDay(r.mes), r);
-    return map;
-  };
-  let byMonth = indexByMonth(rows);
-
+  // Staleness sobre el maximo `actualizado_at` del mes: si el equipo vigente se
+  // refresco hace poco no hace falta recomputar, aunque la fila del equipo
+  // retirado este congelada desde el recambio.
   const { mesIso: mesActual } = getMonthRangeChile(new Date());
-  const existing = byMonth.get(mesActual);
-  const stale =
-    !existing ||
-    !existing.actualizado_at ||
-    Date.now() - new Date(existing.actualizado_at).getTime() > LAZY_REFRESH_STALE_MS;
+  const rowsMesActual = byMonth.get(mesActual) ?? [];
+  const ultimoRefresh = rowsMesActual.reduce(
+    (max, r) => Math.max(max, tsMs(r.actualizado_at)),
+    Number.NEGATIVE_INFINITY,
+  );
+  const stale = rowsMesActual.length === 0 || Date.now() - ultimoRefresh > LAZY_REFRESH_STALE_MS;
 
   if (stale) {
     try {
       const upserts = await refreshCurrentMonthForSite(sitioId, rol);
       if (upserts > 0) {
         rows = await listContadoresBySiteAndRol(sitioId, rol, meses);
-        byMonth = indexByMonth(rows);
+        byMonth = groupCounterRows(rows, (r) => mesToIsoDay(r.mes));
       }
     } catch (err) {
       logger.warn(
@@ -966,14 +1114,14 @@ export async function getMonthlySeries(opts: {
   const ordered = lastNMonths(meses);
   return ordered.map((monthStart) => {
     const mes = getMonthRangeChile(monthStart).mesIso;
-    const row = byMonth.get(mes);
+    const agg = aggregateCounterRows(byMonth.get(mes) ?? [], { sitioId, rol, periodo: mes });
     const point: ContadorMensualPoint = {
       mes,
-      delta: row?.delta != null ? Number(row.delta) : null,
-      unidad: row?.unidad ?? null,
-      muestras: row?.muestras ?? 0,
-      ultimo_dato: row?.ultimo_dato ?? null,
-      resets_detectados: row?.resets_detectados ?? 0,
+      delta: agg?.delta ?? null,
+      unidad: agg?.unidad ?? null,
+      muestras: agg?.muestras ?? 0,
+      ultimo_dato: agg?.ultimo_dato ?? null,
+      resets_detectados: agg?.resets_detectados ?? 0,
     };
     const proy = projectCurrentMonth(point);
     if (proy !== null) point.proyeccion = proy;
