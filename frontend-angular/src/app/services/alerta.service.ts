@@ -211,8 +211,35 @@ export interface EventoReciente {
   alerta_nombre: string | null;
   sitio_desc: string | null;
   tipo_sitio: string | null;
+  empresa_nombre?: string | null;
+  sub_empresa_nombre?: string | null;
+  obra_dga?: string | null;
   /** Repeticiones agrupadas desde que se reconoció. 0 o ausente si ninguna. */
   repeticiones?: number;
+}
+
+/**
+ * "CCU · Quilicura · Pozo 10 · OB-1306-98": el sitio como lo reconoce un
+ * operador. Misma regla que `etiquetaSitio` en el worker de alertas del API;
+ * la sub-empresa se omite cuando repite el nombre de la empresa.
+ */
+export function etiquetaSitioEvento(e: {
+  sitio_id: string | null;
+  sitio_desc: string | null;
+  empresa_nombre?: string | null;
+  sub_empresa_nombre?: string | null;
+  obra_dga?: string | null;
+}): string {
+  const empresa = e.empresa_nombre?.trim() || '';
+  const sub = e.sub_empresa_nombre?.trim() || '';
+  return [
+    empresa,
+    sub && sub.toLowerCase() !== empresa.toLowerCase() ? sub : '',
+    e.sitio_desc?.trim() || e.sitio_id || 'Sitio',
+    e.obra_dga?.trim() || '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 export interface EventosResumen {

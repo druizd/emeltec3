@@ -9,6 +9,7 @@ import { getClient, query } from '../../config/dbHelpers';
 import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
 import type { RegMap } from '../sites/types';
+import { siteUrl } from '../../utils/siteUrl';
 interface AlertRegla {
   nombre: string;
   severidad: string;
@@ -20,6 +21,10 @@ interface AlertRegla {
   condicion_texto?: string;
   condicion: string;
   id_serial?: string;
+  /** "Empresa · Sub-empresa · Sitio · Obra DGA": lo que el operador reconoce. */
+  sitio_etiqueta?: string;
+  /** Detalle del sitio en el frontend, con la pestaña de alertas abierta. */
+  sitio_url?: string;
 }
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const emailMod = require('../../services/emailService.js') as {
@@ -95,6 +100,34 @@ interface Alerta {
   notificar_superadmins?: boolean | null;
   id_serial: string;
   sitio_desc: string;
+  tipo_sitio?: string | null;
+  empresa_nombre?: string | null;
+  sub_empresa_nombre?: string | null;
+  obra_dga?: string | null;
+}
+
+/**
+ * Cómo se nombra el sitio en mensajes y correos: "CCU · Quilicura · Pozo 10 ·
+ * OB-1306-98". El serial del equipo (151.20.47.22) no le dice nada a un
+ * operador; va aparte, en la tabla técnica del correo. La sub-empresa se omite
+ * cuando repite el nombre de la empresa.
+ */
+export function etiquetaSitio(alerta: {
+  sitio_desc?: string | null;
+  sitio_id: string;
+  empresa_nombre?: string | null;
+  sub_empresa_nombre?: string | null;
+  obra_dga?: string | null;
+}): string {
+  const empresa = alerta.empresa_nombre?.trim() || '';
+  const sub = alerta.sub_empresa_nombre?.trim() || '';
+  const partes = [
+    empresa,
+    sub && sub.toLowerCase() !== empresa.toLowerCase() ? sub : '',
+    alerta.sitio_desc?.trim() || alerta.sitio_id,
+    alerta.obra_dga?.trim() || '',
+  ].filter(Boolean);
+  return partes.join(' · ');
 }
 
 function evalCondicion(
@@ -195,17 +228,17 @@ function formatLagHorasMinutos(lagMs: number): string {
   return `${h}h ${m}m`;
 }
 
-function buildMensaje(alerta: Alerta, valor: number | null): string {
-  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+export function buildMensaje(alerta: Alerta, valor: number | null): string {
+  const sitio = etiquetaSitio(alerta);
   const severidad = alerta.severidad.toUpperCase();
   if (alerta.condicion === 'sin_datos') {
-    return `[${severidad}] Sin datos en ${sitio}. Equipo ${alerta.id_serial} no reporta informacion hace mas de ${alerta.cooldown_minutos} minutos.`;
+    return `[${severidad}] Sin datos en ${sitio}. El equipo no reporta información hace más de ${alerta.cooldown_minutos} minutos.`;
   }
   if (alerta.condicion === 'dga_slots_fallidos') {
     return `[${severidad}] ${sitio}. ${valor ?? 0} slot(s) DGA en estado fallido requieren intervención.`;
   }
   if (alerta.condicion === 'review_queue_acumulacion') {
-    return `[${severidad}] ${sitio}. Cola de revisión DGA: ${valor ?? 0} slots requires_review (umbral ${alerta.umbral_bajo}).`;
+    return `[${severidad}] ${sitio}. Cola de revisión DGA: ${valor ?? 0} slots en revisión (umbral ${alerta.umbral_bajo}).`;
   }
   if (alerta.condicion === 'sobre_derecho_dga') {
     return `[${severidad}] ${sitio}. Caudal ${formatValor(valor)} L/s sobre el derecho DGA: límite ${alerta.umbral_bajo} L/s (derecho más tolerancia).`;
@@ -895,14 +928,20 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
   }
 
   if (alerta.condicion === 'sin_datos') {
-    // Se filtra por `time` (la dimensión del hypertable) y no por
-    // `received_at`: con received_at Timescale no puede excluir chunks y
-    // descomprime los ~900 de la tabla buscando el serial, lo que en frío
-    // supera el statement timeout. `time` usa idx_equipo_serial_time y cae en
-    // un solo chunk. Equipo y servidor difieren en segundos, no en minutos.
+    // "Sin datos" se decide por `received_at` (cuándo llegó el paquete), no por
+    // `time` (el reloj del equipo): los dataloggers de CCU han estado hasta 52
+    // minutos atrasados y con `time` la alerta saltaba 8 minutos después del
+    // último paquete recibido (S119, 04-09-2026). Pero filtrar solo por
+    // received_at no deja a Timescale excluir chunks y descomprime los ~900 de
+    // la tabla buscando el serial, lo que en frío supera el statement timeout.
+    // Por eso se acota además por `time` con un margen de un día: cae en uno o
+    // dos chunks vía idx_equipo_serial_time y tolera cualquier desfase de reloj
+    // razonable.
     const r = await client.query(
       `SELECT time FROM equipo
-       WHERE id_serial = $1 AND time > NOW() - ($2 || ' minutes')::INTERVAL
+       WHERE id_serial = $1
+         AND time > NOW() - ($2 || ' minutes')::INTERVAL - INTERVAL '1 day'
+         AND received_at > NOW() - ($2 || ' minutes')::INTERVAL
        LIMIT 1`,
       [alerta.id_serial, alerta.cooldown_minutos],
     );
@@ -947,6 +986,8 @@ async function insertarEvento(
     ...alerta,
     valor_detectado: formatValor(valorNum),
     condicion_texto: formatCondicion(alerta),
+    sitio_etiqueta: etiquetaSitio(alerta),
+    sitio_url: siteUrl(alerta.sitio_id, alerta.tipo_sitio, 'alertas'),
   };
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
@@ -982,9 +1023,14 @@ async function runCycle(): Promise<void> {
               a.variable_key, a.condicion, a.umbral_bajo, a.umbral_alto,
               a.severidad, a.cooldown_minutos, a.dias_activos,
               a.notificar_user_ids, a.notificar_superadmins,
-              s.id_serial, s.descripcion AS sitio_desc
+              s.id_serial, s.descripcion AS sitio_desc, s.tipo_sitio,
+              e.nombre AS empresa_nombre, se.nombre AS sub_empresa_nombre,
+              pc.obra_dga
        FROM alertas a
        JOIN sitio s ON s.id = a.sitio_id
+       LEFT JOIN empresa e ON e.id = s.empresa_id
+       LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
+       LEFT JOIN pozo_config pc ON pc.sitio_id = s.id
        WHERE a.activa = TRUE`,
     );
     for (const alerta of result.rows) {

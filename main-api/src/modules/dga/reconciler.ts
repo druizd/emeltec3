@@ -26,32 +26,11 @@ import {
 } from './repo';
 import type { NoDataStaleRow } from './repo';
 import { renderAdminShell, sendDgaAdminAlert } from './notifier';
+import { siteUrl } from '../../utils/siteUrl';
 
-// Base del frontend para links clickeables en el mail (no navega si no hay
-// sesión, pero deja el sitio a un click una vez logueado).
-const FRONTEND_BASE = (process.env.FRONTEND_URL || 'https://nuevacloud.emeltec.cl/login').replace(
-  /\/login\/?$/,
-  '',
-);
-// tipo_sitio → segmento de ruta del detalle (ver frontend site-type-ui.ts).
-// tipo_sitio → segmento de ruta del detalle (espejo de frontend site-type-ui).
-const TIPO_RUTA: Record<string, string> = {
-  pozo: 'water',
-  vertiente: 'vertiente',
-  canal: 'canal',
-  electrico: 'electric',
-  riles: 'riles',
-  camara_frio: 'cold-room',
-  proceso: 'process',
-  pasteurizador: 'pasteurizador',
-  generico: 'generic',
-  maleta: 'generic',
-};
-function siteUrl(siteId: string, tipo: string): string {
-  // Fallback 'generic' (ruta existente) para tipos desconocidos, no 'water'.
-  const seg = TIPO_RUTA[tipo] ?? 'generic';
-  return `${FRONTEND_BASE}/companies/${siteId}/${seg}`;
-}
+// Base del frontend y ruta por tipo de sitio viven en utils/siteUrl (las
+// comparte el correo de alertas). No navega si no hay sesión, pero deja el
+// sitio a un click una vez logueado.
 
 // ---- Helpers de HTML para el correo (inline styles, compatible con clientes) ----
 function esc(s: unknown): string {

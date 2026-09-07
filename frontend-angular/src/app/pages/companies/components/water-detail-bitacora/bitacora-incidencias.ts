@@ -725,7 +725,7 @@ export class BitacoraIncidenciasComponent {
     this.askConfirm(
       {
         title: 'Guardar cambios',
-        message: `¿Confirmás los cambios en la incidencia "${draft.titulo.trim() || inc.titulo}"?`,
+        message: `¿Confirmas los cambios en la incidencia "${draft.titulo.trim() || inc.titulo}"?`,
         confirmText: 'Guardar',
         tone: 'primary',
         icon: 'edit',

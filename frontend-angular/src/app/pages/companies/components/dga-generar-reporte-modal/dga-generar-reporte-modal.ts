@@ -836,7 +836,7 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
     const rutExisteEnPool = this.informantes().some((i) => formatRutDgaInput(i.rut) === rut);
     if (!rutExisteEnPool && !clave) {
       this.informanteError.set(
-        `RUT ${rut} no está en el pool. Ingresá la clave SNIA para crearlo.`,
+        `RUT ${rut} no está en el pool. Ingresa la clave SNIA para crearlo.`,
       );
       return;
     }

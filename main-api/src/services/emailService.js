@@ -486,7 +486,7 @@ exports.send2faCode = async ({ to, code, minutes = 5 }) => {
     const contentHtml = `          <tr>
             <td style="padding:36px 40px 4px;">
               <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Verificación de seguridad</p>
-              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">Confirmá la acción</h1>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">Confirma la acción</h1>
               <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">Usa este código para confirmar una acción sensible en Emeltec Cloud. Es de un solo uso y expira en <strong style="color:#1E293B;">${minutes} minutos</strong>.</p>
             </td>
           </tr>
@@ -502,7 +502,7 @@ exports.send2faCode = async ({ to, code, minutes = 5 }) => {
               </table>
             </td>
           </tr>
-${securityNoteHtml('Si no solicitaste esta acción, ignora este correo y revisá el acceso a tu cuenta.')}`;
+${securityNoteHtml('Si no solicitaste esta acción, ignora este correo y revisa el acceso a tu cuenta.')}`;
 
     const html = renderShell({
       title: 'Código de verificación · Emeltec',
@@ -612,7 +612,10 @@ exports.sendAlertEmail = async (emailDestino, nombreCompleto, mensaje, regla) =>
       SEVERIDAD_GRADIENT[regla.severidad] ||
       `linear-gradient(90deg,${accentColor} 0%,${accentColor} 100%)`;
     const alias = regla.reg_alias || regla.variable_key || 'N/A';
-    const sitio = regla.sitio_desc || regla.sitio_id || 'N/A';
+    // "CCU · Quilicura · Pozo 10 · OB-1306-98" cuando el worker la trae; el
+    // serial queda en su propia fila porque al operador no le dice nada.
+    const sitio = regla.sitio_etiqueta || regla.sitio_desc || regla.sitio_id || 'N/A';
+    const sitioUrl = regla.sitio_url || ACCESS_URL;
     const severidad = labelSeveridad(regla.severidad);
     const valorDetectado = regla.valor_detectado ?? 'sin dato disponible';
     const condicion = regla.condicion_texto || regla.condicion || 'N/A';
@@ -632,7 +635,7 @@ ${infoTableHtml(
   [
     ['Alerta', escapeHtml(nombreAlerta)],
     ['Sitio', escapeHtml(sitio)],
-    ['Equipo', escapeHtml(serial)],
+    ['Serial del equipo', escapeHtml(serial)],
     ['Variable', escapeHtml(alias)],
     [
       'Valor detectado',
@@ -642,7 +645,7 @@ ${infoTableHtml(
   ],
   accentColor,
 )}
-${ctaButtonHtml(ACCESS_URL, 'Ver en la plataforma', accentColor)}
+${ctaButtonHtml(sitioUrl, 'Ver el sitio en la plataforma', accentColor)}
 ${securityNoteHtml('Esta es una notificación automática del sistema de monitoreo Emeltec. Revisa la plataforma para tomar acción si corresponde.')}`;
 
     const html = renderShell({
@@ -663,13 +666,13 @@ ${securityNoteHtml('Esta es una notificación automática del sistema de monitor
         '',
         `Severidad: ${severidad}`,
         `Sitio: ${sitio}`,
-        `Equipo: ${serial}`,
+        `Serial del equipo: ${serial}`,
         `Variable: ${alias}`,
         `Valor detectado: ${valorDetectado}`,
         `Regla: ${condicion}`,
         `Alerta: ${nombreAlerta}`,
         '',
-        `Ver en plataforma: ${ACCESS_URL}`,
+        `Ver el sitio en la plataforma: ${sitioUrl}`,
       ].join('\n'),
       html,
     });
