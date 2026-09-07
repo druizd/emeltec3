@@ -1440,8 +1440,17 @@ exports.createSite = async (req, res, next) => {
 
     // Reglas de alerta estándar del sitio nuevo. Fuera de la transacción y sin
     // await: un fallo acá no puede deshacer ni demorar la creación del sitio.
+    // Nacen pausadas: el equipo de un sitio recién dado de alta casi nunca está
+    // transmitiendo todavía, así que `sin_datos` se cumple en el primer ciclo
+    // del worker y, como el evento sin reconocer no se auto-resuelve, notifica
+    // a la guardia cada cooldown mientras dura la instalación. Quedan
+    // preconfiguradas en el panel para encenderlas cuando el sitio esté en línea.
     const { crearAlertasPorDefecto } = require('../services/alertasPorDefecto');
-    crearAlertasPorDefecto(db, { sitioId: id, userId: req.user?.id ?? null }).catch((err) =>
+    crearAlertasPorDefecto(db, {
+      sitioId: id,
+      userId: req.user?.id ?? null,
+      activa: false,
+    }).catch((err) =>
       console.error('[sitios] no se pudieron crear las alertas por defecto', {
         sitio: id,
         err: err?.message,

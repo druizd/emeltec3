@@ -11,6 +11,16 @@
  * que apliquen), y desde el selector "Reglas recomendadas" del panel de
  * alertas (solo las marcadas).
  *
+ * Las dos invocaciones automáticas crean las reglas PAUSADAS. Un sitio recién
+ * dado de alta todavía no transmite, y su pozo no tiene comprobantes SNIA: la
+ * condición de `sin_datos` y la de `dga_atrasado` se cumplen desde el primer
+ * ciclo del worker, y como un evento sin reconocer no se auto-resuelve, el
+ * correo se repetía a toda la guardia cada cooldown mientras se instalaba el
+ * equipo. Nacen preconfiguradas y visibles con su badge "Pausada"; las
+ * enciende el operador cuando el sitio ya está en línea. El selector sí las
+ * crea activas: ahí el usuario las pidió una por una sobre un sitio que ya
+ * conoce.
+ *
  * CommonJS para que lo usen tanto los controllers JS como el módulo TS de DGA.
  */
 
@@ -115,15 +125,22 @@ async function listarAlertasRecomendadas(db, { sitioId }) {
  * sin ella, todas las que apliquen (uso automático al crear sitio/activar DGA).
  *
  * @param {{ query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> }} db
- * @param {{ sitioId: string; userId?: string | null; condiciones?: string[] | null }} input
- * @returns {Promise<{ creadas: string[]; existentes: string[]; omitidas: string[] }>}
- *   condiciones creadas, ya existentes, y las que no aplican al sitio (o no se pidieron).
+ * @param {{ sitioId: string; userId?: string | null; condiciones?: string[] | null;
+ *   activa?: boolean }} input `activa` decide si las reglas nacen encendidas. El
+ *   default es `false` a propósito: es lo correcto para los dos llamados
+ *   automáticos, y deja cualquier llamador nuevo del lado que no notifica.
+ * @returns {Promise<{ creadas: string[]; existentes: string[]; omitidas: string[];
+ *   activa: boolean }>} condiciones creadas, ya existentes, las que no aplican al
+ *   sitio (o no se pidieron), y en qué estado quedaron las creadas.
  */
-async function crearAlertasPorDefecto(db, { sitioId, userId = null, condiciones = null }) {
+async function crearAlertasPorDefecto(
+  db,
+  { sitioId, userId = null, condiciones = null, activa = false },
+) {
   const ctx = await cargarContexto(db, sitioId);
   const pedidas = Array.isArray(condiciones) ? new Set(condiciones) : null;
 
-  const out = { creadas: [], existentes: [], omitidas: [] };
+  const out = { creadas: [], existentes: [], omitidas: [], activa: activa === true };
   for (const regla of REGLAS_RECOMENDADAS) {
     if (pedidas && !pedidas.has(regla.condicion)) {
       out.omitidas.push(regla.condicion);
@@ -141,8 +158,9 @@ async function crearAlertasPorDefecto(db, { sitioId, userId = null, condiciones 
       `INSERT INTO alertas
          (nombre, descripcion, sitio_id, empresa_id, sub_empresa_id, variable_key,
           condicion, umbral_bajo, umbral_alto, severidad, cooldown_minutos, dias_activos,
-          creado_por, visible_to_all, viewer_user_ids, notificar_user_ids, notificar_superadmins)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9,$10,$11,$12,TRUE,'{}','{}',TRUE)`,
+          creado_por, visible_to_all, viewer_user_ids, notificar_user_ids, notificar_superadmins,
+          activa)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9,$10,$11,$12,TRUE,'{}','{}',TRUE,$13)`,
       [
         regla.nombre,
         regla.descripcion,
@@ -156,6 +174,7 @@ async function crearAlertasPorDefecto(db, { sitioId, userId = null, condiciones 
         regla.cooldown_minutos,
         DIAS,
         userId,
+        activa === true,
       ],
     );
     out.creadas.push(regla.condicion);
