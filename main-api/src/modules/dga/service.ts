@@ -11,10 +11,14 @@ import { cache } from '../../config/redis';
 import { encryptClave } from './crypto';
 import {
   acceptReviewSlotWithValues,
+  bulkDiscardSlots,
+  BULK_SLOT_LIMIT,
+  countSlotsByEstado,
   deleteInformante,
   findInformanteByRut,
   getUltimoEnvioBySite,
   listInformantes,
+  resetSlotsToVacio,
   countSlotsRequiresReview,
   listReviewQueueSites,
   listSlotsRequiresReview,
@@ -236,7 +240,11 @@ export async function applyReviewDecision(input: {
       admin_note: input.admin_note,
       admin_email: input.admin_email,
     });
-    if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
+    // El descarte acepta `pendiente` además de `requires_review`: un slot que
+    // pasó la validación pero cuyo dato NO es declarable (un totalizador que
+    // retrocede durante una ventana conocida) nunca entra a la cola de revisión
+    // y antes solo se podía cerrar por SQL.
+    if (!ok) throw new NotFoundError('Slot no está en requires_review ni pendiente, o no existe');
     return { ok: true };
   }
 
@@ -255,6 +263,51 @@ export async function applyReviewDecision(input: {
   });
   if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
   return { ok: true };
+}
+
+/**
+ * Acción en bloque sobre un rango de slots de un pozo.
+ *
+ * Devuelve el conteo por estado ANTES de tocar nada junto con cuántos slots se
+ * afectaron. Ese "antes" es lo que le permite al operador entender el resultado:
+ * "afecté 11 de 12, el que quedó es el `enviado`" es una respuesta; "afecté 11"
+ * a secas obliga a ir a la base a ver qué pasó con el otro.
+ */
+export async function applyBulkSlotAction(input: {
+  site_id: string;
+  action: 'recalcular' | 'dar_de_baja';
+  desde: string;
+  hasta: string;
+  nota: string;
+  admin_email: string;
+}): Promise<{
+  action: 'recalcular' | 'dar_de_baja';
+  afectados: number;
+  limite: number;
+  antes: { estatus: string; total: number }[];
+}> {
+  const antes = await countSlotsByEstado({
+    site_id: input.site_id,
+    desde: input.desde,
+    hasta: input.hasta,
+  });
+
+  const afectados =
+    input.action === 'recalcular'
+      ? await resetSlotsToVacio({
+          site_id: input.site_id,
+          desde: input.desde,
+          hasta: input.hasta,
+        })
+      : await bulkDiscardSlots({
+          site_id: input.site_id,
+          desde: input.desde,
+          hasta: input.hasta,
+          admin_note: input.nota,
+          admin_email: input.admin_email,
+        });
+
+  return { action: input.action, afectados, limite: BULK_SLOT_LIMIT, antes };
 }
 
 // ============================================================================

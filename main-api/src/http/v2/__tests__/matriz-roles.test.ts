@@ -131,6 +131,11 @@ const ESPERADO: Record<string, readonly Rol[]> = {
   'GET /dga/review-queue': ['SuperAdmin', 'Admin'],
   'POST /dga/review-queue/action': ['SuperAdmin', 'Admin'],
   'POST /dga/sites/:siteId/reconocer-sensor-defectuoso': ['SuperAdmin', 'Admin'],
+  // Acciones en bloque sobre un rango de slots. El resumen es lectura, pero se
+  // restringe igual que la acción: existe solo para precederla, y el estado
+  // interno de la cola de envío no es dato de tenant.
+  'GET /dga/sites/:siteId/slots/resumen': ['SuperAdmin', 'Admin'],
+  'POST /dga/sites/:siteId/slots/bulk': ['SuperAdmin', 'Admin'],
 
   // --- Informantes DGA y resumen de salud: solo SuperAdmin ---
   'GET /dga/informantes': ['SuperAdmin'],

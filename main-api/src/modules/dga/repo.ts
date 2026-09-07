@@ -1232,11 +1232,148 @@ export async function markReviewSlotFailedManual(input: {
                                      ))
       WHERE site_id = $1
         AND ts      = $2
-        AND estatus = 'requires_review'`,
+        AND estatus IN ('requires_review', 'pendiente')`,
     [input.site_id, input.ts, input.admin_note, input.admin_email],
     { name: 'dga__mark_review_failed' },
   );
   return (r.rowCount ?? 0) > 0;
+}
+
+// ============================================================================
+// Acciones en bloque sobre un rango de slots
+// ============================================================================
+
+/**
+ * Estados que una acción en bloque puede tocar.
+ *
+ * `enviado` queda FUERA a propósito: ya salió a SNIA con folio y reescribirlo
+ * sería falsear una declaración hecha. `enviando` también, porque hay un envío
+ * en vuelo y pisarlo dejaría el slot y la auditoría en desacuerdo.
+ */
+const BULK_TOUCHABLE_ESTADOS = ['pendiente', 'requires_review', 'fallido'] as const;
+
+/**
+ * Tope de slots por request. Un mes horario son ~744, así que 800 cubre el
+ * caso real (recalcular un mes tras corregir un mapeo) sin permitir que un
+ * rango escrito con un cero de más barra un año entero de una.
+ */
+export const BULK_SLOT_LIMIT = 800;
+
+/**
+ * Devuelve los slots a `vacio` para que el fill los recompute con la
+ * configuración actual del `reg_map`.
+ *
+ * Es la contraparte de corregir un mapeo: el valor que ya está en `dato_dga`
+ * quedó materializado con la config vieja y no se recalcula solo. No destruye
+ * nada — el crudo sigue en `equipo` y el fill lo rearma— así que es la más
+ * segura de las acciones en bloque.
+ *
+ * `validation_warnings` se limpia porque describía los valores viejos. Si el
+ * fill vuelve a llenar el slot los reescribe igual (ver
+ * `transitionSlotToPendiente`), pero si NO hay crudo el slot se queda en
+ * `vacio` y unos warnings viejos sobre un valor que ya no está serían basura.
+ */
+export async function resetSlotsToVacio(input: {
+  site_id: string;
+  desde: string;
+  hasta: string;
+}): Promise<number> {
+  const r = await query(
+    `WITH objetivo AS (
+       SELECT ts
+         FROM dato_dga
+        WHERE site_id = $1
+          AND ts >= $2
+          AND ts <  $3
+          AND estatus = ANY($4::text[])
+        ORDER BY ts
+        LIMIT ${BULK_SLOT_LIMIT}
+     )
+     UPDATE dato_dga d
+        SET estatus             = 'vacio',
+            fail_reason         = NULL,
+            next_retry_at       = NULL,
+            validation_warnings = NULL
+       FROM objetivo o
+      WHERE d.site_id = $1
+        AND d.ts      = o.ts`,
+    [input.site_id, input.desde, input.hasta, [...BULK_TOUCHABLE_ESTADOS]],
+    { name: 'dga__reset_slots_vacio' },
+  );
+  return r.rowCount ?? 0;
+}
+
+/**
+ * Da de baja documentada un rango de slots: `fallido` con la nota del admin en
+ * `validation_warnings`, igual que el descarte de a uno.
+ *
+ * Para el caso en que el dato existe pero no es declarable — un totalizador que
+ * retrocede, un instrumento mal configurado durante una ventana conocida — y
+ * hay que dejar constancia de por qué nunca se reportó a la DGA.
+ */
+export async function bulkDiscardSlots(input: {
+  site_id: string;
+  desde: string;
+  hasta: string;
+  admin_note: string;
+  admin_email: string;
+}): Promise<number> {
+  const r = await query(
+    `WITH objetivo AS (
+       SELECT ts
+         FROM dato_dga
+        WHERE site_id = $1
+          AND ts >= $2
+          AND ts <  $3
+          AND estatus = ANY($6::text[])
+        ORDER BY ts
+        LIMIT ${BULK_SLOT_LIMIT}
+     )
+     UPDATE dato_dga d
+        SET estatus             = 'fallido',
+            fail_reason         = 'baja_manual_rango',
+            next_retry_at       = NULL,
+            validation_warnings = COALESCE(d.validation_warnings, '[]'::jsonb)
+                                  || jsonb_build_array(jsonb_build_object(
+                                       'code', 'admin_discarded_bulk',
+                                       'reason', $4::text,
+                                       'by', $5::text,
+                                       'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                     ))
+       FROM objetivo o
+      WHERE d.site_id = $1
+        AND d.ts      = o.ts`,
+    [
+      input.site_id,
+      input.desde,
+      input.hasta,
+      input.admin_note,
+      input.admin_email,
+      [...BULK_TOUCHABLE_ESTADOS],
+    ],
+    { name: 'dga__bulk_discard_slots' },
+  );
+  return r.rowCount ?? 0;
+}
+
+/** Conteo por estado del rango, para previsualizar qué tocaría la acción. */
+export async function countSlotsByEstado(input: {
+  site_id: string;
+  desde: string;
+  hasta: string;
+}): Promise<{ estatus: string; total: number }[]> {
+  const r = await query<{ estatus: string; total: string }>(
+    `SELECT estatus, count(*) AS total
+       FROM dato_dga
+      WHERE site_id = $1
+        AND ts >= $2
+        AND ts <  $3
+      GROUP BY estatus
+      ORDER BY estatus`,
+    [input.site_id, input.desde, input.hasta],
+    { name: 'dga__count_slots_by_estado' },
+  );
+  return r.rows.map((row) => ({ estatus: row.estatus, total: Number(row.total) }));
 }
 
 // ============================================================================
