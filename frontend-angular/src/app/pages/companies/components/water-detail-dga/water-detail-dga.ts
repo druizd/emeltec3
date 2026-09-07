@@ -20,6 +20,7 @@ import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton
 import { WellDiagramSkeletonComponent } from '../../../../components/ui/well-diagram-skeleton';
 import { WellStatCardComponent } from '../../../../components/ui/well-stat-card';
 import { type ContadorMensualPoint, CompanyService } from '../../../../services/company.service';
+import { AuthService } from '../../../../services/auth.service';
 import { DatoDgaRow, DgaService } from '../../../../services/dga.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 
@@ -1005,8 +1006,16 @@ interface SiteDashboardData {
         </section>
 
         <!-- Mantenimiento de slots: recalcular tras corregir un mapeo, o dar de
-             baja el tramo cuyo dato no es declarable. Antes solo por SQL. -->
-        <app-dga-slots-mantenimiento [siteId]="siteId()" (slotsChanged)="onSlotsChanged()" />
+             baja el tramo cuyo dato no es declarable. Antes solo por SQL.
+             Modal, y solo para quien puede usarlo: los endpoints son
+             SuperAdmin/Admin, así que a los demás el panel solo les daría 403. -->
+        @if (mantenimientoOpen() && canReviewDga()) {
+          <app-dga-slots-mantenimiento
+            [siteId]="siteId()"
+            (slotsChanged)="onSlotsChanged()"
+            (cerrar)="mantenimientoOpen.set(false)"
+          />
+        }
 
         <!-- Registros DGA -->
         <section
@@ -1031,6 +1040,19 @@ interface SiteDashboardData {
                 <span class="material-symbols-outlined text-[16px]">calendar_month</span>
                 {{ dgaSelectedRangeLabel() }}
               </button>
+              @if (canReviewDga()) {
+                <button
+                  type="button"
+                  (click)="mantenimientoOpen.set(true)"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container active:scale-95"
+                  title="Mantenimiento de slots"
+                  aria-label="Abrir mantenimiento de slots: recalcular o dar de baja un rango"
+                >
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                    >build</span
+                  >
+                </button>
+              }
               <span class="text-slate-500">{{ dgaTotalRecordsLabel() }}</span>
             </div>
           </div>
@@ -1572,6 +1594,14 @@ interface SiteDashboardData {
 export class WaterDetailDgaComponent implements OnInit, OnDestroy {
   private readonly dgaService = inject(DgaService);
   private readonly companyService = inject(CompanyService);
+  private readonly authService = inject(AuthService);
+
+  /**
+   * Gate del mantenimiento de slots. Los endpoints son SuperAdmin/Admin
+   * (`canReviewDga` es exactamente esa combinación), así que a los demás el
+   * botón solo les daría un 403 tras llenar el formulario.
+   */
+  readonly canReviewDga = this.authService.canReviewDga;
 
   // Inputs
   siteId = input.required<string>();
@@ -1590,6 +1620,8 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
 
   // DGA signals
   dgaDateFilterOpen = signal(false);
+  /** Modal de mantenimiento de slots. */
+  mantenimientoOpen = signal(false);
   dgaDateFrom = signal(chileMonthStart());
   dgaDateTo = signal(chileToday());
   dgaRowsPerPage = signal(10);

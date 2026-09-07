@@ -1,3 +1,4 @@
+import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Output, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -42,189 +43,217 @@ const ETIQUETA_ESTADO: Record<string, string> = {
 @Component({
   selector: 'app-dga-slots-mantenimiento',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, A11yModule],
   template: `
-    <section
-      class="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-      aria-labelledby="mantenimiento-slots-titulo"
+    <div
+      class="anim-backdrop fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-slate-950/55 px-4 py-8 backdrop-blur-sm"
+      animate.leave="anim-overlay-out"
+      (click)="cerrar.emit()"
     >
-      <div class="mb-3 flex items-start gap-3">
-        <span
-          class="material-symbols-outlined shrink-0 text-[20px] text-slate-400"
-          aria-hidden="true"
-          >build</span
-        >
-        <div class="min-w-0">
-          <h3 id="mantenimiento-slots-titulo" class="text-body-sm font-semibold text-slate-900">
-            Mantenimiento de slots
-          </h3>
-          <p class="text-caption text-slate-500">
-            Recalcular vuelve a armar los slots con la configuración actual del mapeo — es lo que
-            hay que hacer después de corregir una unidad o un factor. Dar de baja los cierra con una
-            nota, para el dato que existe pero no es declarable.
-            <strong>Nunca toca lo ya enviado a la DGA.</strong>
-          </p>
-        </div>
-      </div>
-
-      <div class="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label class="mb-1 block text-caption font-bold text-slate-500" [attr.for]="'slots-desde'"
-            >Desde (hora Chile, UTC−4)</label
+      <section
+        class="anim-panel w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+        role="dialog"
+        cdkTrapFocus
+        cdkTrapFocusAutoCapture
+        aria-modal="true"
+        aria-labelledby="mantenimiento-slots-titulo"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="cerrar.emit()"
+      >
+        <div class="flex items-start gap-4 border-b border-slate-100 px-5 py-5">
+          <span
+            aria-hidden="true"
+            class="material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-tint-08 text-[24px] text-primary-container"
+            >build</span
           >
-          <input
-            id="slots-desde"
-            type="datetime-local"
-            [ngModel]="desde()"
-            (ngModelChange)="onRangoChange('desde', $event)"
-            name="slots-desde"
-            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
-          />
-        </div>
-        <div>
-          <label class="mb-1 block text-caption font-bold text-slate-500" [attr.for]="'slots-hasta'"
-            >Hasta (exclusivo)</label
+          <div class="min-w-0 flex-1">
+            <h3 id="mantenimiento-slots-titulo" class="text-h6 font-semibold text-slate-900">
+              Mantenimiento de slots
+            </h3>
+            <p class="mt-1 text-caption leading-5 text-slate-500">
+              Recalcular vuelve a armar los slots con la configuración actual del mapeo — es lo que
+              hay que hacer después de corregir una unidad o un factor. Dar de baja los cierra con
+              una nota, para el dato que existe pero no es declarable.
+              <strong>Nunca toca lo ya enviado a la DGA.</strong>
+            </p>
+          </div>
+          <button
+            type="button"
+            (click)="cerrar.emit()"
+            class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
+            aria-label="Cerrar mantenimiento de slots"
           >
-          <input
-            id="slots-hasta"
-            type="datetime-local"
-            [ngModel]="hasta()"
-            (ngModelChange)="onRangoChange('hasta', $event)"
-            name="slots-hasta"
-            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
-          />
-        </div>
-      </div>
-
-      <div class="mt-3">
-        <label class="mb-1 block text-caption font-bold text-slate-500" [attr.for]="'slots-nota'"
-          >Motivo (queda en la auditoría)</label
-        >
-        <input
-          id="slots-nota"
-          [ngModel]="nota()"
-          (ngModelChange)="nota.set($event)"
-          name="slots-nota"
-          maxlength="500"
-          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
-          placeholder="Ej: corregida la unidad del caudal, m3/h declarado como L/s"
-        />
-        <p class="mt-1 text-caption-xs text-slate-500">
-          Mínimo 5 caracteres. Es la única constancia de por qué este tramo se recalculó o no se
-          declaró.
-        </p>
-      </div>
-
-      <div class="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          (click)="revisar()"
-          [disabled]="!rangoValido() || busy() !== ''"
-          [attr.aria-busy]="busy() === 'revisar'"
-          class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-body-sm font-bold text-slate-600 transition hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-        >
-          {{ busy() === 'revisar' ? 'Revisando…' : 'Revisar' }}
-        </button>
-      </div>
-
-      @if (error()) {
-        <p class="mt-3 text-caption font-semibold text-red-700" role="alert">{{ error() }}</p>
-      }
-
-      @if (resumen(); as r) {
-        <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <p class="text-caption font-bold uppercase tracking-[0.1em] text-slate-500">
-            En el rango: {{ r.total }} {{ r.total === 1 ? 'slot' : 'slots' }}
-          </p>
-          @if (r.total === 0) {
-            <p class="mt-2 text-caption text-slate-600">
-              No hay slots en ese rango. Revisá las fechas.
-            </p>
-          } @else {
-            <ul class="mt-2 space-y-1">
-              @for (e of r.estados; track e.estatus) {
-                <li class="flex items-center justify-between gap-3 text-caption">
-                  <span class="text-slate-700">
-                    {{ etiquetaEstado(e.estatus) }}
-                    @if (!esTocable(e.estatus)) {
-                      <span class="font-semibold text-slate-500">— no se toca</span>
-                    }
-                  </span>
-                  <span class="font-mono text-slate-900">{{ e.total }}</span>
-                </li>
-              }
-            </ul>
-            <p class="mt-2 text-caption font-semibold text-slate-700">
-              Se van a afectar {{ tocables() }} {{ tocables() === 1 ? 'slot' : 'slots' }}.
-            </p>
-            @if (r.total > r.limite) {
-              <p class="mt-1 text-caption text-amber-700">
-                El rango supera el tope de {{ r.limite }} por operación: se procesan los más
-                antiguos primero y hay que repetir.
-              </p>
-            }
-          }
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
+          </button>
         </div>
 
-        @if (tocables() > 0) {
+        <div class="px-5 py-5">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                class="mb-1 block text-caption font-bold text-slate-500"
+                [attr.for]="'slots-desde'"
+                >Desde (hora Chile, UTC−4)</label
+              >
+              <input
+                id="slots-desde"
+                type="datetime-local"
+                [ngModel]="desde()"
+                (ngModelChange)="onRangoChange('desde', $event)"
+                name="slots-desde"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
+              />
+            </div>
+            <div>
+              <label
+                class="mb-1 block text-caption font-bold text-slate-500"
+                [attr.for]="'slots-hasta'"
+                >Hasta (exclusivo)</label
+              >
+              <input
+                id="slots-hasta"
+                type="datetime-local"
+                [ngModel]="hasta()"
+                (ngModelChange)="onRangoChange('hasta', $event)"
+                name="slots-hasta"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
+              />
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label
+              class="mb-1 block text-caption font-bold text-slate-500"
+              [attr.for]="'slots-nota'"
+              >Motivo (queda en la auditoría)</label
+            >
+            <input
+              id="slots-nota"
+              [ngModel]="nota()"
+              (ngModelChange)="nota.set($event)"
+              name="slots-nota"
+              maxlength="500"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
+              placeholder="Ej: corregida la unidad del caudal, m3/h declarado como L/s"
+            />
+            <p class="mt-1 text-caption-xs text-slate-500">
+              Mínimo 5 caracteres. Es la única constancia de por qué este tramo se recalculó o no se
+              declaró.
+            </p>
+          </div>
+
           <div class="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              (click)="ejecutar('recalcular')"
-              [disabled]="!puedeEjecutar()"
-              [attr.aria-busy]="busy() === 'recalcular'"
-              [attr.aria-label]="
-                'Recalcular ' + tocables() + ' slots con la configuración actual del mapeo'
-              "
+              (click)="revisar()"
+              [disabled]="!rangoValido() || busy() !== ''"
+              [attr.aria-busy]="busy() === 'revisar'"
               class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-body-sm font-bold text-slate-600 transition hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
             >
-              {{ busy() === 'recalcular' ? 'Recalculando…' : 'Recalcular' }}
-            </button>
-            <button
-              type="button"
-              (click)="ejecutar('dar_de_baja')"
-              [disabled]="!puedeEjecutar()"
-              [attr.aria-busy]="busy() === 'dar_de_baja'"
-              [attr.aria-label]="
-                'Dar de baja ' + tocables() + ' slots: quedan cerrados y no se declaran'
-              "
-              class="rounded-md bg-red-600 px-3 py-2 text-caption font-semibold text-white transition-colors hover:bg-red-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              {{ busy() === 'dar_de_baja' ? 'Dando de baja…' : 'Dar de baja' }}
+              {{ busy() === 'revisar' ? 'Revisando…' : 'Revisar' }}
             </button>
           </div>
-          @if (!notaValida()) {
-            <p class="mt-2 text-caption text-slate-500">
-              Escribí el motivo para habilitar las acciones.
-            </p>
-          }
-        }
-      }
 
-      @if (resultado(); as res) {
-        <div
-          class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3"
-          role="alert"
-          aria-labelledby="resultado-slots-titulo"
-        >
-          <p id="resultado-slots-titulo" class="text-caption font-bold text-emerald-800">
-            {{ res.action === 'recalcular' ? 'Recalculados' : 'Dados de baja' }}:
-            {{ res.afectados }} {{ res.afectados === 1 ? 'slot' : 'slots' }}
-          </p>
-          @if (res.action === 'recalcular') {
-            <p class="mt-1 text-caption text-emerald-700">
-              Quedaron en vacío. El worker los vuelve a llenar de a 24 por minuto, así que en unos
-              minutos deberían estar todos con el valor nuevo.
-            </p>
+          @if (error()) {
+            <p class="mt-3 text-caption font-semibold text-red-700" role="alert">{{ error() }}</p>
           }
-          @if (noTocados(res) > 0) {
-            <p class="mt-1 text-caption text-emerald-700">
-              {{ noTocados(res) }} quedaron sin tocar por estar enviados o en envío.
-            </p>
+
+          @if (resumen(); as r) {
+            <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p class="text-caption font-bold uppercase tracking-[0.1em] text-slate-500">
+                En el rango: {{ r.total }} {{ r.total === 1 ? 'slot' : 'slots' }}
+              </p>
+              @if (r.total === 0) {
+                <p class="mt-2 text-caption text-slate-600">
+                  No hay slots en ese rango. Revisá las fechas.
+                </p>
+              } @else {
+                <ul class="mt-2 space-y-1">
+                  @for (e of r.estados; track e.estatus) {
+                    <li class="flex items-center justify-between gap-3 text-caption">
+                      <span class="text-slate-700">
+                        {{ etiquetaEstado(e.estatus) }}
+                        @if (!esTocable(e.estatus)) {
+                          <span class="font-semibold text-slate-500">— no se toca</span>
+                        }
+                      </span>
+                      <span class="font-mono text-slate-900">{{ e.total }}</span>
+                    </li>
+                  }
+                </ul>
+                <p class="mt-2 text-caption font-semibold text-slate-700">
+                  Se van a afectar {{ tocables() }} {{ tocables() === 1 ? 'slot' : 'slots' }}.
+                </p>
+                @if (r.total > r.limite) {
+                  <p class="mt-1 text-caption text-amber-700">
+                    El rango supera el tope de {{ r.limite }} por operación: se procesan los más
+                    antiguos primero y hay que repetir.
+                  </p>
+                }
+              }
+            </div>
+
+            @if (tocables() > 0) {
+              <div class="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  (click)="ejecutar('recalcular')"
+                  [disabled]="!puedeEjecutar()"
+                  [attr.aria-busy]="busy() === 'recalcular'"
+                  [attr.aria-label]="
+                    'Recalcular ' + tocables() + ' slots con la configuración actual del mapeo'
+                  "
+                  class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-body-sm font-bold text-slate-600 transition hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {{ busy() === 'recalcular' ? 'Recalculando…' : 'Recalcular' }}
+                </button>
+                <button
+                  type="button"
+                  (click)="ejecutar('dar_de_baja')"
+                  [disabled]="!puedeEjecutar()"
+                  [attr.aria-busy]="busy() === 'dar_de_baja'"
+                  [attr.aria-label]="
+                    'Dar de baja ' + tocables() + ' slots: quedan cerrados y no se declaran'
+                  "
+                  class="rounded-md bg-red-600 px-3 py-2 text-caption font-semibold text-white transition-colors hover:bg-red-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {{ busy() === 'dar_de_baja' ? 'Dando de baja…' : 'Dar de baja' }}
+                </button>
+              </div>
+              @if (!notaValida()) {
+                <p class="mt-2 text-caption text-slate-500">
+                  Escribí el motivo para habilitar las acciones.
+                </p>
+              }
+            }
+          }
+
+          @if (resultado(); as res) {
+            <div
+              class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3"
+              role="alert"
+              aria-labelledby="resultado-slots-titulo"
+            >
+              <p id="resultado-slots-titulo" class="text-caption font-bold text-emerald-800">
+                {{ res.action === 'recalcular' ? 'Recalculados' : 'Dados de baja' }}:
+                {{ res.afectados }} {{ res.afectados === 1 ? 'slot' : 'slots' }}
+              </p>
+              @if (res.action === 'recalcular') {
+                <p class="mt-1 text-caption text-emerald-700">
+                  Quedaron en vacío. El worker los vuelve a llenar de a 24 por minuto, así que en
+                  unos minutos deberían estar todos con el valor nuevo.
+                </p>
+              }
+              @if (noTocados(res) > 0) {
+                <p class="mt-1 text-caption text-emerald-700">
+                  {{ noTocados(res) }} quedaron sin tocar por estar enviados o en envío.
+                </p>
+              }
+            </div>
           }
         </div>
-      }
-    </section>
+      </section>
+    </div>
   `,
 })
 export class DgaSlotsMantenimientoComponent {
@@ -232,6 +261,9 @@ export class DgaSlotsMantenimientoComponent {
 
   /** Avisa al padre para que refresque los KPI y la tabla del tab. */
   @Output() slotsChanged = new EventEmitter<void>();
+
+  /** Cierra el modal. El padre decide si sigue montado. */
+  @Output() cerrar = new EventEmitter<void>();
 
   private dgaService = inject(DgaService);
 
