@@ -105,6 +105,33 @@ export const ReviewSlotActionPayload = z.object({
 });
 export type ReviewSlotActionPayload = z.infer<typeof ReviewSlotActionPayload>;
 
+/**
+ * Acción en bloque sobre un rango de slots.
+ *
+ * `recalcular` los devuelve a `vacio` para que el fill los recompute con la
+ * config actual del `reg_map` — la contraparte de corregir un mapeo, porque el
+ * valor ya materializado en `dato_dga` no se recalcula solo.
+ *
+ * `dar_de_baja` los cierra como `fallido` con la nota del admin, para el dato
+ * que existe pero no es declarable.
+ *
+ * `nota` es obligatoria en las dos: queda en la auditoría y, en la baja,
+ * también dentro del slot. Un rango sin explicación es exactamente lo que hace
+ * imposible reconstruir después por qué un mes no se declaró.
+ */
+export const BulkSlotActionPayload = z
+  .object({
+    action: z.enum(['recalcular', 'dar_de_baja']),
+    desde: z.string().datetime({ offset: true }),
+    hasta: z.string().datetime({ offset: true }),
+    nota: z.string().trim().min(5).max(500),
+  })
+  .refine((v) => new Date(v.desde) < new Date(v.hasta), {
+    message: 'desde debe ser anterior a hasta',
+    path: ['hasta'],
+  });
+export type BulkSlotActionPayload = z.infer<typeof BulkSlotActionPayload>;
+
 // ============================================================================
 // Lectura mediciones
 // ============================================================================
@@ -115,3 +142,15 @@ export const QueryDatoDgaParams = z.object({
   hasta: z.string().datetime({ offset: true }),
 });
 export type QueryDatoDgaParams = z.infer<typeof QueryDatoDgaParams>;
+
+/** Rango para el resumen por estado que precede a una acción en bloque. */
+export const SlotsResumenParams = z
+  .object({
+    desde: z.string().datetime({ offset: true }),
+    hasta: z.string().datetime({ offset: true }),
+  })
+  .refine((v) => new Date(v.desde) < new Date(v.hasta), {
+    message: 'desde debe ser anterior a hasta',
+    path: ['hasta'],
+  });
+export type SlotsResumenParams = z.infer<typeof SlotsResumenParams>;

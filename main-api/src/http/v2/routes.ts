@@ -34,6 +34,8 @@ import {
   patchPozoDgaConfigHandler,
   queryDatoDgaHandler,
   reconocerSensorDefectuosoHandler,
+  bulkSlotActionHandler,
+  slotsResumenHandler,
   reviewSlotActionHandler,
   upsertInformanteHandler,
 } from '../../modules/dga/controller';
@@ -94,6 +96,17 @@ const auditDgaMutations = auditMutations((req) => {
       action: `dga.review.${req.body?.action ?? 'unknown'}`,
       targetType: 'dato_dga',
       targetId: `${req.body?.site_id ?? ''}::${req.body?.ts ?? ''}`,
+    };
+  }
+  // POST /dga/sites/:siteId/slots/bulk — la nota del operador y el rango son
+  // la única constancia de por qué un tramo se recalculó o no se declaró, así
+  // que van al audit_log y no al fallback `unknown`.
+  const bulkMatch = /^\/dga\/sites\/([^/]+)\/slots\/bulk$/.exec(path);
+  if (req.method === 'POST' && bulkMatch) {
+    return {
+      action: `dga.slots.${req.body?.action ?? 'unknown'}`,
+      targetType: 'dato_dga',
+      targetId: `${bulkMatch[1] ?? ''}::${req.body?.desde ?? ''}..${req.body?.hasta ?? ''}`,
     };
   }
   const reconMatch = path.match(/^\/dga\/sites\/([^/]+)\/reconocer-sensor-defectuoso$/);
@@ -330,6 +343,26 @@ router.post(
   require2fa,
   auditDgaMutations,
   reviewSlotActionHandler,
+);
+
+// Resumen por estado del rango: lectura, alimenta la confirmacion previa.
+router.get(
+  '/dga/sites/:siteId/slots/resumen',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  slotsResumenHandler,
+);
+
+// Acción en bloque sobre un rango de slots: recalcular (vuelven a 'vacio' para
+// que el fill los recompute con la config actual) o dar de baja documentada.
+// Nunca toca 'enviado' ni 'enviando'. Mismas guardas que el descarte de a uno.
+router.post(
+  '/dga/sites/:siteId/slots/bulk',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  require2fa,
+  auditDgaMutations,
+  bulkSlotActionHandler,
 );
 
 // Reconocer sensor defectuoso: marca reg_map + incidencia + acepta backlog.
