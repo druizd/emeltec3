@@ -1048,7 +1048,19 @@ interface SiteDashboardData {
                   title="Mantenimiento de slots"
                   aria-label="Abrir mantenimiento de slots: recalcular o dar de baja un rango"
                 >
-                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                  <!--
+                    El tamano va por style y no por text-[Npx]: la hoja de
+                    Google que carga la fuente (index.html) declara
+                    font-size 24px para .material-symbols-outlined y le gana a
+                    la utilidad de Tailwind. Verificado en produccion: todos los
+                    iconos del proyecto renderizan a 24px sin importar la clase.
+
+                    A 24px el glifo de llave queda a 7px de cada borde en un
+                    boton de 38px, y como su tinta llena la caja en diagonal
+                    (a diferencia de calendar_month, que es un rectangulo con
+                    margenes) se lee como si se saliera. A 20px respira.
+                  -->
+                  <span class="material-symbols-outlined" style="font-size: 20px" aria-hidden="true"
                     >build</span
                   >
                 </button>
