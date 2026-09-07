@@ -12,7 +12,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { VentisquerosComponent } from '../../ventisqueros/ventisqueros';
 import { OverviewNivelCaudalChartComponent } from './overview-nivel-caudal-chart';
 import { normalizeSiteType } from '../../../shared/site-type-ui';
@@ -23,18 +23,18 @@ import {
   CompanyService,
   type ContadorDiarioPoint,
   type ContadorMensualPoint,
+  type PeriodComparisonSite,
+  type PeriodComparisonStat,
 } from '../../../services/company.service';
 import { AlertaService, type EventoRow } from '../../../services/alerta.service';
 import { DgaService, type DgaReviewSlot } from '../../../services/dga.service';
 import { IncidenciaService, type IncidenciaRow } from '../../../services/incidencia.service';
 import {
   MAX_DIAS_AGREGADOS,
-  MAX_DIAS_CONTADORES,
   MESES,
   diasInclusivos,
   hoyChileIso,
   presetPeriodos,
-  sumarConsumo,
   variacionPct,
   type RangoPeriodo,
 } from './periodo-comparacion';
@@ -107,20 +107,6 @@ interface SitioComparacion {
 }
 
 type PeriodoPreset = 'semana' | 'mes' | '7d' | 'custom';
-
-/** Una métrica agregada de `period-aggregates`: máximo, promedio y muestras del rango. */
-interface AggStat {
-  max: number | null;
-  avg: number | null;
-  n: number;
-  unidad: string | null;
-}
-
-/** Respuesta de `CompanyService.getSitePeriodAggregates`. Solo los campos que usa este panel. */
-interface PeriodAggregatesResponse {
-  ok: boolean;
-  data?: { caudal: AggStat; nivel: AggStat; nivel_freatico: AggStat } | null;
-}
 
 type Periodo = RangoPeriodo;
 
@@ -1643,53 +1629,56 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     }
     this.comparacionLoading.set(true);
 
-    const hoy = hoyChileIso();
-    const desdeMin = a.desde < b.desde ? a.desde : b.desde;
-    const diasCobertura = diasInclusivos(desdeMin, hoy);
-    const diasConsumo = diasCobertura <= MAX_DIAS_CONTADORES ? diasCobertura : 0;
-
-    let pendientes = this.sites.length;
-    this.sites.forEach((site, i) => {
-      forkJoin({
-        aggA: this.companyService
-          .getSitePeriodAggregates(site.id, a.desde, a.hasta)
-          .pipe(catchError(() => of(null))),
-        aggB: this.companyService
-          .getSitePeriodAggregates(site.id, b.desde, b.hasta)
-          .pipe(catchError(() => of(null))),
-        daily:
-          diasConsumo > 0
-            ? this.companyService
-                .getSiteDailyCounters(site.id, { rol: 'totalizador', dias: diasConsumo })
-                .pipe(catchError(() => of(null)))
-            : of(null),
-      }).subscribe(({ aggA, aggB, daily }) => {
+    // Una sola llamada para toda la vista. El alcance es la sub-empresa
+    // seleccionada o, en la vista general de la empresa, la empresa de los
+    // sitios; `site_ids` acota la respuesta a lo que se está mostrando.
+    const scopeId = this.subEmpresaId || this.sites[0]?.empresa_id || '';
+    this.companyService
+      .getPeriodComparison(
+        scopeId,
+        a,
+        b,
+        this.sites.map((s) => s.id),
+      )
+      .pipe(catchError(() => of(null)))
+      .subscribe((res) => {
         if (req !== this.comparacionReq) return;
-        const dias = (daily?.ok ? daily.data : []) as ContadorDiarioPoint[];
-        const caudalA = this.aggCaudal(aggA);
-        const caudalB = this.aggCaudal(aggB);
-        const nivelA = this.aggNivel(aggA);
-        const nivelB = this.aggNivel(aggB);
-        const consumoA = diasConsumo > 0 ? sumarConsumo(dias, a) : null;
-        const consumoB = diasConsumo > 0 ? sumarConsumo(dias, b) : null;
-        const fila: SitioComparacion = {
-          ...this.filaComparacionVacia(site, i, false),
-          caudalA: this.fmtComparacion(caudalA, 1),
-          caudalB: this.fmtComparacion(caudalB, 1),
-          caudalTend: variacionPct(caudalA, caudalB),
-          nivelA: this.fmtComparacion(nivelA, 1),
-          nivelB: this.fmtComparacion(nivelB, 1),
-          nivelTend: variacionPct(nivelA, nivelB),
-          consumoA: consumoA !== null ? this.formatM3(consumoA) : '—',
-          consumoB: consumoB !== null ? this.formatM3(consumoB) : '—',
-          consumoTend: variacionPct(consumoA, consumoB),
-        };
-        this.sitiosComparacion = this.sitiosComparacion.map((f, j) => (j === i ? fila : f));
-        pendientes--;
-        if (pendientes === 0) this.comparacionLoading.set(false);
+        const porSitio = new Map<string, PeriodComparisonSite>(
+          (res?.ok ? res.data.sitios : []).map((s) => [s.site_id, s]),
+        );
+        this.sitiosComparacion = this.sites.map((site, i) => {
+          const base = this.filaComparacionVacia(site, i, false);
+          const s = porSitio.get(site.id);
+          if (!s) return base;
+          const caudalA = this.statAvg(s.caudal.a);
+          const caudalB = this.statAvg(s.caudal.b);
+          const nivelA = this.statAvg(s.nivel.a);
+          const nivelB = this.statAvg(s.nivel.b);
+          const consumoA = s.consumo.a.m3;
+          const consumoB = s.consumo.b.m3;
+          return {
+            ...base,
+            caudalA: this.fmtComparacion(caudalA, 1),
+            caudalB: this.fmtComparacion(caudalB, 1),
+            caudalTend: variacionPct(caudalA, caudalB),
+            nivelA: this.fmtComparacion(nivelA, 1),
+            nivelB: this.fmtComparacion(nivelB, 1),
+            nivelTend: variacionPct(nivelA, nivelB),
+            consumoA: consumoA !== null ? this.formatM3(consumoA) : '—',
+            consumoB: consumoB !== null ? this.formatM3(consumoB) : '—',
+            consumoTend: variacionPct(consumoA, consumoB),
+          };
+        });
+        if (!res?.ok) {
+          this.comparacionError.set('No se pudo cargar la comparación de períodos.');
+        }
+        this.comparacionLoading.set(false);
         this.cdr.markForCheck();
       });
-    });
+  }
+
+  private statAvg(stat: PeriodComparisonStat): number | null {
+    return stat.n > 0 ? stat.avg : null;
   }
 
   private filaComparacionVacia(site: SiteRecord, i: number, cargando: boolean): SitioComparacion {
@@ -1714,19 +1703,6 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       consumoB: '—',
       consumoTend: 0,
     };
-  }
-
-  private aggCaudal(res: PeriodAggregatesResponse | null): number | null {
-    const d = res?.ok ? res.data : null;
-    return d && d.caudal.n > 0 ? d.caudal.avg : null;
-  }
-
-  /** Nivel freático proyectado si el sitio tiene pozo_config; si no, nivel crudo del sensor. */
-  private aggNivel(res: PeriodAggregatesResponse | null): number | null {
-    const d = res?.ok ? res.data : null;
-    if (!d) return null;
-    if (d.nivel_freatico.n > 0) return d.nivel_freatico.avg;
-    return d.nivel.n > 0 ? d.nivel.avg : null;
   }
 
   private fmtComparacion(v: number | null, decimales: number): string {

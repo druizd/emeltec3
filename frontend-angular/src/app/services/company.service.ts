@@ -53,6 +53,40 @@ export type TelemetryPreset = '24h' | '7d' | '30d' | '365d';
 export const CONTADOR_ROLES = ['totalizador', 'energia', 'volumen'] as const;
 export type ContadorRol = (typeof CONTADOR_ROLES)[number];
 
+/** Promedio y cantidad de muestras de una métrica en un período (`period-comparison`). */
+export interface PeriodComparisonStat {
+  avg: number | null;
+  n: number;
+  unidad: string | null;
+}
+
+/** Consumo acumulado de un período. `m3` null si ningún día del rango tuvo muestras. */
+export interface PeriodComparisonConsumo {
+  m3: number | null;
+  dias_con_datos: number;
+  unidad: string | null;
+}
+
+export interface PeriodComparisonSite {
+  site_id: string;
+  descripcion: string;
+  tipo_sitio: string;
+  activo: boolean;
+  caudal: { a: PeriodComparisonStat; b: PeriodComparisonStat };
+  /** Nivel freático proyectado si el sitio lo tiene; si no, nivel crudo del sensor. */
+  nivel: { a: PeriodComparisonStat; b: PeriodComparisonStat };
+  consumo: { a: PeriodComparisonConsumo; b: PeriodComparisonConsumo };
+}
+
+/** Respuesta de `GET /api/companies/:id/period-comparison`. */
+export interface PeriodComparisonData {
+  alcance: { tipo: 'sub_empresa' | 'empresa'; id: string; nombre: string };
+  periodos: { a: { desde: string; hasta: string }; b: { desde: string; hasta: string } };
+  /** false si un período empieza más de 120 días atrás: el consumo viene null. */
+  consumo_disponible: boolean;
+  sitios: PeriodComparisonSite[];
+}
+
 /** Punto de `GET /api/companies/sites/:id/contadores-diarios`. */
 export interface ContadorDiarioPoint {
   /** 'YYYY-MM-DD' en hora de Chile. */
@@ -666,6 +700,30 @@ export class CompanyService {
         }[];
       }>
     >(`/api/companies/sites/${siteId}/period-aggregates-daily?${params.toString()}`);
+  }
+
+  /**
+   * Comparación de períodos A vs B de todos los sitios de una sub-empresa o
+   * empresa en una sola llamada. `scopeId` es el id de la sub-empresa o de la
+   * empresa; `siteIds` acota la respuesta a los sitios que muestra la vista.
+   * Reemplaza las 3 llamadas por sitio (period-aggregates ×2 + contadores).
+   */
+  getPeriodComparison(
+    scopeId: string,
+    a: { desde: string; hasta: string },
+    b: { desde: string; hasta: string },
+    siteIds?: string[],
+  ): Observable<ApiResponse<PeriodComparisonData>> {
+    const params = new URLSearchParams();
+    params.set('a_desde', a.desde);
+    params.set('a_hasta', a.hasta);
+    params.set('b_desde', b.desde);
+    params.set('b_hasta', b.hasta);
+    if (siteIds?.length) params.set('site_ids', siteIds.join(','));
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<PeriodComparisonData>>(
+      `/api/companies/${encodeURIComponent(scopeId)}/period-comparison?${params.toString()}`,
+    );
   }
 
   getSiteMonthlyCounters(
