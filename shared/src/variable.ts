@@ -3,6 +3,51 @@ import type { SiteRecord, PozoConfig } from './site';
 export interface VariableParameters {
   factor?: number | null;
   offset?: number | null;
+  /**
+   * Escalado por rango: el técnico define el rango bruto que entrega el equipo
+   * (un 4-20 mA suele llegar como 4000-20000) y el rango en unidades de
+   * ingeniería. `factor` y `offset` se derivan de estos cuatro valores y
+   * siguen siendo lo único que lee el backend — estas llaves solo conservan la
+   * intención para poder reeditar la variable.
+   */
+  modo_escala?: 'rango' | null;
+  raw_min?: number | null;
+  raw_max?: number | null;
+  ing_min?: number | null;
+  ing_max?: number | null;
+  /**
+   * Señal digital: la palabra llega como un entero donde cada bit es un 0/1
+   * independiente. `bit` es el índice (0 = menos significativo), `palabra_bits`
+   * el ancho de la palabra e `invertido` marca las señales activas en 0. Las
+   * etiquetas son solo presentación; el valor transformado es 1 o 0.
+   */
+  bit?: number | null;
+  palabra_bits?: number | null;
+  invertido?: boolean | null;
+  etiqueta_on?: string | null;
+  etiqueta_off?: string | null;
+  /**
+   * Cut-off de caudal bajo, en unidades de ingeniería y SIMÉTRICO: lo que
+   * quede por debajo en valor absoluto se lee como 0. Es el mismo corte que
+   * trae el propio caudalímetro (menú 2.2.2.5 en el SITRANS FMT020).
+   *
+   * Un electromagnético en reposo oscila alrededor de cero por deriva del
+   * punto de cero: ni los negativos son flujo inverso ni los positivos
+   * diminutos son extracción. Cortar solo los negativos dejaría la serie
+   * sesgada hacia arriba.
+   *
+   * Se aplica AL LEER (`applyCutOff` en `utils/mappingTransform.js`), así que
+   * el crudo de `equipo` queda intacto y borrar la llave devuelve la serie
+   * original. Ausente, 0 o negativo = sin corte.
+   */
+  cut_off?: number | null;
+  /**
+   * Complemento a 2: un registro Modbus no lleva signo, asi que el PLC manda
+   * -449 como 65087. `signo_bits` es el ancho del registro (16 para uno
+   * suelto, 32 para el par combinado).
+   */
+  con_signo?: boolean | null;
+  signo_bits?: number | null;
   word_order?: string | null;
   word_swap?: boolean | null;
   wordSwap?: boolean | null;
@@ -23,6 +68,16 @@ export interface VariableMapping {
   sitio_id: string;
   created_at?: string;
   updated_at?: string;
+  /**
+   * Meses de `site_contador_mensual` que cuelgan de este mapeo, y su rango.
+   * Los adjunta `getSiteVariables` porque la FK tiene ON DELETE CASCADE:
+   * borrar el mapeo se lleva ese Flujo Mensual y no hay vuelta atras. El panel
+   * los usa para avisar antes de borrar y para ofrecer quitar el rol en su
+   * lugar. Ausentes en respuestas que no los calculan.
+   */
+  contador_meses?: number;
+  contador_desde?: string | null;
+  contador_hasta?: string | null;
 }
 
 export interface SiteVariable {

@@ -63,7 +63,17 @@ router.patch(
   userController.updateUser,
 );
 
-// Reset de contraseña por admin (reenvía código de acceso) — exige 2FA.
+// Reenviar la invitación de acceso a una cuenta que aún no definió su
+// contraseña. No toca el estado de la cuenta y el correo va a la dirección ya
+// registrada, así que NO exige 2FA (a diferencia de /reset-password).
+router.post(
+  '/:id/reenviar-acceso',
+  authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),
+  userController.reenviarAccesoUsuario,
+);
+
+// Restablecer acceso por admin: borra la contraseña, revoca sesiones y devuelve
+// la cuenta al flujo de activación. No emite OTP — exige 2FA.
 router.post(
   '/:id/reset-password',
   authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),

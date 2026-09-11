@@ -8,6 +8,8 @@
 import { getClient, query } from '../../config/dbHelpers';
 import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
+import type { RegMap } from '../sites/types';
+import { siteUrl } from '../../utils/siteUrl';
 interface AlertRegla {
   nombre: string;
   severidad: string;
@@ -19,6 +21,10 @@ interface AlertRegla {
   condicion_texto?: string;
   condicion: string;
   id_serial?: string;
+  /** "Empresa · Sub-empresa · Sitio · Obra DGA": lo que el operador reconoce. */
+  sitio_etiqueta?: string;
+  /** Detalle del sitio en el frontend, con la pestaña de alertas abierta. */
+  sitio_url?: string;
 }
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const emailMod = require('../../services/emailService.js') as {
@@ -26,7 +32,32 @@ const emailMod = require('../../services/emailService.js') as {
 };
 const { sendAlertEmail } = emailMod;
 
+// Misma matemática que el dashboard (fuente única, CommonJS). El umbral de una
+// regla se compara contra el valor transformado, no contra el crudo.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const transformMod = require('../../utils/mappingTransform.js') as {
+  applyMappingTransform: (input: {
+    rawData: Record<string, unknown>;
+    mapping: RegMap;
+    pozoConfig: unknown;
+  }) => unknown;
+  normalizeTransform: (value: unknown) => string;
+};
+const { applyMappingTransform, normalizeTransform } = transformMod;
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const heartbeatMod = require('../../services/heartbeat.js') as { beat: (name: string) => void };
+const { beat } = heartbeatMod;
+
 const POLL_INTERVAL_MS = Number(process.env.ALERT_POLL_MS ?? 60_000);
+
+/** Default espejo del de appConfig, para tests que mockean `config` sin `alertas`. */
+const GUARDIA_EMELTEC_DEFAULT = ['druiz@emeltec.cl', 'nlira@emeltec.cl'];
+
+function guardiaEmeltec(): string[] {
+  const lista = (config as { alertas?: { emeltecEmails?: string[] } }).alertas?.emeltecEmails;
+  return Array.isArray(lista) && lista.length > 0 ? lista : GUARDIA_EMELTEC_DEFAULT;
+}
 const DIAS_VALIDOS = [
   'domingo',
   'lunes',
@@ -56,14 +87,47 @@ interface Alerta {
     | 'dga_atrasado'
     | 'dga_slots_fallidos'
     | 'review_queue_acumulacion'
+    | 'consumo_diario'
     | string;
   umbral_bajo: number | null;
   umbral_alto: number | null;
   severidad: string;
   cooldown_minutos: number;
   dias_activos: string[] | null;
+  /** Usuarios que reciben el correo. Vacío = comportamiento histórico (el creador). */
+  notificar_user_ids?: string[] | null;
+  /** Además avisa a todos los SuperAdmin (equipo Emeltec). Default histórico: sí. */
+  notificar_superadmins?: boolean | null;
   id_serial: string;
   sitio_desc: string;
+  tipo_sitio?: string | null;
+  empresa_nombre?: string | null;
+  sub_empresa_nombre?: string | null;
+  obra_dga?: string | null;
+}
+
+/**
+ * Cómo se nombra el sitio en mensajes y correos: "CCU · Quilicura · Pozo 10 ·
+ * OB-1306-98". El serial del equipo (151.20.47.22) no le dice nada a un
+ * operador; va aparte, en la tabla técnica del correo. La sub-empresa se omite
+ * cuando repite el nombre de la empresa.
+ */
+export function etiquetaSitio(alerta: {
+  sitio_desc?: string | null;
+  sitio_id: string;
+  empresa_nombre?: string | null;
+  sub_empresa_nombre?: string | null;
+  obra_dga?: string | null;
+}): string {
+  const empresa = alerta.empresa_nombre?.trim() || '';
+  const sub = alerta.sub_empresa_nombre?.trim() || '';
+  const partes = [
+    empresa,
+    sub && sub.toLowerCase() !== empresa.toLowerCase() ? sub : '',
+    alerta.sitio_desc?.trim() || alerta.sitio_id,
+    alerta.obra_dga?.trim() || '',
+  ].filter(Boolean);
+  return partes.join(' · ');
 }
 
 function evalCondicion(
@@ -117,11 +181,15 @@ function formatCondicion(alerta: Alerta): string {
     case 'sin_datos':
       return `sin datos durante ${alerta.cooldown_minutos} minutos`;
     case 'dga_atrasado':
-      return 'reporte DGA atrasado más de 24h (escala a 48h y 72h)';
+      return 'sin comprobante SNIA hace más de 24h (escala a 48h y 72h)';
+    case 'sobre_derecho_dga':
+      return `el caudal supera el derecho DGA (límite ${alerta.umbral_bajo} L/s con tolerancia)`;
     case 'dga_slots_fallidos':
       return 'tiene slots DGA en estado fallido';
     case 'review_queue_acumulacion':
       return `la cola de revisión DGA superó el umbral de ${alerta.umbral_bajo} slots`;
+    case 'consumo_diario':
+      return `el consumo del día debe superar ${alerta.umbral_bajo}`;
     default:
       return alerta.condicion;
   }
@@ -160,17 +228,20 @@ function formatLagHorasMinutos(lagMs: number): string {
   return `${h}h ${m}m`;
 }
 
-function buildMensaje(alerta: Alerta, valor: number | null): string {
-  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+export function buildMensaje(alerta: Alerta, valor: number | null): string {
+  const sitio = etiquetaSitio(alerta);
   const severidad = alerta.severidad.toUpperCase();
   if (alerta.condicion === 'sin_datos') {
-    return `[${severidad}] Sin datos en ${sitio}. Equipo ${alerta.id_serial} no reporta informacion hace mas de ${alerta.cooldown_minutos} minutos.`;
+    return `[${severidad}] Sin datos en ${sitio}. El equipo no reporta información hace más de ${alerta.cooldown_minutos} minutos.`;
   }
   if (alerta.condicion === 'dga_slots_fallidos') {
     return `[${severidad}] ${sitio}. ${valor ?? 0} slot(s) DGA en estado fallido requieren intervención.`;
   }
   if (alerta.condicion === 'review_queue_acumulacion') {
-    return `[${severidad}] ${sitio}. Cola de revisión DGA: ${valor ?? 0} slots requires_review (umbral ${alerta.umbral_bajo}).`;
+    return `[${severidad}] ${sitio}. Cola de revisión DGA: ${valor ?? 0} slots en revisión (umbral ${alerta.umbral_bajo}).`;
+  }
+  if (alerta.condicion === 'sobre_derecho_dga') {
+    return `[${severidad}] ${sitio}. Caudal ${formatValor(valor)} L/s sobre el derecho DGA: límite ${alerta.umbral_bajo} L/s (derecho más tolerancia).`;
   }
   return `[${severidad}] ${sitio}. Variable ${alerta.variable_key}: valor detectado ${formatValor(valor)}. Regla: ${formatCondicion(alerta)}.`;
 }
@@ -180,6 +251,17 @@ async function notificarUsuarios(
   eventoId: string,
   mensaje: string,
 ): Promise<void> {
+  // Destinatarios: los elegidos en la regla, más el equipo Emeltec si la regla
+  // lo pide. Con la lista vacía se conserva el comportamiento histórico (avisar
+  // al creador), así que una regla anterior a esta opción sigue igual.
+  const elegidos = Array.isArray(alerta.notificar_user_ids)
+    ? alerta.notificar_user_ids.filter((id) => typeof id === 'string' && id.length > 0)
+    : [];
+  // "Avisar al equipo Emeltec" no es todos los SuperAdmin: es la guardia de
+  // alertas (ALERT_EMELTEC_EMAILS). Sigue exigiendo tipo SuperAdmin para que
+  // un correo mal escrito en la env no le mande alertas a un cliente.
+  const avisarSuperadmins = alerta.notificar_superadmins !== false;
+  const guardia = guardiaEmeltec();
   const usuarios = await query<{
     id: string;
     email: string;
@@ -187,8 +269,13 @@ async function notificarUsuarios(
     apellido: string | null;
   }>(
     `SELECT DISTINCT id, email, nombre, apellido FROM usuario
-     WHERE tipo = 'SuperAdmin' OR id = $1`,
-    [alerta.creado_por],
+     WHERE COALESCE(activo, TRUE)
+       AND (
+         ($2::boolean AND tipo = 'SuperAdmin' AND lower(email) = ANY($4::text[]))
+         OR id = ANY($3::text[])
+         OR (cardinality($3::text[]) = 0 AND id = $1)
+       )`,
+    [alerta.creado_por, avisarSuperadmins, elegidos, guardia],
     { name: 'alerts__notify_users' },
   );
   for (const u of usuarios.rows) {
@@ -206,10 +293,16 @@ async function notificarUsuarios(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Promise<void> {
-  // Lookup config DGA del sitio desde pozo_config (dga_user fue eliminado en 2026-05-17).
+  // La referencia es el ÚLTIMO SLOT CON COMPROBANTE SNIA (dato_dga.comprobante),
+  // no `dga_last_run_at`: ese campo lo marca el fill cada vez que CALCULA un
+  // slot, aunque el envío a SNIA lleve días fallando. Con la base anterior un
+  // pozo con 3 días de envíos rechazados o en timeout figuraba "al día".
+  // Config DGA del sitio desde pozo_config (dga_user fue eliminado en 2026-05-17).
   const u = await client.query(
     `SELECT pc.dga_periodicidad                       AS periodicidad,
-            pc.dga_last_run_at                        AS last_run_at,
+            (SELECT MAX(d.ts) FROM dato_dga d
+              WHERE d.site_id = pc.sitio_id
+                AND d.comprobante IS NOT NULL)        AS ultimo_comprobante_ts,
             to_char(pc.dga_fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio,
             to_char(pc.dga_hora_inicio,  'HH24:MI:SS') AS hora_inicio
        FROM pozo_config pc
@@ -220,7 +313,7 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
   const dgaUser = u.rows[0] as
     | {
         periodicidad: string;
-        last_run_at: string | null;
+        ultimo_comprobante_ts: string | Date | null;
         fecha_inicio: string;
         hora_inicio: string;
       }
@@ -228,8 +321,10 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
   if (!dgaUser) return; // sitio sin DGA configurado
 
   const stepMs = periodMsForDga(dgaUser.periodicidad);
-  const baseMs = dgaUser.last_run_at
-    ? new Date(dgaUser.last_run_at).getTime()
+  // Sin ningún comprobante todavía, la referencia es el inicio configurado del
+  // reporte: un pozo que nunca logró enviar también tiene que alertar.
+  const baseMs = dgaUser.ultimo_comprobante_ts
+    ? new Date(dgaUser.ultimo_comprobante_ts).getTime()
     : new Date(
         `${dgaUser.fecha_inicio}T${dgaUser.hora_inicio.length === 5 ? `${dgaUser.hora_inicio}:00` : dgaUser.hora_inicio}-04:00`,
       ).getTime();
@@ -262,7 +357,7 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
           alerta.sub_empresa_id ?? null,
           alerta.sitio_id,
           alerta.variable_key,
-          `Reporte DGA al día en ${alerta.sitio_desc ?? alerta.sitio_id}.`,
+          `Reporte DGA al día en ${alerta.sitio_desc ?? alerta.sitio_id}: SNIA volvió a entregar comprobante.`,
         ],
       );
     }
@@ -274,12 +369,15 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
 
   const sitio = alerta.sitio_desc ?? alerta.sitio_id;
   const lagTexto = formatLagHorasMinutos(lagMs);
-  const mensaje = `[${tierSev.toUpperCase()}] Reporte DGA atrasado en ${sitio}. Sin reportar hace ${lagTexto}.`;
+  const ultimo = dgaUser.ultimo_comprobante_ts
+    ? `Último comprobante SNIA: slot ${new Date(dgaUser.ultimo_comprobante_ts).toISOString().replace('T', ' ').slice(0, 16)} UTC.`
+    : 'Nunca se ha recibido un comprobante SNIA para este pozo.';
+  const mensaje = `[${tierSev.toUpperCase()}] Reporte DGA sin comprobante en ${sitio} hace ${lagTexto}. ${ultimo}`;
   const ctx = {
     ...alerta,
     severidad: tierSev,
     valor_detectado: lagTexto,
-    condicion_texto: `reporte DGA atrasado más de ${DGA_TIER_H[tierSev]}h`,
+    condicion_texto: `sin comprobante SNIA hace más de ${DGA_TIER_H[tierSev]}h`,
   };
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
@@ -304,54 +402,45 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
 }
 
 /**
- * Comprueba si ya existe un evento reciente dentro del cooldown para esta alerta.
- * Usado internamente por los evaluadores DGA sticky-state para evitar re-disparos
- * cada 60s (ADR-6a). Los evaluadores DGA hacen early-return antes del cooldown
- * genérico de evaluarAlerta(), por lo que deben gestionar su propia deduplicación.
- *
- * @returns true si hay un evento dentro del window de cooldown (→ caller debe retornar).
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function dentroDeCooldown(client: any, alerta: Alerta): Promise<boolean> {
-  const r = await client.query(
-    `SELECT triggered_at FROM alertas_eventos
-     WHERE alerta_id = $1 AND triggered_at > NOW() - ($2 || ' minutes')::INTERVAL
-     ORDER BY triggered_at DESC LIMIT 1`,
-    [alerta.id, alerta.cooldown_minutos],
-  );
-  return (r as { rows: unknown[] }).rows.length > 0;
-}
-
-/**
  * Evalúa la condición `dga_slots_fallidos`.
- * Cuenta slots dato_dga en estado 'fallido' para el sitio. Si n >= 1 y el
- * cooldown no está activo, inserta alertas_eventos y notifica. (ADR-6)
+ * Cuenta slots dato_dga en estado 'fallido' para el sitio. Si n >= 1, el veredicto
+ * pasa por `debeNotificar` igual que el resto de condiciones. (ADR-6)
  *
- * Guard W-1: si pozo_config.dga_activo=FALSE (o no existe config), el evaluador
- * sale temprano sin disparar alarma — evita falsos positivos por datos residuales
- * en dato_dga luego de que el operador desactiva DGA para el sitio.
+ * Un slot fallido no se arregla solo: es la condición sticky por excelencia, así
+ * que sin la agrupación de repeticiones generaba un correo por cooldown de forma
+ * indefinida. Reconocer el evento corta el aviso; que el slot se recupere lo rearma.
+ *
+ * Guard W-1: si pozo_config.dga_activo=FALSE (o no existe config), la condición se
+ * considera no cumplida — evita falsos positivos por datos residuales en dato_dga
+ * luego de que el operador desactiva DGA para el sitio, y de paso rearma el evento
+ * reconocido en vez de dejarlo abierto para siempre.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlertaDgaSlotsFallidos(client: any, alerta: Alerta): Promise<void> {
-  if (await dentroDeCooldown(client, alerta)) return;
+  // El count queda en esta variable para reusarlo en el mensaje: debeNotificar
+  // invoca el evaluador a lo más una vez por ciclo.
+  let n = 0;
+  const hayFallidos = async (): Promise<boolean> => {
+    // Guard W-1: verificar que DGA sigue activo para el sitio antes de contar.
+    // Mismo patrón que evaluarAlertaDgaAtrasado (ADR-1).
+    const cfg = (await client.query(
+      `SELECT 1 FROM pozo_config
+        WHERE sitio_id = $1 AND dga_activo = TRUE
+        LIMIT 1`,
+      [alerta.sitio_id],
+    )) as { rows: unknown[] };
+    if (cfg.rows.length === 0) return false; // DGA desactivado o sin config
 
-  // Guard W-1: verificar que DGA sigue activo para el sitio antes de contar.
-  // Mismo patrón que evaluarAlertaDgaAtrasado (ADR-1).
-  const cfg = (await client.query(
-    `SELECT 1 FROM pozo_config
-     WHERE sitio_id = $1 AND dga_activo = TRUE
-     LIMIT 1`,
-    [alerta.sitio_id],
-  )) as { rows: unknown[] };
-  if (cfg.rows.length === 0) return; // DGA desactivado o sin config — no disparar
+    const r = (await client.query(
+      `SELECT COUNT(*)::int AS n FROM dato_dga
+        WHERE site_id = $1 AND estatus = 'fallido'`,
+      [alerta.sitio_id],
+    )) as { rows: Array<{ n: number }> };
+    n = r.rows[0]?.n ?? 0;
+    return n > 0;
+  };
 
-  const r = (await client.query(
-    `SELECT COUNT(*)::int AS n FROM dato_dga
-     WHERE site_id = $1 AND estatus = 'fallido'`,
-    [alerta.sitio_id],
-  )) as { rows: Array<{ n: number }> };
-  const n = r.rows[0]?.n ?? 0;
-  if (n === 0) return;
+  if (!(await debeNotificar(client, alerta, hayFallidos))) return;
 
   const sitio = alerta.sitio_desc ?? alerta.sitio_id;
   const severidad = alerta.severidad.toUpperCase();
@@ -385,13 +474,21 @@ export async function evaluarAlertaDgaSlotsFallidos(client: any, alerta: Alerta)
 
 /**
  * Evalúa la condición `review_queue_acumulacion`.
- * Cuenta slots dato_dga en estado 'requires_review'. Si n > umbral_bajo (N) y el
- * cooldown no está activo, inserta alertas_eventos y notifica. (ADR-5, ADR-6)
+ * Cuenta slots dato_dga en estado 'requires_review'. Si n > umbral_bajo (N), el
+ * veredicto pasa por `debeNotificar` igual que el resto de condiciones.
+ * (ADR-5, ADR-6)
+ *
+ * La cola de revisión tampoco se vacía sola: un backlog por encima del umbral
+ * mantiene la condición cumplida indefinidamente, y antes eso significaba un
+ * correo por cooldown hasta que alguien vaciara la cola.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Promise<void> {
   // Guard de misconfiguración: umbral_bajo debe ser un número positivo.
-  if (alerta.umbral_bajo === null || alerta.umbral_bajo === undefined || alerta.umbral_bajo <= 0) {
+  // Se copia a un local porque el evaluador es un closure y TS no arrastra el
+  // narrowing de una propiedad mutable hasta dentro.
+  const umbral = alerta.umbral_bajo;
+  if (umbral === null || umbral === undefined || umbral <= 0) {
     logger.warn(
       { alertaId: alerta.id, umbral_bajo: alerta.umbral_bajo },
       'alerts: review_queue_acumulacion sin umbral_bajo válido — alerta mal configurada',
@@ -399,15 +496,20 @@ export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Pro
     return;
   }
 
-  if (await dentroDeCooldown(client, alerta)) return;
+  // El count queda en esta variable para reusarlo en el mensaje: debeNotificar
+  // invoca el evaluador a lo más una vez por ciclo.
+  let n = 0;
+  const superaUmbral = async (): Promise<boolean> => {
+    const r = (await client.query(
+      `SELECT COUNT(*)::int AS n FROM dato_dga
+        WHERE site_id = $1 AND estatus = 'requires_review'`,
+      [alerta.sitio_id],
+    )) as { rows: Array<{ n: number }> };
+    n = r.rows[0]?.n ?? 0;
+    return n > umbral;
+  };
 
-  const r = (await client.query(
-    `SELECT COUNT(*)::int AS n FROM dato_dga
-     WHERE site_id = $1 AND estatus = 'requires_review'`,
-    [alerta.sitio_id],
-  )) as { rows: Array<{ n: number }> };
-  const n = r.rows[0]?.n ?? 0;
-  if (n <= alerta.umbral_bajo) return;
+  if (!(await debeNotificar(client, alerta, superaUmbral))) return;
 
   const sitio = alerta.sitio_desc ?? alerta.sitio_id;
   const severidad = alerta.severidad.toUpperCase();
@@ -442,6 +544,360 @@ export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Pro
   );
 }
 
+/**
+ * Consumo del día = DELTA del totalizador dentro del día calendario chileno,
+ * NO el valor acumulado del contador.
+ *
+ * Reusa `computeDailyDeltasForVariable` (modules/contadores), que ya:
+ *   - aplica la transformación del reg_map → el delta viene en unidades de
+ *     ingeniería (m³), así que `umbral_bajo` NO es un valor crudo del payload
+ *     como en `mayor_que`;
+ *   - maneja los resets del contador (overflow uint32, reemplazo de sensor);
+ *   - descarta payloads Modbus corruptos que llegan en 0.
+ *
+ * Se evalúa contra el día EN CURSO (acumulado parcial), para poder avisar
+ * durante el evento y no al día siguiente.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function evaluarAlertaConsumoDiario(client: any, alerta: Alerta): Promise<void> {
+  if (alerta.umbral_bajo === null || alerta.umbral_bajo === undefined) return;
+  if (!alerta.id_serial) return;
+
+  const consumo = await getConsumoDiarioActual(client, alerta);
+  if (!consumo || consumo.delta === null) return;
+
+  // El veredicto pasa por debeNotificar para que aplique lo mismo que al resto
+  // de condiciones: agrupar repeticiones si ya se dio por conocida, y rearmar
+  // cuando el consumo del dia vuelve a estar bajo el umbral.
+  const dispara = consumo.delta > alerta.umbral_bajo;
+  if (!(await debeNotificar(client, alerta, () => dispara))) return;
+
+  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+  const severidad = alerta.severidad.toUpperCase();
+  const unidad = consumo.unidad ? ` ${consumo.unidad}` : '';
+  const deltaTexto = formatConsumo(consumo.delta);
+  const mensaje =
+    `[${severidad}] ${sitio}. Consumo del día ${consumo.diaIso}: ${deltaTexto}${unidad} ` +
+    `(umbral ${alerta.umbral_bajo}${unidad}). Variable ${alerta.variable_key}.`;
+  const ctx = {
+    ...alerta,
+    valor_detectado: `${deltaTexto}${unidad}`,
+    condicion_texto: formatCondicion(alerta),
+  };
+  const ins = (await client.query(
+    `INSERT INTO alertas_eventos
+       (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
+        valor_detectado, valor_texto, mensaje, severidad)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     RETURNING id`,
+    [
+      alerta.id,
+      alerta.empresa_id,
+      alerta.sub_empresa_id ?? null,
+      alerta.sitio_id,
+      alerta.variable_key,
+      consumo.delta,
+      `${deltaTexto}${unidad}`,
+      mensaje,
+      alerta.severidad,
+    ],
+  )) as { rows: Array<{ id: string }> };
+  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
+    logger.error({ err: (err as Error).message }, 'alerts: notificacion consumo_diario falló'),
+  );
+}
+
+function formatConsumo(valor: number): string {
+  return (Math.round(valor * 100) / 100).toString();
+}
+
+/**
+ * Cache del delta del día en curso por (sitio, variable). Sin esto, cada ciclo
+ * del worker (60s) reescanearía todas las lecturas del día por alerta — el
+ * cooldown no protege, porque solo aplica DESPUÉS de que la alerta disparó.
+ * Un totalizador avanza lento: 5 min de staleness no cambia la decisión.
+ */
+const CONSUMO_CACHE_TTL_MS = Number(process.env.ALERT_CONSUMO_CACHE_MS ?? 5 * 60 * 1000);
+const consumoCache = new Map<
+  string,
+  { at: number; diaIso: string; delta: number | null; unidad: string | null }
+>();
+
+interface ConsumoDiario {
+  diaIso: string;
+  delta: number | null;
+  unidad: string | null;
+}
+
+/**
+ * Carga diferida de `modules/contadores`: ese módulo inicializa el cliente
+ * Redis al importarse, y las demás condiciones de alerta no lo necesitan.
+ * Importarlo arriba obligaba a todo el worker (y a sus tests) a arrastrar esa
+ * dependencia.
+ */
+async function contadoresService() {
+  // La extensión .js es obligatoria: un import() dinámico se resuelve como
+  // ESM genuino bajo moduleResolution node16, a diferencia de los imports
+  // estáticos de este archivo, que se compilan a require.
+  return import('../contadores/service.js');
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getConsumoDiarioActual(client: any, alerta: Alerta): Promise<ConsumoDiario | null> {
+  const { computeDailyDeltasForVariable, getDayRangeChile } = await contadoresService();
+  const { start, end, diaIso } = getDayRangeChile(new Date());
+  const cacheKey = `${alerta.sitio_id}:${alerta.variable_key}`;
+  const hit = consumoCache.get(cacheKey);
+  if (hit && hit.diaIso === diaIso && Date.now() - hit.at < CONSUMO_CACHE_TTL_MS) {
+    return { diaIso, delta: hit.delta, unidad: hit.unidad };
+  }
+
+  // La alerta guarda la clave cruda del payload (`d1`); el cálculo de delta
+  // necesita el mapping completo para saber cómo transformarla.
+  const mapRes = (await client.query(
+    `SELECT id, sitio_id, alias, d1, d2, tipo_dato, unidad, rol_dashboard,
+            transformacion, parametros
+       FROM reg_map
+      WHERE sitio_id = $1 AND d1 = $2
+      LIMIT 1`,
+    [alerta.sitio_id, alerta.variable_key],
+  )) as { rows: RegMap[] };
+  const mapping = mapRes.rows[0];
+  if (!mapping) {
+    logger.warn(
+      { alerta_id: alerta.id, sitio_id: alerta.sitio_id, variable_key: alerta.variable_key },
+      'alerts: consumo_diario sin mapping en reg_map — regla inevaluable',
+    );
+    return null;
+  }
+
+  const siteRes = (await client.query(`SELECT tipo_sitio FROM sitio WHERE id = $1`, [
+    alerta.sitio_id,
+  ])) as { rows: Array<{ tipo_sitio: string | null }> };
+  let pozoConfig = null;
+  if (siteRes.rows[0]?.tipo_sitio === 'pozo') {
+    const { getPozoConfigBySiteId } = await import('../sites/repo.js');
+    pozoConfig = await getPozoConfigBySiteId(alerta.sitio_id);
+  }
+
+  const deltasByDay = await computeDailyDeltasForVariable({
+    idSerial: alerta.id_serial!,
+    mapping,
+    pozoConfig,
+    start,
+    end,
+  });
+  const delta = deltasByDay.get(diaIso)?.delta ?? null;
+  const unidad = mapping.unidad ?? null;
+  consumoCache.set(cacheKey, { at: Date.now(), diaIso, delta, unidad });
+  return { diaIso, delta, unidad };
+}
+
+/**
+ * Decide si corresponde crear un evento NUEVO (y por lo tanto notificar) para
+ * esta alerta. `evaluar` responde si la condición se cumple en este ciclo, y se
+ * invoca de forma diferida: cuando el cooldown ya corta el ciclo no hace falta
+ * consultarla, y las condiciones DGA la resuelven con un COUNT sobre `dato_dga`
+ * que no queremos pagar cada 60s (ADR-6a).
+ *
+ * Reconocer un evento pasa a significar "ya lo sé": mientras siga abierto y
+ * reconocido, las repeticiones se agrupan en él en vez de generar un evento y
+ * un correo por cada cooldown. Antes el cooldown solo miraba `triggered_at`
+ * sin importar el estado, así que una condición que no se normaliza sola
+ * (un totalizador acumulado, por ejemplo) producía un aviso cada 5 minutos
+ * indefinidamente.
+ *
+ * Rearme: si la condición se normaliza y el evento estaba reconocido, se
+ * resuelve solo. Así la próxima vez que ocurra vuelve a avisar de verdad. Un
+ * evento NO reconocido no se auto-resuelve: alguien tiene que verlo.
+ *
+ * @returns true si el llamador debe insertar el evento.
+ */
+async function debeNotificar(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  alerta: Alerta,
+  evaluar: () => boolean | Promise<boolean>,
+): Promise<boolean> {
+  const abiertoRes = (await client.query(
+    `SELECT id, reconocida_at FROM alertas_eventos
+      WHERE alerta_id = $1 AND resuelta = FALSE
+      ORDER BY triggered_at DESC LIMIT 1`,
+    [alerta.id],
+  )) as { rows: Array<{ id: string; reconocida_at: string | null }> };
+  const abierto = abiertoRes.rows[0];
+
+  // Evento reconocido: no hay correo posible en este ciclo, pero sí hay que
+  // saber si la condición sigue activa para elegir entre agrupar la repetición
+  // y rearmar. El cooldown no aplica acá.
+  if (abierto?.reconocida_at) {
+    if (await evaluar()) {
+      await client.query(
+        `UPDATE alertas_eventos
+          SET repeticiones = repeticiones + 1, ultima_repeticion_at = NOW()
+        WHERE id = $1`,
+        [abierto.id],
+      );
+      return false;
+    }
+    await client.query(
+      `UPDATE alertas_eventos SET resuelta = TRUE, resuelta_at = NOW() WHERE id = $1`,
+      [abierto.id],
+    );
+    logger.info(
+      { alertaId: alerta.id, eventoId: abierto.id },
+      'alerts: condicion normalizada, evento reconocido se rearma',
+    );
+    return false;
+  }
+
+  // Sin reconocer: rige el cooldown normal para no spamear al operador que
+  // todavía no ha mirado la bandeja. Un evento sin reconocer tampoco se
+  // auto-resuelve, así que no hace falta evaluar para decidir el rearme.
+  const cool = await client.query(
+    `SELECT 1 FROM alertas_eventos
+      WHERE alerta_id = $1 AND triggered_at > NOW() - ($2 || ' minutes')::INTERVAL
+      LIMIT 1`,
+    [alerta.id, alerta.cooldown_minutos],
+  );
+  if (cool.rows.length > 0) return false;
+
+  return evaluar();
+}
+
+/**
+ * Valor contra el que se compara el umbral: el MISMO que muestra el dashboard.
+ *
+ * Si la variable está en el reg_map del sitio, el crudo pasa por su
+ * transformación (factor/offset, IEEE754 de dos registros, uint32, nivel
+ * freático…) y el umbral se escribe en la unidad del reg_map. Antes se
+ * comparaba `equipo.data[variable_key]` sin transformar: con un factor 0,1 el
+ * umbral iba multiplicado por 10, y con un float de dos registros no podía
+ * calzar nunca (la palabra alta de un IEEE754 no significa nada sola).
+ *
+ * Sin mapeo se compara el crudo, como siempre. Si la transformación falla
+ * (registro que no llegó, ancho de signo mal configurado) no se evalúa: es
+ * exactamente lo que el dashboard marca como `ok: false`.
+ */
+async function valorEvaluable(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  alerta: Alerta,
+  data: Record<string, unknown>,
+): Promise<{ valorNum: number; valorTexto: string } | null> {
+  const mapRes = (await client.query(
+    `SELECT id, sitio_id, alias, d1, d2, tipo_dato, unidad, rol_dashboard,
+            transformacion, parametros
+       FROM reg_map
+      WHERE sitio_id = $1 AND d1 = $2
+      ORDER BY alias
+      LIMIT 1`,
+    [alerta.sitio_id, alerta.variable_key],
+  )) as { rows: RegMap[] };
+  const mapping = mapRes.rows[0];
+
+  let valor: unknown = data[alerta.variable_key];
+  if (mapping) {
+    let pozoConfig: unknown = null;
+    if (normalizeTransform(mapping.transformacion) === 'nivel_freatico') {
+      const pc = (await client.query(`SELECT * FROM pozo_config WHERE sitio_id = $1 LIMIT 1`, [
+        alerta.sitio_id,
+      ])) as { rows: unknown[] };
+      pozoConfig = pc.rows[0] ?? null;
+    }
+    try {
+      valor = applyMappingTransform({ rawData: data, mapping, pozoConfig });
+    } catch (err) {
+      logger.debug(
+        { alertaId: alerta.id, variable_key: alerta.variable_key, err: (err as Error).message },
+        'alerts: la transformacion del reg_map fallo, lectura no evaluable',
+      );
+      return null;
+    }
+  }
+
+  const valorNum = typeof valor === 'number' ? valor : parseFloat(String(valor));
+  if (!Number.isFinite(valorNum)) return null;
+  return { valorNum, valorTexto: String(valor) };
+}
+
+/**
+ * Condición `sobre_derecho_dga`: el caudal instantáneo del pozo supera el
+ * derecho de aprovechamiento cargado en `pozo_config` (`dga_caudal_max_lps`)
+ * más la tolerancia configurada. No lleva umbral ni variable: el límite sale
+ * del derecho y el caudal, del mapeo con rol `caudal` del reg_map, con la misma
+ * transformación que el dashboard. Es la versión "en vivo" de la regla
+ * `flow_exceeds_water_right` que la validación DGA aplica a cada slot.
+ *
+ * Sin derecho cargado no hay contra qué comparar: la regla no evalúa (y el
+ * formulario lo avisa). Cargar el derecho es un prerrequisito, no un default.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function evaluarAlertaSobreDerecho(client: any, alerta: Alerta): Promise<void> {
+  const cfg = (await client.query(
+    `SELECT dga_caudal_max_lps, dga_caudal_tolerance_pct
+       FROM pozo_config
+      WHERE sitio_id = $1
+      LIMIT 1`,
+    [alerta.sitio_id],
+  )) as { rows: Array<{ dga_caudal_max_lps: unknown; dga_caudal_tolerance_pct: unknown }> };
+  const derecho = Number(cfg.rows[0]?.dga_caudal_max_lps);
+  if (!Number.isFinite(derecho) || derecho <= 0) {
+    logger.debug(
+      { alertaId: alerta.id, sitio_id: alerta.sitio_id },
+      'alerts: sobre_derecho_dga sin dga_caudal_max_lps cargado, no evaluable',
+    );
+    return;
+  }
+  const toleranciaPct = Number(cfg.rows[0]?.dga_caudal_tolerance_pct);
+  const limite = derecho * (1 + (Number.isFinite(toleranciaPct) ? toleranciaPct : 0) / 100);
+
+  const mapRes = (await client.query(
+    `SELECT id, sitio_id, alias, d1, d2, tipo_dato, unidad, rol_dashboard,
+            transformacion, parametros
+       FROM reg_map
+      WHERE sitio_id = $1 AND rol_dashboard = 'caudal'
+      ORDER BY alias`,
+    [alerta.sitio_id],
+  )) as { rows: RegMap[] };
+  if (mapRes.rows.length === 0) return;
+
+  const latest = (await client.query(
+    `SELECT data FROM equipo WHERE id_serial = $1 ORDER BY time DESC LIMIT 1`,
+    [alerta.id_serial],
+  )) as { rows: Array<{ data: Record<string, unknown> }> };
+  const data = latest.rows[0]?.data;
+  if (!data) return;
+
+  // Si hay más de un mapeo con rol caudal (resto de un recambio de equipo), se
+  // usa el primero que calcula: mismo criterio que el dashboard.
+  let caudal: number | null = null;
+  for (const mapping of mapRes.rows) {
+    try {
+      const v = Number(applyMappingTransform({ rawData: data, mapping, pozoConfig: null }));
+      if (Number.isFinite(v)) {
+        caudal = v;
+        break;
+      }
+    } catch {
+      // registro que no llegó o transformación mal configurada: probar el siguiente
+    }
+  }
+  if (caudal === null) return;
+
+  const limiteRedondeado = Math.round(limite * 100) / 100;
+  const dispara = caudal > limite;
+  if (await debeNotificar(client, alerta, () => dispara)) {
+    // El límite viaja como umbral_bajo para que el mensaje y el correo lo muestren.
+    await insertarEvento(
+      client,
+      { ...alerta, umbral_bajo: limiteRedondeado },
+      Math.round(caudal * 100) / 100,
+      `${caudal} L/s`,
+    );
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> {
   if (!estaActivoHoy(alerta)) return;
@@ -461,22 +917,38 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
     return;
   }
 
-  const cool = await client.query(
-    `SELECT triggered_at FROM alertas_eventos
-     WHERE alerta_id = $1 AND triggered_at > NOW() - ($2 || ' minutes')::INTERVAL
-     ORDER BY triggered_at DESC LIMIT 1`,
-    [alerta.id, alerta.cooldown_minutos],
-  );
-  if (cool.rows.length > 0) return;
+  if (alerta.condicion === 'consumo_diario') {
+    await evaluarAlertaConsumoDiario(client, alerta);
+    return;
+  }
+
+  if (alerta.condicion === 'sobre_derecho_dga') {
+    await evaluarAlertaSobreDerecho(client, alerta);
+    return;
+  }
 
   if (alerta.condicion === 'sin_datos') {
+    // "Sin datos" se decide por `received_at` (cuándo llegó el paquete), no por
+    // `time` (el reloj del equipo): los dataloggers de CCU han estado hasta 52
+    // minutos atrasados y con `time` la alerta saltaba 8 minutos después del
+    // último paquete recibido (S119, 04-09-2026). Pero filtrar solo por
+    // received_at no deja a Timescale excluir chunks y descomprime los ~900 de
+    // la tabla buscando el serial, lo que en frío supera el statement timeout.
+    // Por eso se acota además por `time` con un margen de un día: cae en uno o
+    // dos chunks vía idx_equipo_serial_time y tolera cualquier desfase de reloj
+    // razonable.
     const r = await client.query(
-      `SELECT received_at FROM equipo
-       WHERE id_serial = $1 AND received_at > NOW() - ($2 || ' minutes')::INTERVAL
+      `SELECT time FROM equipo
+       WHERE id_serial = $1
+         AND time > NOW() - ($2 || ' minutes')::INTERVAL - INTERVAL '1 day'
+         AND received_at > NOW() - ($2 || ' minutes')::INTERVAL
        LIMIT 1`,
       [alerta.id_serial, alerta.cooldown_minutos],
     );
-    if (r.rows.length === 0) await insertarEvento(client, alerta, null, null);
+    const sinDatos = r.rows.length === 0;
+    if (await debeNotificar(client, alerta, () => sinDatos)) {
+      await insertarEvento(client, alerta, null, null);
+    }
     return;
   }
 
@@ -487,12 +959,17 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
   if (latest.rows.length === 0) return;
   const rawVal = latest.rows[0]!.data[alerta.variable_key];
   if (rawVal === undefined) return;
-  const valorNum = parseFloat(String(rawVal));
-  const valorTexto = String(rawVal);
-  if (
-    !Number.isNaN(valorNum) &&
-    evalCondicion(alerta.condicion, valorNum, alerta.umbral_bajo ?? 0, alerta.umbral_alto ?? 0)
-  ) {
+  const evaluable = await valorEvaluable(client, alerta, latest.rows[0]!.data);
+  if (evaluable === null) return;
+  const { valorNum, valorTexto } = evaluable;
+
+  const dispara = evalCondicion(
+    alerta.condicion,
+    valorNum,
+    alerta.umbral_bajo ?? 0,
+    alerta.umbral_alto ?? 0,
+  );
+  if (await debeNotificar(client, alerta, () => dispara)) {
     await insertarEvento(client, alerta, valorNum, valorTexto);
   }
 }
@@ -509,6 +986,8 @@ async function insertarEvento(
     ...alerta,
     valor_detectado: formatValor(valorNum),
     condicion_texto: formatCondicion(alerta),
+    sitio_etiqueta: etiquetaSitio(alerta),
+    sitio_url: siteUrl(alerta.sitio_id, alerta.tipo_sitio, 'alertas'),
   };
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
@@ -534,6 +1013,8 @@ async function insertarEvento(
 }
 
 async function runCycle(): Promise<void> {
+  // Latido para el monitor interno (health digest), igual que hacía el legado.
+  beat('alertas');
   let client: Awaited<ReturnType<typeof getClient>> | null = null;
   try {
     client = await getClient();
@@ -541,9 +1022,15 @@ async function runCycle(): Promise<void> {
       `SELECT a.id, a.nombre, a.empresa_id, a.sub_empresa_id, a.sitio_id, a.creado_por,
               a.variable_key, a.condicion, a.umbral_bajo, a.umbral_alto,
               a.severidad, a.cooldown_minutos, a.dias_activos,
-              s.id_serial, s.descripcion AS sitio_desc
+              a.notificar_user_ids, a.notificar_superadmins,
+              s.id_serial, s.descripcion AS sitio_desc, s.tipo_sitio,
+              e.nombre AS empresa_nombre, se.nombre AS sub_empresa_nombre,
+              pc.obra_dga
        FROM alertas a
        JOIN sitio s ON s.id = a.sitio_id
+       LEFT JOIN empresa e ON e.id = s.empresa_id
+       LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
+       LEFT JOIN pozo_config pc ON pc.sitio_id = s.id
        WHERE a.activa = TRUE`,
     );
     for (const alerta of result.rows) {

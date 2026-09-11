@@ -6,7 +6,34 @@ require('dotenv').config();
 const config = require('./config/env');
 const app = require('./app');
 const { startGrpcServer } = require('./grpc/server');
-const alertaService = require('./services/alertaService');
+/**
+ * Worker de alertas TS (modules/alerts/worker). Reemplaza al legado
+ * services/alertaService.js, que seguía arrancando acá mientras el worker TS
+ * (destinatarios, valor transformado, DGA sin comprobante, derecho, consumo
+ * diario) nunca se iniciaba: las reglas con esas condiciones jamás evaluaron
+ * y el correo iba a todos los SuperAdmin. Mismo patrón dist/ que el resto de
+ * los workers TS de abajo, pero acá un dist ausente en producción es un
+ * error, no un detalle de desarrollo.
+ */
+function loadAlertsWorker() {
+  try {
+    const alertsWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'alerts',
+      'worker',
+    );
+    return require(alertsWorkerPath);
+  } catch (err) {
+    if (config.nodeEnv === 'production' || (err && err.code !== 'MODULE_NOT_FOUND')) {
+      console.error('[main-api] No se pudo cargar el worker de alertas:', err.message);
+    }
+    return null;
+  }
+}
+const alertsWorker = loadAlertsWorker();
 
 let grpcServerRef = null;
 
@@ -14,7 +41,7 @@ let grpcServerRef = null;
 const httpServer = app.listen(config.port, () => {
   console.log(`[main-api] HTTP corriendo en http://localhost:${config.port}`);
   console.log(`[main-api] Entorno: ${config.nodeEnv}`);
-  alertaService.start();
+  if (alertsWorker) alertsWorker.startAlertsWorker();
 
   // Metrics flusher TS (buffer in-memory → DB cada 5 s).
   try {
@@ -246,7 +273,7 @@ startGrpcServer(`0.0.0.0:${config.grpcPort}`)
 function shutdown(signal) {
   console.log(`[main-api] Cerrando servicios por ${signal}`);
 
-  alertaService.stop();
+  if (alertsWorker) alertsWorker.stopAlertsWorker();
 
   try {
     const retentionWorkerPath = require('path').join(

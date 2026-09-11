@@ -12,7 +12,27 @@ const adminRoles = ['SuperAdmin', 'Admin', 'Vendedor'];
 const alarmEditorRoles = ['SuperAdmin', 'Admin', 'Gerente', 'Vendedor'];
 
 router.post('/alertas', protect, authorizeRoles(...alarmEditorRoles), c.crearAlerta);
+router.get(
+  '/alertas/recomendadas',
+  protect,
+  authorizeRoles(...alarmEditorRoles),
+  c.listarRecomendadas,
+);
+router.post(
+  '/alertas/recomendadas',
+  protect,
+  authorizeRoles(...alarmEditorRoles),
+  c.crearRecomendadas,
+);
 router.get('/alertas', protect, c.listarAlertas);
+// Antes de `/alertas/:id`, o Express los tomaría como un id.
+router.get(
+  '/alertas/destinatarios',
+  protect,
+  authorizeRoles(...alarmEditorRoles),
+  c.destinatariosPosibles,
+);
+router.get('/alertas/simulacion', protect, c.simulacionValores);
 router.get('/alertas/:id', protect, c.obtenerAlerta);
 router.put('/alertas/:id', protect, authorizeRoles(...alarmEditorRoles), c.actualizarAlerta);
 router.delete(

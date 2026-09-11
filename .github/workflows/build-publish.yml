@@ -10,6 +10,17 @@ on:
   push:
     branches:
       - main
+    # En repo publico los runners GitHub-hosted son gratis; en privado consumen
+    # cuota. Un push de solo documentacion gastaba un build completo de los 8
+    # servicios (~5 min) para publicar imagenes identicas a las anteriores.
+    # paths-ignore solo omite el run si TODOS los archivos del push calzan, asi
+    # que un commit que mezcle docs y codigo si buildea.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.gitattributes'
+      - '.prettierignore'
+      - '.editorconfig'
   workflow_dispatch:
 
 concurrency:

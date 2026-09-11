@@ -35,6 +35,9 @@
  *    - sent_at es el momento del envío legacy a SNIA (no la fecha actual).
  *    - api_n_comprobante es el folio devuelto por SNIA. Puede repetirse en
  *      filas consecutivas (envío en lote legacy).
+ *    - Filas vacías (sin flow/level/totalizator NI comprobante) se SALTAN:
+ *      son placeholders del export legacy, no envíos reales (sin folio SNIA).
+ *      Importarlas dejaría slots 'enviado' sin dato ni folio en dato_dga.
  *
  *
  *  IDEMPOTENCIA
@@ -166,21 +169,78 @@ function parseCsvLine(line) {
   return line.split(',').map((s) => s.trim());
 }
 
+const TZ_CHILE = 'America/Santiago';
+
+const fmtChile = new Intl.DateTimeFormat('en-US', {
+  timeZone: TZ_CHILE,
+  hour12: false,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
+/**
+ * Offset de Chile (ms) vigente en el instante `t`. Positivo al este de UTC,
+ * o sea negativo para Chile. Se calcula formateando `t` en America/Santiago
+ * y midiendo cuánto se corrió respecto de UTC.
+ */
+function offsetChileMs(t) {
+  const p = Object.fromEntries(fmtChile.formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  const comoUtc = Date.UTC(
+    Number(p.year),
+    Number(p.month) - 1,
+    Number(p.day),
+    Number(p.hour) % 24,
+    Number(p.minute),
+    Number(p.second),
+  );
+  return comoUtc - t;
+}
+
 /**
  * Convierte (date 'YYYY-MM-DD HH:MM:SS' o 'YYYY-MM-DD', time 'HH:MM:SS')
- * en TIMESTAMPTZ ISO interpretando la hora como local Chile (UTC-4).
+ * en TIMESTAMPTZ ISO interpretando la hora como **local Chile en la fecha
+ * dada**, respetando horario de verano.
+ *
+ * OJO: NO se puede hardcodear -04:00. Chile es UTC-3 en horario de verano
+ * (sept → primer sábado de abril) y UTC-4 el resto del año. El export legacy
+ * lo delata en la hora espuria de `measurement_date`: '03:00:00' en verano y
+ * '04:00:00' en invierno. Con -04:00 fijo, todo el tramo de verano quedaba
+ * una hora adelantado — silenciosamente, sin filas saltadas.
+ *
  * Tomamos solo la parte DATE del primer campo (la hora del field date es
  * artefacto del cast Postgres timestamp en el export).
  */
 function combineDateTimeChile(dateField, timeField) {
   const datePart = String(dateField).split(' ')[0]; // 'YYYY-MM-DD'
-  // Construir ISO con offset Chile: 'YYYY-MM-DDTHH:MM:SS-04:00' → Date parsea como UTC instant correcto.
-  const iso = `${datePart}T${timeField}-04:00`;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
+  const comoSiFueraUtc = Date.parse(`${datePart}T${timeField}Z`);
+  if (Number.isNaN(comoSiFueraUtc)) {
     throw new Error(`fecha/hora inválida: date=${dateField} time=${timeField}`);
   }
-  return d.toISOString();
+  // Dos pasadas: la primera estimación del offset basta salvo en la hora del
+  // cambio, y la segunda converge.
+  let t = comoSiFueraUtc;
+  for (let i = 0; i < 2; i++) t = comoSiFueraUtc - offsetChileMs(t);
+  return new Date(t).toISOString();
+}
+
+/**
+ * Aborta si el runtime no trae la tz de Chile (Node con small-icu resuelve
+ * 'America/Santiago' a UTC en silencio, que es justo el bug que arreglamos).
+ */
+function verificarTzChile() {
+  const verano = combineDateTimeChile('2026-01-15', '12:00:00');
+  const invierno = combineDateTimeChile('2026-07-15', '12:00:00');
+  if (verano !== '2026-01-15T15:00:00.000Z' || invierno !== '2026-07-15T16:00:00.000Z') {
+    console.error(
+      'ERROR: el runtime no resuelve America/Santiago (¿Node con small-icu?). ' +
+        `verano=${verano} invierno=${invierno}; esperado 15:00Z y 16:00Z.`,
+    );
+    process.exit(2);
+  }
 }
 
 function numericOrNull(s) {
@@ -200,6 +260,7 @@ async function main() {
     process.exit(2);
   }
 
+  verificarTzChile();
   console.log(`[import] csv=${args.csv}${args.dryRun ? ' DRY-RUN' : ''}`);
 
   // Cargar módulos compilados (mismo patrón que backfill-contadores).
@@ -299,6 +360,17 @@ async function main() {
     const nivel = numericOrNull(parts[cols.level]);
     const comprobante = parts[cols.api_n_comprobante] || null;
     const sentAt = parts[cols.sent_at] || null;
+
+    // Fila placeholder del export legacy: sin ninguna medición Y sin
+    // comprobante. NO es un envío real (sin folio SNIA), así que importarla
+    // como 'enviado' dejaría slots sin dato ni folio en dato_dga (aparecen
+    // como "enviado" vacío en la UI). Se salta en dry-run y en real para que
+    // el conteo skipped sea fiel. Una fila con comprobante (aunque sin
+    // valores) SÍ se importa: tuvo folio = hubo envío.
+    if (caudal == null && nivel == null && totalizatorRaw == null && !comprobante) {
+      skipped++;
+      continue;
+    }
 
     if (!args.dryRun) {
       try {

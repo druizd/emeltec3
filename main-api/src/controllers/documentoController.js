@@ -1,6 +1,10 @@
 const pool = require('../config/db');
 const blob = require('../services/azureBlobService');
-const { userCanAccessSiteId } = require('../services/dataAccess');
+const {
+  userCanAccessSiteId,
+  buildUserSiteScope,
+  canAccessSite,
+} = require('../services/dataAccess');
 
 const TIPOS = ['ficha_tecnica', 'datasheet', 'certificado', 'manual', 'plano', 'otro'];
 
@@ -21,11 +25,19 @@ function esSuperAdmin(req) {
   return req.user?.tipo === 'SuperAdmin';
 }
 
-function tieneAcceso(req, doc) {
+/**
+ * Alcance real por sitio, no la comparación manual empresa/sub-empresa que
+ * había antes: esa reimplementación ignoraba al Vendedor, cuyo alcance son las
+ * maletas piloto de cualquier empresa más los sitios asignados en
+ * `usuario_sitio`. Mismo defecto corregido en alertaController.
+ */
+async function tieneAcceso(req, doc) {
   if (esSuperAdmin(req)) return true;
-  if (doc.empresa_id !== req.user.empresa_id) return false;
-  if (req.user.sub_empresa_id && doc.sub_empresa_id !== req.user.sub_empresa_id) return false;
-  return true;
+  if (doc.sitio_id) {
+    return userCanAccessSiteId(pool, req.user, doc.sitio_id);
+  }
+  // Documento sin sitio (no debería ocurrir): cae al alcance por empresa.
+  return canAccessSite(req.user, doc);
 }
 
 const SELECT_FIELDS = `
@@ -57,13 +69,13 @@ exports.listarDocumentos = async (req, res) => {
   const params = [];
   const conditions = [];
 
+  // Mismo criterio de alcance que listarAlertas: el JOIN_CLAUSE ya trae
+  // `sitio s`, así que el filtro va sobre el sitio y no sobre la empresa
+  // denormalizada en el documento.
   if (!esSuperAdmin(req)) {
-    params.push(req.user.empresa_id);
-    conditions.push(`d.empresa_id = $${params.length}`);
-    if (req.user.sub_empresa_id) {
-      params.push(req.user.sub_empresa_id);
-      conditions.push(`d.sub_empresa_id = $${params.length}`);
-    }
+    const scope = buildUserSiteScope(req.user, 's', params.length + 1);
+    conditions.push(scope.clause || 'FALSE');
+    params.push(...scope.params);
   } else if (empresa_id) {
     params.push(empresa_id);
     conditions.push(`d.empresa_id = $${params.length}`);
@@ -95,8 +107,10 @@ exports.listarDocumentos = async (req, res) => {
     [...params, parseInt(limit, 10), offset],
   );
 
+  // El WHERE referencia `s` (alcance por sitio), así que el COUNT necesita el
+  // mismo JOIN que la consulta principal.
   const { rows: countRows } = await pool.query(
-    `SELECT COUNT(*) FROM documentos d ${where}`,
+    `SELECT COUNT(*) FROM documentos d LEFT JOIN sitio s ON s.id = d.sitio_id ${where}`,
     params,
   );
 
@@ -113,7 +127,7 @@ exports.obtenerDocumento = async (req, res) => {
   const { id } = req.params;
   const { rows } = await pool.query(`SELECT ${SELECT_FIELDS} ${JOIN_CLAUSE} WHERE d.id = $1`, [id]);
   if (!rows.length) return res.status(404).json({ ok: false, error: 'Documento no encontrado' });
-  if (!tieneAcceso(req, rows[0])) {
+  if (!(await tieneAcceso(req, rows[0]))) {
     return res.status(403).json({ ok: false, error: 'Sin acceso a este documento' });
   }
   res.json({ ok: true, data: enrich(rows[0]) });
@@ -218,7 +232,7 @@ exports.descargarDocumento = async (req, res) => {
   const { rows } = await pool.query(`SELECT ${SELECT_FIELDS} ${JOIN_CLAUSE} WHERE d.id = $1`, [id]);
   if (!rows.length) return res.status(404).json({ ok: false, error: 'Documento no encontrado' });
   const doc = rows[0];
-  if (!tieneAcceso(req, doc)) {
+  if (!(await tieneAcceso(req, doc))) {
     return res.status(403).json({ ok: false, error: 'Sin acceso a este documento' });
   }
 
@@ -236,7 +250,7 @@ exports.actualizarDocumento = async (req, res) => {
   const { rows: existing } = await pool.query('SELECT * FROM documentos WHERE id = $1', [id]);
   if (!existing.length)
     return res.status(404).json({ ok: false, error: 'Documento no encontrado' });
-  if (!tieneAcceso(req, existing[0])) {
+  if (!(await tieneAcceso(req, existing[0]))) {
     return res.status(403).json({ ok: false, error: 'Sin acceso a este documento' });
   }
 
@@ -273,7 +287,7 @@ exports.eliminarDocumento = async (req, res) => {
   const { id } = req.params;
   const { rows } = await pool.query('SELECT * FROM documentos WHERE id = $1', [id]);
   if (!rows.length) return res.status(404).json({ ok: false, error: 'Documento no encontrado' });
-  if (!tieneAcceso(req, rows[0])) {
+  if (!(await tieneAcceso(req, rows[0]))) {
     return res.status(403).json({ ok: false, error: 'Sin acceso a este documento' });
   }
 

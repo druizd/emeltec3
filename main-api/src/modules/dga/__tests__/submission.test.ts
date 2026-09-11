@@ -44,6 +44,8 @@ vi.mock('../repo', () => ({
   listPendingForSubmission: vi.fn(async () => []),
   lockSlotForSending: vi.fn(async () => true),
   markSlotEnviado: vi.fn(async () => undefined),
+  markSlotEnviadoSinReenvio: vi.fn(async () => true),
+  markSlotOkSinComprobante: vi.fn(async () => true),
   markSlotRechazado: vi.fn(async () => ({ terminal: false })),
 }));
 
@@ -55,7 +57,15 @@ vi.mock('../snia-client', () => ({
   sendToSnia: vi.fn(),
 }));
 
-import { listPendingForSubmission, markSlotEnviado, markSlotRechazado } from '../repo';
+import {
+  findExistingSuccessfulAudit,
+  listPendingForSubmission,
+  lockSlotForSending,
+  markSlotEnviado,
+  markSlotEnviadoSinReenvio,
+  markSlotOkSinComprobante,
+  markSlotRechazado,
+} from '../repo';
 import { sendToSnia } from '../snia-client';
 import { CODIGO_OBRA_REGEX, parseSniaDuplicateMessage, runSubmissionCycle } from '../submission';
 
@@ -249,5 +259,126 @@ describe('runSubmissionCycle — respuesta 400 duplicado de SNIA', () => {
       ts: SLOT.ts,
       comprobante: 'COMP-OK-1',
     });
+  });
+});
+
+/**
+ * Causa raíz de los slots con 2+ audits '00' que reportaba el reconciler
+ * (check D). Un '00' sin numeroComprobante caía al rechazo genérico con
+ * next_retry_at +24h y se reenviaba al día siguiente, acumulando una fila de
+ * audit OK por intento — la retransmisión que Res 2170 §6.3 castiga.
+ */
+describe('runSubmissionCycle — status "00" sin numeroComprobante (anti-doble-envío §6.3)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(listPendingForSubmission).mockResolvedValue([SLOT] as never);
+    vi.mocked(findExistingSuccessfulAudit).mockResolvedValue(null);
+    vi.mocked(lockSlotForSending).mockResolvedValue(true as never);
+  });
+
+  it('no lo trata como rechazo: va a requires_review y NO programa reintento', async () => {
+    vi.mocked(sendToSnia).mockResolvedValue(
+      sniaResult({
+        ok: true,
+        http_status: 200,
+        dga_status_code: '00',
+        numero_comprobante: null,
+      }) as never,
+    );
+
+    await runSubmissionCycle();
+
+    expect(markSlotOkSinComprobante).toHaveBeenCalledWith({
+      site_id: SLOT.site_id,
+      ts: SLOT.ts,
+    });
+    // Lo crítico: sin markSlotRechazado no hay next_retry_at +24h, y sin eso
+    // no hay reenvío al día siguiente.
+    expect(markSlotRechazado).not.toHaveBeenCalled();
+    expect(markSlotEnviado).not.toHaveBeenCalled();
+  });
+
+  it('string vacío como comprobante cuenta como ausente', async () => {
+    vi.mocked(sendToSnia).mockResolvedValue(
+      sniaResult({
+        ok: true,
+        http_status: 200,
+        dga_status_code: '00',
+        numero_comprobante: '',
+      }) as never,
+    );
+
+    await runSubmissionCycle();
+
+    expect(markSlotOkSinComprobante).toHaveBeenCalled();
+    expect(markSlotRechazado).not.toHaveBeenCalled();
+  });
+});
+
+describe('runSubmissionCycle — pre-check contra audit existente', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(listPendingForSubmission).mockResolvedValue([SLOT] as never);
+    vi.mocked(lockSlotForSending).mockResolvedValue(true as never);
+  });
+
+  it('audit OK con comprobante → cierra el slot sin postear a SNIA', async () => {
+    vi.mocked(findExistingSuccessfulAudit).mockResolvedValue({ comprobante: 'COMP-PREV' });
+
+    await runSubmissionCycle();
+
+    expect(sendToSnia).not.toHaveBeenCalled();
+    expect(markSlotEnviadoSinReenvio).toHaveBeenCalledWith({
+      site_id: SLOT.site_id,
+      ts: SLOT.ts,
+      comprobante: 'COMP-PREV',
+    });
+    // markSlotEnviado exige estatus='enviando' y acá el slot sigue en
+    // 'pendiente' (el pre-check corre antes del lock): usarlo era un no-op.
+    expect(markSlotEnviado).not.toHaveBeenCalled();
+  });
+
+  it('audit OK SIN comprobante → tampoco postea, va a requires_review', async () => {
+    vi.mocked(findExistingSuccessfulAudit).mockResolvedValue({ comprobante: null });
+
+    await runSubmissionCycle();
+
+    expect(sendToSnia).not.toHaveBeenCalled();
+    expect(markSlotOkSinComprobante).toHaveBeenCalledWith({
+      site_id: SLOT.site_id,
+      ts: SLOT.ts,
+    });
+    expect(markSlotEnviadoSinReenvio).not.toHaveBeenCalled();
+  });
+});
+
+describe('runSubmissionCycle — guard de reentrada', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(findExistingSuccessfulAudit).mockResolvedValue(null);
+  });
+
+  it('omite el tick si el ciclo anterior sigue en curso', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(listPendingForSubmission).mockImplementation(async () => {
+      await gate;
+      return [] as never;
+    });
+
+    const first = runSubmissionCycle();
+    await runSubmissionCycle();
+
+    expect(listPendingForSubmission).toHaveBeenCalledTimes(1);
+
+    release();
+    await first;
+
+    // Terminado el primero, el flag se libera y un tick nuevo sí entra.
+    vi.mocked(listPendingForSubmission).mockResolvedValue([] as never);
+    await runSubmissionCycle();
+    expect(listPendingForSubmission).toHaveBeenCalledTimes(2);
   });
 });

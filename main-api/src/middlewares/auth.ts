@@ -6,6 +6,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/appConfig';
+import { isSessionRevoked } from '../services/sessionRevocation';
 import { ForbiddenError, UnauthorizedError } from '../shared/errors';
 import type { AuthUser, UserTipo } from '../shared/permissions';
 
@@ -15,6 +16,7 @@ interface JwtPayload {
   tipo: UserTipo;
   empresa_id?: string | null;
   sub_empresa_id?: string | null;
+  iat?: number;
 }
 
 export function protect(req: Request, _res: Response, next: NextFunction): void {
@@ -27,15 +29,30 @@ export function protect(req: Request, _res: Response, next: NextFunction): void 
     next(new UnauthorizedError('Acceso no autorizado. Token faltante.'));
     return;
   }
+  let decoded: JwtPayload;
   try {
-    const decoded = jwt.verify(token, config.auth.jwtSecret, {
+    decoded = jwt.verify(token, config.auth.jwtSecret, {
       algorithms: ['HS256'],
     }) as JwtPayload;
-    (req as Request & { user?: AuthUser }).user = decoded as AuthUser;
-    next();
   } catch {
     next(new UnauthorizedError('Token inválido o expirado'));
+    return;
   }
+
+  // Un cambio de contraseña corta las sesiones previas (sessions_valid_from).
+  isSessionRevoked(decoded)
+    .then((revoked) => {
+      if (revoked) {
+        next(new UnauthorizedError('Sesión cerrada por un cambio de contraseña. Vuelve a entrar.'));
+        return;
+      }
+      (req as Request & { user?: AuthUser }).user = decoded as AuthUser;
+      next();
+    })
+    .catch(() => {
+      (req as Request & { user?: AuthUser }).user = decoded as AuthUser;
+      next();
+    });
 }
 
 export function authorizeRoles(...roles: UserTipo[]) {

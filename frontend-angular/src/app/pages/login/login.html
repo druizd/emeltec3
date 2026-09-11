@@ -104,7 +104,7 @@
                   [ngClass]="
                     (step() === 'email' && dot === 1) ||
                     (step() !== 'email' && dot === 2) ||
-                    ((step() === 'setup_otp' || step() === 'mfa') && dot === 3)
+                    (isOtpStep() && step() !== 'otp' && dot === 3)
                       ? 'bg-primary'
                       : 'bg-[rgba(13,175,189,0.15)]'
                   "
@@ -176,7 +176,16 @@
               </div>
             }
 
-            @if (step() === 'setup_password' || step() === 'password') {
+            @if (step() === 'recover_password') {
+              <div class="rounded-lg border border-primary-tint-20 bg-primary-tint-08/40 px-3 py-2">
+                <p class="text-[12px] font-bold text-slate-800">Recuperar contrasena</p>
+                <p class="mt-0.5 text-[12px] leading-4 text-slate-500">
+                  Define una contrasena nueva y confirmala con el codigo que enviaremos a tu correo.
+                </p>
+              </div>
+            }
+
+            @if (isNewPasswordStep() || step() === 'password') {
               <div class="space-y-1">
                 <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   {{ step() === 'password' ? 'Contrasena' : 'Nueva contrasena' }}
@@ -209,10 +218,21 @@
                     </span>
                   </button>
                 </div>
+                @if (step() === 'password') {
+                  <div class="flex justify-end">
+                    <button
+                      type="button"
+                      (click)="goToRecovery()"
+                      class="rounded text-[11px] font-semibold text-slate-400 underline-offset-2 transition-colors hover:text-primary hover:underline"
+                    >
+                      Olvide mi contrasena
+                    </button>
+                  </div>
+                }
               </div>
             }
 
-            @if (step() === 'setup_password') {
+            @if (isNewPasswordStep()) {
               <div class="space-y-1.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
                 <div class="flex items-center justify-between gap-3">
                   <span
@@ -278,7 +298,7 @@
               </div>
             }
 
-            @if (step() === 'otp' || step() === 'setup_otp' || step() === 'mfa') {
+            @if (isOtpStep()) {
               <div class="space-y-1.5">
                 <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   Codigo OTP
@@ -287,6 +307,10 @@
                   type="text"
                   required
                   maxlength="6"
+                  inputmode="text"
+                  autocomplete="one-time-code"
+                  autocapitalize="characters"
+                  spellcheck="false"
                   class="h-14 w-full rounded-xl border bg-white pr-4 text-center font-mono text-h4 font-semibold tracking-[0.30em] text-slate-800 outline-none transition placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                   style="border-color: rgba(13, 175, 189, 0.2)"
                   placeholder="------"
@@ -294,6 +318,16 @@
                   (ngModelChange)="otpCode.set($event)"
                   name="otpCode"
                 />
+                <div class="flex justify-end">
+                  <button
+                    type="button"
+                    (click)="resendCode()"
+                    [disabled]="isSubmitting()"
+                    class="rounded text-[11px] font-semibold text-slate-400 underline-offset-2 transition-colors hover:text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Reenviar codigo
+                  </button>
+                </div>
               </div>
             }
 
@@ -329,7 +363,7 @@
                 <span aria-hidden="true" class="material-symbols-outlined text-[16px]"
                   >arrow_back</span
                 >
-                Volver
+                {{ isRecoveryStep() ? 'Cancelar recuperacion' : 'Volver' }}
               </button>
             }
           </form>

@@ -1,11 +1,21 @@
 const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const { formatRutForStorage } = require('../utils/rut');
 const emailService = require('../services/emailService');
 const { query: dbHelperQuery } = require('../config/dbHelpers');
+const audit = require('../services/auditLog');
+const { validateNewPassword } = require('../services/passwordPolicy');
+const { buildUserListScope } = require('../services/userListScope');
+const { rechazoReenvioAcceso } = require('../services/accountAccessResend');
+const sessionRevocation = require('../services/sessionRevocation');
+const { requireEnv } = require('../config/requireEnv');
 
-const WELCOME_OTP_MINUTES = 60 * 24; // 24h para activar la cuenta
+const BCRYPT_COST = 12; // mismo coste que auth-api
+
+// Este controlador ya NO genera OTPs: el único código válido para activar una
+// cuenta lo emite `auth-api POST /api/auth/setup/start`. Ver `resetUserPassword`.
 
 const USER_PROFILE_SELECT = `
   SELECT u.id,
@@ -120,7 +130,8 @@ exports.getEquipoEmeltec = async (req, res, next) => {
       db.query(
         `SELECT u.id, u.nombre, COALESCE(u.apellido, '') AS apellido, u.email,
                 u.telefono, u.cargo, u.tipo, u.empresa_id,
-                COALESCE(u.activo, true) AS activo, u.last_login_at, u.activated_at
+                COALESCE(u.activo, true) AS activo, u.last_login_at, u.activated_at,
+                (u.password_hash IS NOT NULL) AS has_password
            FROM usuario u
           WHERE u.tipo IN ('SuperAdmin', 'Vendedor')
           ORDER BY u.tipo, u.nombre ASC`,
@@ -211,10 +222,6 @@ exports.getAllUsers = async (req, res, next) => {
     const { tipo, empresa_id, sub_empresa_id: userSubEmpresaId } = req.user;
     const { sub_empresa_id, empresa_id: queryEmpresaId } = req.query;
 
-    if (tipo === 'Cliente') {
-      return res.status(403).json({ ok: false, error: 'No tiene permisos para ver usuarios' });
-    }
-
     let query = `
       SELECT u.id,
              u.nombre,
@@ -238,31 +245,20 @@ exports.getAllUsers = async (req, res, next) => {
       LEFT JOIN empresa e ON e.id = u.empresa_id
       LEFT JOIN sub_empresa se ON se.id = u.sub_empresa_id
     `;
-    const conditions = [];
-    const params = [];
-
-    if (tipo === 'SuperAdmin') {
-      if (sub_empresa_id) {
-        params.push(sub_empresa_id);
-        conditions.push(`u.sub_empresa_id = $${params.length}`);
-      } else if (queryEmpresaId) {
-        params.push(queryEmpresaId);
-        conditions.push(`u.empresa_id = $${params.length}`);
-      }
-    } else if (tipo === 'Admin' || tipo === 'Vendedor') {
-      params.push(empresa_id);
-      conditions.push(`u.empresa_id = $${params.length}`);
-      if (sub_empresa_id) {
-        params.push(sub_empresa_id);
-        conditions.push(`u.sub_empresa_id = $${params.length}`);
-      }
-    } else if (tipo === 'Gerente') {
-      if (!userSubEmpresaId) {
-        return res.json({ ok: true, data: [] });
-      }
-      params.push(userSubEmpresaId);
-      conditions.push(`u.sub_empresa_id = $${params.length}`);
+    // El alcance se decide en services/userListScope (cierra por defecto).
+    const scope = buildUserListScope(
+      { tipo, empresa_id, sub_empresa_id: userSubEmpresaId },
+      { sub_empresa_id, empresa_id: queryEmpresaId },
+    );
+    if (!scope.allow) {
+      return res.status(403).json({ ok: false, error: 'No tiene permisos para ver usuarios' });
     }
+    if (scope.empty) {
+      return res.json({ ok: true, data: [] });
+    }
+
+    const conditions = scope.conditions;
+    const params = scope.params;
 
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
@@ -348,15 +344,15 @@ exports.updateCurrentPassword = async (req, res, next) => {
     if (!userId) {
       return res.status(401).json({ ok: false, error: 'Usuario no autenticado' });
     }
-    if (!new_password || String(new_password).length < 8) {
-      return res
-        .status(400)
-        .json({ ok: false, error: 'La contraseña debe tener al menos 8 caracteres.' });
+    const policy = validateNewPassword(new_password);
+    if (!policy.ok) {
+      return res.status(400).json({ ok: false, error: policy.error });
     }
 
-    const { rows } = await db.query('SELECT password_hash, auth_mode FROM usuario WHERE id = $1', [
-      userId,
-    ]);
+    const { rows } = await db.query(
+      'SELECT nombre, email, password_hash, auth_mode FROM usuario WHERE id = $1',
+      [userId],
+    );
     const currentHash = rows[0]?.password_hash || null;
     const currentPasswordRequired =
       currentHash && ['password', 'password_otp'].includes(rows[0]?.auth_mode);
@@ -364,15 +360,25 @@ exports.updateCurrentPassword = async (req, res, next) => {
     if (currentPasswordRequired) {
       const matches = await bcrypt.compare(String(current_password || ''), currentHash);
       if (!matches) {
+        await audit.record({
+          req,
+          action: 'password.change.failure',
+          actorId: userId,
+          actorEmail: rows[0]?.email || req.user?.email || null,
+          actorTipo: req.user?.tipo || null,
+          statusCode: 401,
+          metadata: { reason: 'current_password_mismatch' },
+        });
         return res.status(401).json({ ok: false, error: 'La contraseña actual no coincide.' });
       }
     }
 
-    const nextHash = await bcrypt.hash(String(new_password), 12);
+    const nextHash = await bcrypt.hash(String(new_password), BCRYPT_COST);
     await db.query(
       `UPDATE usuario
        SET password_hash = $1,
            password_set_at = NOW(),
+           sessions_valid_from = NOW(),
            auth_mode = CASE
              WHEN auth_mode IN ('password', 'password_otp') THEN auth_mode
              ELSE 'password'
@@ -382,9 +388,45 @@ exports.updateCurrentPassword = async (req, res, next) => {
        WHERE id = $2`,
       [nextHash, userId],
     );
+    sessionRevocation.forget(userId);
+
+    await audit.record({
+      req,
+      action: 'password.change.success',
+      actorId: userId,
+      actorEmail: rows[0]?.email || req.user?.email || null,
+      actorTipo: req.user?.tipo || null,
+      statusCode: 200,
+      metadata: { sessions_revoked: true },
+    });
+
+    if (rows[0]?.email) {
+      emailService
+        .sendPasswordChangedEmail(rows[0].email, rows[0].nombre, {
+          origen: 'perfil',
+          ip: (req.ip || '').toString().slice(0, 45) || null,
+        })
+        .catch((e) => console.error('[updateCurrentPassword] aviso fallo:', e.message));
+    }
 
     const profile = await getUserProfileById(userId);
-    res.json({ ok: true, data: profile });
+
+    // El corte de sesiones invalida TAMBIÉN el token con el que llegó este
+    // request, así que devolvemos uno nuevo para no desloguear a quien acaba de
+    // cambiar su propia contraseña. Las demás sesiones sí quedan cerradas.
+    const token = jwt.sign(
+      {
+        id: userId,
+        email: profile?.email ?? rows[0]?.email ?? null,
+        tipo: profile?.tipo ?? req.user?.tipo ?? null,
+        empresa_id: profile?.empresa_id ?? req.user?.empresa_id ?? null,
+        sub_empresa_id: profile?.sub_empresa_id ?? req.user?.sub_empresa_id ?? null,
+      },
+      requireEnv('JWT_SECRET'),
+      { expiresIn: '1h', algorithm: 'HS256' },
+    );
+
+    res.json({ ok: true, data: profile, token });
   } catch (err) {
     next(err);
   }
@@ -510,30 +552,17 @@ exports.createUser = async (req, res, next) => {
 
     const created = await getUserProfileById(rows[0].id);
 
-    // OTP de bienvenida: el nuevo usuario lo usa para su primer ingreso.
-    // Se guarda hasheado y expira en WELCOME_OTP_MINUTES.
-    const otpCode = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const otpHash = await bcrypt.hash(otpCode, 10);
-    const otpExpiresAt = new Date(Date.now() + WELCOME_OTP_MINUTES * 60 * 1000);
-    try {
-      await db.query('UPDATE usuario SET otp_hash = $1, otp_expires_at = $2 WHERE id = $3', [
-        otpHash,
-        otpExpiresAt,
-        rows[0].id,
-      ]);
-    } catch (otpErr) {
-      console.error('[createUser] Error guardando OTP bienvenida:', otpErr.message);
-    }
+    // No se emite OTP de bienvenida: la cuenta nace sin `activated_at`, así que
+    // `auth-api` la enruta al flujo de activación y `POST /api/auth/setup/start`
+    // emite su propio código, sobreescribiendo cualquiera que guardáramos acá.
+    // El correo invita a entrar; el código llega en ese paso.
 
     // Disparar correos en paralelo, sin bloquear la respuesta ni romper la creación
     // si el proveedor falla. Se loguea cualquier error.
     Promise.allSettled([
-      emailService.sendWelcomeEmail(
-        email,
-        `${nombre} ${apellido}`.trim(),
-        otpCode,
-        WELCOME_OTP_MINUTES,
-      ),
+      emailService.sendAccountAccessEmail(email, `${nombre} ${apellido}`.trim(), {
+        motivo: 'nueva_cuenta',
+      }),
       currentUser.email
         ? emailService.sendNewUserNotificationToAdmin(
             currentUser.email,
@@ -690,21 +719,87 @@ exports.updateUser = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/users/:id/reenviar-acceso
+ *
+ * Reenvía la invitación de acceso a una cuenta que TODAVÍA no definió su
+ * contraseña (nunca se activó, o el correo original se perdió). No cambia nada
+ * en la BD: ni la contraseña, ni las sesiones, ni `activated_at`.
+ *
+ * Por eso no exige 2FA, a diferencia de `/reset-password`: no destruye acceso y
+ * el correo va a la dirección ya registrada de la cuenta, nunca a una que
+ * indique quien llama — no hay salida de datos hacia un destino nuevo.
+ *
+ * Si la cuenta YA tiene contraseña devuelve 409: reenviar la invitación no le
+ * serviría (el flujo de activación de auth-api exige `activated_at IS NULL`) y
+ * la plataforma no manda contraseñas por correo a propósito. Ese caso es un
+ * restablecimiento, que sí es destructivo y tiene su propio endpoint.
+ *
+ * La bitácora la escribe el middleware `auditMutations` de /api/users
+ * (action `usuario.resend_access`).
+ */
+exports.reenviarAccesoUsuario = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const currentUser = req.user;
+    const check = await db.query(
+      `SELECT nombre, apellido, email, empresa_id, sub_empresa_id, tipo,
+              COALESCE(activo, true) AS activo, activated_at,
+              (password_hash IS NOT NULL) AS has_password
+         FROM usuario WHERE id = $1`,
+      [id],
+    );
+    if (check.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    }
+    const target = check.rows[0];
+    const permErr = managePermissionError(currentUser, target);
+    if (permErr) return res.status(403).json({ ok: false, error: permErr });
+
+    const rechazo = rechazoReenvioAcceso(target);
+    if (rechazo) {
+      return res
+        .status(rechazo.status)
+        .json({ ok: false, error: rechazo.error, code: rechazo.code });
+    }
+
+    // Se espera el envío (a diferencia de createUser, que lo hace en paralelo):
+    // acá el correo ES la acción, así que un fallo del proveedor debe verse.
+    const envio = await emailService.sendAccountAccessEmail(
+      target.email,
+      `${target.nombre} ${target.apellido || ''}`.trim(),
+      { motivo: 'nueva_cuenta' },
+    );
+    if (!envio || envio.ok === false) {
+      return res.status(502).json({
+        ok: false,
+        error: 'No se pudo enviar el correo. Intenta nuevamente en unos minutos.',
+      });
+    }
+
+    res.json({ ok: true, message: `Invitación de acceso reenviada a ${target.email}.` });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Reset de contraseña por admin: regenera el OTP de acceso y lo reenvía por email.
 /**
  * Reset de contraseña por administrador (re-onboarding, NO genera clave nueva).
  *
- * Reutiliza el flujo de bienvenida: genera un OTP de un solo uso, ANULA la
- * contraseña actual (`password_hash = NULL`) y reenvía el código por email.
+ * Devuelve la cuenta al estado "sin activar": anula `password_hash`, limpia
+ * `activated_at` y corta las sesiones abiertas. El usuario vuelve a entrar por
+ * el flujo de activación, donde define una contraseña nueva y recibe el código
+ * de verificación que emite auth-api.
  *
  * Efectos:
  *  - La contraseña vigente del usuario deja de servir inmediatamente.
- *  - El usuario debe ingresar con el OTP (flujo /start setup) y fijar una nueva.
- *  - El OTP vence a los `WELCOME_OTP_MINUTES`. Si no lo usa a tiempo, queda sin
- *    acceso hasta un nuevo reset.
+ *  - Sus sesiones abiertas mueren (`sessions_valid_from`).
+ *  - Recibe una invitación por correo, SIN código: el código lo emite
+ *    `POST /api/auth/setup/start` al definir la contraseña. Enviar uno acá era
+ *    inútil, porque ese endpoint lo sobreescribe.
  *
- * No es un "envío de la clave actual" ni un código que siga sirviendo tras
- * usarse: es destructivo sobre la password + OTP de un solo uso con vencimiento.
+ * No es un "envío de la clave actual": es destructivo sobre la password.
  * Exige 2FA (require2fa en la ruta) y respeta la jerarquía (managePermissionError).
  */
 exports.resetUserPassword = async (req, res, next) => {
@@ -722,22 +817,53 @@ exports.resetUserPassword = async (req, res, next) => {
     const permErr = managePermissionError(currentUser, target);
     if (permErr) return res.status(403).json({ ok: false, error: permErr });
 
-    const otpCode = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const otpHash = await bcrypt.hash(otpCode, 10);
-    const otpExpiresAt = new Date(Date.now() + WELCOME_OTP_MINUTES * 60 * 1000);
+    // El reset deja la cuenta sin contraseña: las sesiones abiertas del usuario
+    // afectado deben morir junto con ella. El OTP se limpia en vez de emitirse:
+    // el del flujo de activación es el que sirve.
+    //
+    // `activated_at = NULL` es imprescindible: sin eso la cuenta quedaba SIN
+    // NINGÚN método de ingreso. `auth-api` enruta por `startLogin` y una cuenta
+    // activada + sin password_hash + auth_mode 'password'/'password_otp' no
+    // califica para flow 'password' (falta el hash), ni 'otp' (auth_mode no es
+    // 'otp'), ni 'setup' (activated_at presente) → 403 "La cuenta no tiene
+    // metodos de ingreso activos". Devolverla al estado sin activar la reencauza
+    // por el flujo de activación, donde crea una contraseña nueva.
     await db.query(
-      'UPDATE usuario SET otp_hash = $1, otp_expires_at = $2, password_hash = NULL, updated_at = NOW() WHERE id = $3',
-      [otpHash, otpExpiresAt, id],
+      `UPDATE usuario
+       SET otp_hash = NULL,
+           otp_expires_at = NULL,
+           password_hash = NULL,
+           activated_at = NULL,
+           sessions_valid_from = NOW(),
+           failed_logins = 0,
+           locked_until = NULL,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [id],
     );
+    sessionRevocation.forget(id);
+
+    await audit.record({
+      req,
+      action: 'password.admin_reset',
+      actorId: currentUser?.id || null,
+      actorEmail: currentUser?.email || null,
+      actorTipo: currentUser?.tipo || null,
+      targetType: 'usuario',
+      targetId: id,
+      statusCode: 200,
+      metadata: { sessions_revoked: true },
+    });
+
     emailService
-      .sendWelcomeEmail(
-        target.email,
-        `${target.nombre} ${target.apellido || ''}`.trim(),
-        otpCode,
-        WELCOME_OTP_MINUTES,
-      )
+      .sendAccountAccessEmail(target.email, `${target.nombre} ${target.apellido || ''}`.trim(), {
+        motivo: 'reset_admin',
+      })
       .catch((e) => console.error('[resetUserPassword] email fallo:', e.message));
-    res.json({ ok: true, message: 'Se reenvió un código de acceso al usuario.' });
+    res.json({
+      ok: true,
+      message: 'Acceso restablecido. El usuario debe crear una contraseña nueva desde el login.',
+    });
   } catch (err) {
     next(err);
   }

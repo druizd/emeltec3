@@ -14,7 +14,9 @@ import {
   AuditLogEntry,
   AuditLogService,
   AuditTargetType,
+  type AuditOutcome,
   describeAccion,
+  OUTCOME_LABEL,
 } from '../../../../services/audit-log.service';
 
 type RecursoFiltro = AuditTargetType | 'todos';
@@ -126,7 +128,38 @@ type RecursoFiltro = AuditTargetType | 'todos';
                       </span>
                     </td>
                     <td class="px-4 py-3 text-caption text-slate-500">
-                      {{ detalle(entry) }}
+                      @if (outcomeDe(entry) !== 'ok') {
+                        <span
+                          [class]="outcomeClass(entry)"
+                          class="mb-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-bold"
+                        >
+                          <span class="material-symbols-outlined text-[12px]" aria-hidden="true"
+                            >block</span
+                          >
+                          {{ outcomeLabel(entry) }}
+                        </span>
+                      }
+                      @if (cambios(entry); as lista) {
+                        <div class="flex flex-wrap gap-1">
+                          @for (c of lista; track c.campo) {
+                            <span
+                              class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-caption-xs"
+                              [title]="c.titulo"
+                            >
+                              <span class="font-semibold text-slate-600">{{ c.campo }}</span>
+                              @if (c.oculto) {
+                                <span class="italic text-slate-400">oculto</span>
+                              } @else {
+                                <span class="text-slate-400">{{ c.antes }}</span>
+                                <span class="text-slate-400" aria-hidden="true">→</span>
+                                <span class="font-semibold text-slate-700">{{ c.despues }}</span>
+                              }
+                            </span>
+                          }
+                        </div>
+                      } @else {
+                        <span class="text-slate-400">{{ detalle(entry) }}</span>
+                      }
                     </td>
                   </tr>
                 } @empty {
@@ -269,14 +302,95 @@ export class BitacoraAuditLogComponent {
     if (verbo === 'Creó') return 'bg-primary-tint-08 text-primary-container';
     if (verbo === 'Modificó') return 'bg-amber-50 text-amber-700';
     if (verbo === 'Eliminó') return 'bg-rose-50 text-rose-700';
+    if (verbo === 'Activó') return 'bg-emerald-50 text-emerald-700';
+    if (verbo === 'Desactivó') return 'bg-slate-200 text-slate-600';
     return 'bg-slate-100 text-slate-600';
   }
 
   detalle(entry: AuditLogEntry): string {
-    const path = (entry.metadata as { path?: string })?.path;
-    const method = (entry.metadata as { method?: string })?.method;
+    const path = entry.metadata?.path;
+    const method = entry.metadata?.method;
     const target = entry.target_id ? `#${entry.target_id}` : '';
     return [method, path, target].filter(Boolean).join(' ');
+  }
+
+  outcomeDe(entry: AuditLogEntry): AuditOutcome {
+    // Registros anteriores al diff no traen `outcome`; el status los clasifica.
+    const raw = entry.metadata?.outcome;
+    if (raw) return raw;
+    return (entry.status_code ?? 200) >= 400 ? 'error' : 'ok';
+  }
+
+  outcomeLabel(entry: AuditLogEntry): string {
+    return OUTCOME_LABEL[this.outcomeDe(entry)] ?? 'Desconocido';
+  }
+
+  outcomeClass(entry: AuditLogEntry): string {
+    const o = this.outcomeDe(entry);
+    if (o === 'denied' || o === 'unauthorized') return 'bg-rose-100 text-rose-700';
+    if (o === 'error') return 'bg-rose-50 text-rose-600';
+    return 'bg-amber-50 text-amber-700';
+  }
+
+  /**
+   * Lista legible de lo que cambió. Cubre los tres casos que escribe el
+   * middleware: edición (antes→después), borrado (snapshot del recurso) e
+   * intento rechazado (campos que se quiso tocar). `null` si el registro no
+   * trae detalle — los anteriores a este cambio, que solo tienen el path.
+   */
+  cambios(
+    entry: AuditLogEntry,
+  ): { campo: string; antes: string; despues: string; oculto: boolean; titulo: string }[] | null {
+    const meta = entry.metadata;
+    if (!meta) return null;
+
+    if (meta.changes && Object.keys(meta.changes).length) {
+      return Object.entries(meta.changes).map(([campo, valor]) => {
+        if (typeof valor === 'string') {
+          return {
+            campo,
+            antes: '',
+            despues: '',
+            oculto: true,
+            titulo: `${campo}: valor no auditable (dato personal o secreto)`,
+          };
+        }
+        const antes = this.fmtValor(valor.antes);
+        const despues = this.fmtValor(valor.despues);
+        return { campo, antes, despues, oculto: false, titulo: `${campo}: ${antes} → ${despues}` };
+      });
+    }
+
+    if (meta.deleted && Object.keys(meta.deleted).length) {
+      return Object.entries(meta.deleted).map(([campo, valor]) => ({
+        campo,
+        antes: this.fmtValor(valor),
+        despues: '∅',
+        oculto: false,
+        titulo: `${campo} al momento de eliminar: ${this.fmtValor(valor)}`,
+      }));
+    }
+
+    if (meta.attempted_fields?.length) {
+      return meta.attempted_fields.map((campo) => ({
+        campo,
+        antes: '',
+        despues: '',
+        oculto: true,
+        titulo: `Se intentó modificar ${campo}; la operación no se aplicó`,
+      }));
+    }
+
+    return null;
+  }
+
+  private fmtValor(v: unknown): string {
+    if (v === null) return '∅';
+    if (v === undefined) return '—';
+    if (Array.isArray(v)) return v.length > 3 ? `${v.slice(0, 3).join(', ')}…` : v.join(', ');
+    if (typeof v === 'boolean') return v ? 'sí' : 'no';
+    const s = String(v);
+    return s.length > 40 ? `${s.slice(0, 40)}…` : s;
   }
 
   formatFecha(iso: string): string {
@@ -299,7 +413,18 @@ export class BitacoraAuditLogComponent {
   exportarCsv(): void {
     const rows = this.entradas();
     if (!rows.length) return;
-    const header = ['Fecha', 'Usuario', 'Rol', 'Acción', 'Recurso', 'Target ID', 'Status', 'IP'];
+    const header = [
+      'Fecha',
+      'Usuario',
+      'Rol',
+      'Acción',
+      'Recurso',
+      'Target ID',
+      'Resultado',
+      'Cambios',
+      'Status',
+      'IP',
+    ];
     const lines = rows.map((e) =>
       [
         this.formatFecha(e.ts),
@@ -308,6 +433,10 @@ export class BitacoraAuditLogComponent {
         e.action,
         e.target_type || '',
         e.target_id || '',
+        this.outcomeLabel(e),
+        (this.cambios(e) ?? [])
+          .map((c) => (c.oculto ? `${c.campo}=[oculto]` : `${c.campo}: ${c.antes} → ${c.despues}`))
+          .join(' | '),
         e.status_code ?? '',
         e.ip || '',
       ]

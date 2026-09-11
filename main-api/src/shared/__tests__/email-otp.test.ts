@@ -6,7 +6,9 @@
  * Nuevo: máximo 5 intentos fallidos → código invalidado (anti fuerza bruta,
  * debilidad compartida de las dos implementaciones anteriores).
  */
+import type { Request, Response } from 'express';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Mock } from 'vitest';
 
 vi.mock('../../services/emailService', () => ({
   send2faCode: vi.fn(async () => ({ ok: true })),
@@ -17,12 +19,19 @@ import { requestCode, verifyCode, require2fa, _seedCode, MAX_ATTEMPTS } from '..
 
 const user = { id: 'U1', email: 'u@e.cl' };
 
-function mockRes() {
-  const res: any = {};
+/** Shim de Response: sólo `status` y `json`, que es lo que toca require2fa. */
+type MockRes = Response & { status: Mock; json: Mock };
+
+function mockRes(): MockRes {
+  const res = {} as MockRes;
   res.status = vi.fn().mockReturnValue(res);
   res.json = vi.fn().mockReturnValue(res);
   return res;
 }
+
+/** Request parcial: require2fa sólo lee `user` y `headers`. */
+const asReq = (init: { user?: unknown; headers: Record<string, string> }) =>
+  init as unknown as Request;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -30,7 +39,7 @@ beforeEach(() => {
 
 describe('requestCode', () => {
   it('usuario sin email → throw 400, no guarda código', async () => {
-    await expect(requestCode({ id: 'X' } as any)).rejects.toMatchObject({ status: 400 });
+    await expect(requestCode({ id: 'X' })).rejects.toMatchObject({ status: 400 });
     expect(send2faCode).not.toHaveBeenCalled();
   });
 
@@ -103,7 +112,7 @@ describe('verifyCode', () => {
 
 describe('require2fa middleware', () => {
   it('sin header → 403 TWOFA_REQUIRED', () => {
-    const req: any = { user, headers: {} };
+    const req = asReq({ user, headers: {} });
     const res = mockRes();
     const next = vi.fn();
     require2fa(req, res, next);
@@ -115,7 +124,7 @@ describe('require2fa middleware', () => {
   });
 
   it('código inválido → 403 TWOFA_INVALID (nunca 401: el frontend deslogea ante 401)', () => {
-    const req: any = { user, headers: { 'x-2fa-code': '000000' } };
+    const req = asReq({ user, headers: { 'x-2fa-code': '000000' } });
     const res = mockRes();
     const next = vi.fn();
     require2fa(req, res, next);
@@ -126,7 +135,7 @@ describe('require2fa middleware', () => {
 
   it('código válido → next() y consume', () => {
     _seedCode(user, '424242');
-    const req: any = { user, headers: { 'x-2fa-code': '424242' } };
+    const req = asReq({ user, headers: { 'x-2fa-code': '424242' } });
     const res = mockRes();
     const next = vi.fn();
     require2fa(req, res, next);
@@ -134,12 +143,12 @@ describe('require2fa middleware', () => {
     expect(res.status).not.toHaveBeenCalled();
     const next2 = vi.fn();
     const res2 = mockRes();
-    require2fa({ user, headers: { 'x-2fa-code': '424242' } } as any, res2, next2);
+    require2fa(asReq({ user, headers: { 'x-2fa-code': '424242' } }), res2, next2);
     expect(next2).not.toHaveBeenCalled();
   });
 
   it('sin user → 401', () => {
-    const req: any = { headers: {} };
+    const req = asReq({ headers: {} });
     const res = mockRes();
     const next = vi.fn();
     require2fa(req, res, next);

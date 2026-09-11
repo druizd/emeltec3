@@ -14,6 +14,7 @@ import type {
   SiteRecord,
   SiteDashboardData,
   SiteDashboardHistoryEntry,
+  SiteDashboardHistoryPayload,
 } from '@emeltec/shared';
 
 export interface ContadorMensualPoint {
@@ -47,6 +48,56 @@ export interface ContadorJornadaPoint {
 }
 
 export type TelemetryPreset = '24h' | '7d' | '30d' | '365d';
+
+/** Roles de `reg_map.rol_dashboard` que el módulo de contadores sabe acumular. */
+export const CONTADOR_ROLES = ['totalizador', 'energia', 'volumen'] as const;
+export type ContadorRol = (typeof CONTADOR_ROLES)[number];
+
+/** Promedio y cantidad de muestras de una métrica en un período (`period-comparison`). */
+export interface PeriodComparisonStat {
+  avg: number | null;
+  n: number;
+  unidad: string | null;
+}
+
+/** Consumo acumulado de un período. `m3` null si ningún día del rango tuvo muestras. */
+export interface PeriodComparisonConsumo {
+  m3: number | null;
+  dias_con_datos: number;
+  unidad: string | null;
+}
+
+export interface PeriodComparisonSite {
+  site_id: string;
+  descripcion: string;
+  tipo_sitio: string;
+  activo: boolean;
+  caudal: { a: PeriodComparisonStat; b: PeriodComparisonStat };
+  /** Nivel freático proyectado si el sitio lo tiene; si no, nivel crudo del sensor. */
+  nivel: { a: PeriodComparisonStat; b: PeriodComparisonStat };
+  consumo: { a: PeriodComparisonConsumo; b: PeriodComparisonConsumo };
+}
+
+/** Respuesta de `GET /api/companies/:id/period-comparison`. */
+export interface PeriodComparisonData {
+  alcance: { tipo: 'sub_empresa' | 'empresa'; id: string; nombre: string };
+  periodos: { a: { desde: string; hasta: string }; b: { desde: string; hasta: string } };
+  /** false si un período empieza más de 120 días atrás: el consumo viene null. */
+  consumo_disponible: boolean;
+  sitios: PeriodComparisonSite[];
+}
+
+/** Punto de `GET /api/companies/sites/:id/contadores-diarios`. */
+export interface ContadorDiarioPoint {
+  /** 'YYYY-MM-DD' en hora de Chile. */
+  dia: string;
+  /** Consumo del día (delta), ya transformado. `null` si no hubo datos. */
+  delta: number | null;
+  unidad: string | null;
+  muestras: number;
+  ultimo_dato: string | null;
+  resets_detectados: number;
+}
 
 export interface TelemetryHistoryRow {
   id_serial: string;
@@ -227,6 +278,8 @@ export class CompanyService {
 
   companies = signal<Company[]>([]);
   hierarchy = signal<CompanyNode[]>([]);
+  /** Petición de árbol en vuelo, compartida entre llamadores concurrentes. */
+  private hierarchyInFlight: Observable<ApiResponse<CompanyNode[]>> | null = null;
   visibleHierarchy = computed<CompanyNode[]>(() =>
     this.applyPreviewScope(this.hierarchy(), this.auth.viewAsContext()),
   );
@@ -284,18 +337,37 @@ export class CompanyService {
     );
   }
 
+  /**
+   * El árbol lo piden en paralelo el sidebar y la página que se está montando,
+   * así que cada navegación disparaba dos GET idénticos (el `?t=` mata también
+   * el cacheo HTTP). Compartimos la petición EN VUELO: los que llegan mientras
+   * hay una corriendo se cuelgan de esa. Al completar se limpia, así que no hay
+   * TTL ni datos viejos — un `fetchHierarchy()` posterior vuelve a pegarle al
+   * backend, que es lo que esperan los llamadores que refrescan tras guardar.
+   */
   fetchHierarchy(): Observable<ApiResponse<CompanyNode[]>> {
+    if (this.hierarchyInFlight) return this.hierarchyInFlight;
+
     this.loading.set(true);
     // v2: mismo shape que el árbol v1 + last_seen_at y pozo_config por sitio.
     // Sin last_seen_at el dashboard pinta todo "Sin datos" (status pending).
-    return this.http.get<ApiResponse<CompanyNode[]>>(`/api/v2/companies/tree?t=${Date.now()}`).pipe(
-      tap((res) => {
-        if (res.ok) {
-          this.hierarchy.set(res.data);
-        }
-        this.loading.set(false);
-      }),
-    );
+    const request = this.http
+      .get<ApiResponse<CompanyNode[]>>(`/api/v2/companies/tree?t=${Date.now()}`)
+      .pipe(
+        tap((res) => {
+          if (res.ok) {
+            this.hierarchy.set(res.data);
+          }
+          this.loading.set(false);
+        }),
+        finalize(() => {
+          this.hierarchyInFlight = null;
+          this.loading.set(false);
+        }),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+    this.hierarchyInFlight = request;
+    return request;
   }
 
   getSites(id: string): Observable<ApiResponse<SiteRecord[]>> {
@@ -394,7 +466,7 @@ export class CompanyService {
     siteId: string,
     limit = 500,
     options: { from?: string; to?: string; granularity?: HistoryGranularity; page?: number } = {},
-  ): Observable<ApiResponse<SiteDashboardHistoryEntry[]>> {
+  ): Observable<ApiResponse<SiteDashboardHistoryPayload>> {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
     if (options.page) params.set('page', String(options.page));
@@ -402,8 +474,25 @@ export class CompanyService {
     if (options.to) params.set('to', options.to);
     if (options.granularity) params.set('granularity', options.granularity);
     params.set('t', String(Date.now()));
-    return this.http.get<ApiResponse<SiteDashboardHistoryEntry[]>>(
+    return this.http.get<ApiResponse<SiteDashboardHistoryPayload>>(
       `/api/companies/sites/${siteId}/dashboard-history?${params.toString()}`,
+    );
+  }
+
+  /**
+   * Serie de consumo diario (delta del contador por día calendario chileno).
+   * El delta ya viene transformado por el reg_map y con los resets del
+   * contador resueltos — no es el valor acumulado.
+   */
+  getContadoresDiarios(
+    siteId: string,
+    options: { rol?: ContadorRol; dias?: number } = {},
+  ): Observable<ApiResponse<ContadorDiarioPoint[]>> {
+    const params = new URLSearchParams();
+    params.set('rol', options.rol ?? 'totalizador');
+    params.set('dias', String(options.dias ?? 30));
+    return this.http.get<ApiResponse<ContadorDiarioPoint[]>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/contadores-diarios?${params.toString()}`,
     );
   }
 
@@ -611,6 +700,30 @@ export class CompanyService {
         }[];
       }>
     >(`/api/companies/sites/${siteId}/period-aggregates-daily?${params.toString()}`);
+  }
+
+  /**
+   * Comparación de períodos A vs B de todos los sitios de una sub-empresa o
+   * empresa en una sola llamada. `scopeId` es el id de la sub-empresa o de la
+   * empresa; `siteIds` acota la respuesta a los sitios que muestra la vista.
+   * Reemplaza las 3 llamadas por sitio (period-aggregates ×2 + contadores).
+   */
+  getPeriodComparison(
+    scopeId: string,
+    a: { desde: string; hasta: string },
+    b: { desde: string; hasta: string },
+    siteIds?: string[],
+  ): Observable<ApiResponse<PeriodComparisonData>> {
+    const params = new URLSearchParams();
+    params.set('a_desde', a.desde);
+    params.set('a_hasta', a.hasta);
+    params.set('b_desde', b.desde);
+    params.set('b_hasta', b.hasta);
+    if (siteIds?.length) params.set('site_ids', siteIds.join(','));
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<PeriodComparisonData>>(
+      `/api/companies/${encodeURIComponent(scopeId)}/period-comparison?${params.toString()}`,
+    );
   }
 
   getSiteMonthlyCounters(

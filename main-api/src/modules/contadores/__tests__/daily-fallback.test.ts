@@ -2,9 +2,13 @@
  * Tests del patrón de fallback en getDailySeries y getJornadaSeries.
  *
  * El fallback se verifica a través de los mocks de daily-repo:
- * cuando listContadorDiarioBySiteRolDias devuelve un Map vacío (sin filas
+ * cuando listContadorDiarioBySiteRolDias devuelve un array vacío (sin filas
  * materializadas), getDailySeries debe llamar a computeDailyDeltasForVariable.
  * Cuando devuelve todas las filas, no debe llamar al cómputo on-demand.
+ *
+ * También se cubre la suma por período: dos equipos con el mismo rol en el
+ * mismo día (recambio de caudalímetro) suman sus deltas en vez de que uno tape
+ * al otro.
  *
  * Para evitar problemas de mock parcial (vi.mock + importOriginal con módulos
  * que tienen side effects de infraestructura), todos los mocks son completos.
@@ -45,6 +49,7 @@ vi.mock('../../../config/metrics', () => ({
 
 vi.mock('../repo', () => ({
   listCounterVariablesForSite: vi.fn(async () => []),
+  listCounterVariablesForSiteAndRol: vi.fn(async () => []),
   getMappingsBySiteId: vi.fn(async () => []),
   getSiteById: vi.fn(async () => null),
   listContadoresBySiteAndRol: vi.fn(async () => []),
@@ -58,30 +63,15 @@ vi.mock('../../sites/repo', () => ({
 }));
 
 vi.mock('../daily-repo', () => ({
-  listContadorDiarioBySiteRolDias: vi.fn(async () => new Map()),
-  listContadorJornadaBySiteRolDias: vi.fn(async () => new Map()),
-  diarioRowToPoint: vi.fn((row: Record<string, unknown>, _u: unknown) => ({
-    dia: String(row.dia).slice(0, 10),
-    delta: row.delta as number | null,
-    unidad: row.unidad as string | null,
-    muestras: row.muestras as number,
-    ultimo_dato: row.ultimo_dato as string | null,
-    resets_detectados: row.resets_detectados as number,
-  })),
-  jornadaRowToPoint: vi.fn((row: Record<string, unknown>, _u: unknown) => ({
-    dia: String(row.dia).slice(0, 10),
-    inicio: row.inicio as string,
-    fin: row.fin as string,
-    delta: row.delta as number | null,
-    unidad: row.unidad as string | null,
-    muestras: row.muestras as number,
-    ultimo_dato: row.ultimo_dato as string | null,
-    resets_detectados: row.resets_detectados as number,
-  })),
+  listContadorDiarioBySiteRolDias: vi.fn(async () => []),
+  listContadorJornadaBySiteRolDias: vi.fn(async () => []),
+  diaToIso: vi.fn((dia: unknown) =>
+    dia instanceof Date ? dia.toISOString().slice(0, 10) : String(dia).slice(0, 10),
+  ),
 }));
 
 // ── Imports (después de los mocks) ─────────────────────────────────────────────
-import { listCounterVariablesForSite } from '../repo';
+import { listCounterVariablesForSiteAndRol } from '../repo';
 import { listContadorDiarioBySiteRolDias, listContadorJornadaBySiteRolDias } from '../daily-repo';
 // Importamos los helpers puros del service (no afectados por mocks de infraestructura).
 import { getDayRangeChile, lastNDays, chileDayKey, getMonthRangeChile } from '../service';
@@ -160,7 +150,7 @@ describe('getMonthRangeChile — helper puro', () => {
 import { getDailySeries, getJornadaSeries } from '../service';
 import { getMappingsBySiteId } from '../repo';
 
-function makeCounter() {
+function makeCounter(overrides: Record<string, unknown> = {}) {
   return {
     sitio_id: 'S1',
     id_serial: '10.0.0.1',
@@ -168,7 +158,40 @@ function makeCounter() {
     alias: 'vol',
     rol: 'totalizador',
     unidad: 'm3',
+    ...overrides,
   };
+}
+
+function makeDiarioRow(diaIso: string, overrides: Record<string, unknown> = {}) {
+  return {
+    sitio_id: 'S1',
+    variable_id: 'V1',
+    rol: 'totalizador',
+    dia: diaIso,
+    valor_inicio: 0,
+    valor_fin: 100,
+    delta: 100,
+    unidad: 'm3',
+    muestras: 288,
+    resets_detectados: 0,
+    ultimo_dato: null,
+    actualizado_at: '',
+    ...overrides,
+  };
+}
+
+function makeJornadaRow(diaIso: string, overrides: Record<string, unknown> = {}) {
+  return {
+    ...makeDiarioRow(diaIso, { delta: 80, valor_fin: 80, muestras: 144 }),
+    inicio: '07:00',
+    fin: '19:00',
+    ...overrides,
+  };
+}
+
+/** Día de hoy en zona Chile, la clave con la que se indexan las filas. */
+function hoyIso(): string {
+  return getDayRangeChile(lastNDays(1)[0]!).diaIso;
 }
 
 beforeEach(() => {
@@ -177,46 +200,107 @@ beforeEach(() => {
 
 describe('getDailySeries — fast path: todos los días materializados', () => {
   it('no consulta mappings (no entra al fallback) cuando todas las filas existen', async () => {
-    vi.mocked(listCounterVariablesForSite).mockResolvedValue([makeCounter()]);
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([makeCounter()]);
 
-    const days = lastNDays(2);
-    const diaIsos = days.map((d) => getDayRangeChile(d).diaIso);
-    const matMap = new Map(
-      diaIsos.map((iso) => [
-        iso,
-        {
-          sitio_id: 'S1',
-          variable_id: 'V1',
-          rol: 'totalizador',
-          dia: iso,
-          valor_inicio: 0,
-          valor_fin: 100,
-          delta: 100,
-          unidad: 'm3',
-          muestras: 288,
-          resets_detectados: 0,
-          ultimo_dato: null,
-          actualizado_at: '',
-        },
-      ]),
+    const diaIsos = lastNDays(2).map((d) => getDayRangeChile(d).diaIso);
+    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue(
+      diaIsos.map((d) => makeDiarioRow(d)),
     );
-    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue(matMap);
 
     const series = await getDailySeries({ sitioId: 'S1', rol: 'totalizador', dias: 2 });
 
     // Fast path: no debería consultar mappings (solo se usa en el fallback).
     expect(getMappingsBySiteId).not.toHaveBeenCalled();
     expect(series).toHaveLength(2);
-    // Los puntos vienen de diarioRowToPoint (mockeado).
     expect(series.every((p) => p.delta === 100)).toBe(true);
+    expect(series.every((p) => p.unidad === 'm3')).toBe(true);
+  });
+});
+
+describe('getDailySeries — recambio: dos equipos con el mismo rol', () => {
+  it('suma los deltas en vez de que una fila tape a la otra', async () => {
+    // El equipo retirado (V1) conserva el rol congelado en site_contador_diario
+    // y el nuevo (V2) lo tiene vigente en reg_map: los dos midieron el día.
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([
+      makeCounter(),
+      makeCounter({ variable_id: 'V2', alias: 'vol nuevo' }),
+    ]);
+
+    const dia = hoyIso();
+    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue([
+      makeDiarioRow(dia, { variable_id: 'V1', delta: 120, muestras: 100 }),
+      makeDiarioRow(dia, { variable_id: 'V2', delta: 30, muestras: 188 }),
+    ]);
+
+    const series = await getDailySeries({ sitioId: 'S1', rol: 'totalizador', dias: 1 });
+
+    expect(getMappingsBySiteId).not.toHaveBeenCalled();
+    expect(series).toHaveLength(1);
+    expect(series[0]!.delta).toBe(150);
+    expect(series[0]!.muestras).toBe(288);
+  });
+
+  it('una fila vacía del equipo nuevo no borra el dato del retirado', async () => {
+    // Es el caso de S128 Pozo 1: el worker escribió el período anterior para el
+    // mapeo nuevo con muestras=0 porque sus registros no existían todavía.
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([
+      makeCounter(),
+      makeCounter({ variable_id: 'V2' }),
+    ]);
+
+    const dia = hoyIso();
+    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue([
+      makeDiarioRow(dia, { variable_id: 'V1', delta: 383.4, muestras: 288 }),
+      makeDiarioRow(dia, { variable_id: 'V2', delta: null, muestras: 0 }),
+    ]);
+
+    const series = await getDailySeries({ sitioId: 'S1', rol: 'totalizador', dias: 1 });
+
+    expect(series[0]!.delta).toBe(383.4);
+    expect(series[0]!.muestras).toBe(288);
+  });
+
+  it('deja delta en null cuando ninguna fila trae dato (hueco, no cero)', async () => {
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([
+      makeCounter(),
+      makeCounter({ variable_id: 'V2' }),
+    ]);
+
+    const dia = hoyIso();
+    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue([
+      makeDiarioRow(dia, { variable_id: 'V1', delta: null, muestras: 0 }),
+      makeDiarioRow(dia, { variable_id: 'V2', delta: null, muestras: 0 }),
+    ]);
+
+    const series = await getDailySeries({ sitioId: 'S1', rol: 'totalizador', dias: 1 });
+
+    expect(series[0]!.delta).toBeNull();
+  });
+
+  it('no suma filas con unidades distintas: gana la de más muestras', async () => {
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([
+      makeCounter(),
+      makeCounter({ variable_id: 'V2', unidad: 'L' }),
+    ]);
+
+    const dia = hoyIso();
+    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue([
+      makeDiarioRow(dia, { variable_id: 'V1', delta: 120, muestras: 288, unidad: 'm3' }),
+      makeDiarioRow(dia, { variable_id: 'V2', delta: 5000, muestras: 10, unidad: 'L' }),
+    ]);
+
+    const series = await getDailySeries({ sitioId: 'S1', rol: 'totalizador', dias: 1 });
+
+    expect(series[0]!.delta).toBe(120);
+    expect(series[0]!.unidad).toBe('m3');
   });
 });
 
 describe('getDailySeries — fallback: sin filas materializadas', () => {
   it('consulta mappings (intenta el fallback) cuando no hay filas materializadas', async () => {
-    vi.mocked(listCounterVariablesForSite).mockResolvedValue([makeCounter()]);
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([makeCounter()]);
     // Sin filas materializadas → missingDays = todos los días.
-    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue(new Map());
+    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue([]);
     // getMappingsBySiteId devuelve vacío (no hay mapping) → el fallback no lanza.
     vi.mocked(getMappingsBySiteId).mockResolvedValue([]);
 
@@ -228,11 +312,42 @@ describe('getDailySeries — fallback: sin filas materializadas', () => {
     expect(series).toHaveLength(2);
     expect(series.every((p) => p.delta === null)).toBe(true);
   });
+
+  it('carga mappings una sola vez aunque haya varios equipos pendientes', async () => {
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([
+      makeCounter(),
+      makeCounter({ variable_id: 'V2' }),
+    ]);
+    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue([]);
+    vi.mocked(getMappingsBySiteId).mockResolvedValue([]);
+
+    await getDailySeries({ sitioId: 'S1', rol: 'totalizador', dias: 2 });
+
+    expect(getMappingsBySiteId).toHaveBeenCalledTimes(1);
+  });
+
+  it('un equipo con fila materializada no vuelve al fallback por otro que no la tiene', async () => {
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([
+      makeCounter(),
+      makeCounter({ variable_id: 'V2' }),
+    ]);
+    // V1 sí tiene fila hoy, V2 no → el fallback corre solo por V2.
+    vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue([
+      makeDiarioRow(hoyIso(), { variable_id: 'V1', delta: 42, muestras: 288 }),
+    ]);
+    vi.mocked(getMappingsBySiteId).mockResolvedValue([]);
+
+    const series = await getDailySeries({ sitioId: 'S1', rol: 'totalizador', dias: 1 });
+
+    expect(getMappingsBySiteId).toHaveBeenCalledTimes(1);
+    // Sin mapping para V2 el fallback no aporta nada: queda solo lo de V1.
+    expect(series[0]!.delta).toBe(42);
+  });
 });
 
 describe('getDailySeries — sin contador para el rol', () => {
   it('devuelve serie vacía sin consultar nada más', async () => {
-    vi.mocked(listCounterVariablesForSite).mockResolvedValue([]);
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([]);
 
     const series = await getDailySeries({ sitioId: 'S1', rol: 'totalizador', dias: 3 });
 
@@ -245,32 +360,12 @@ describe('getDailySeries — sin contador para el rol', () => {
 
 describe('getJornadaSeries — fast path: todos los días materializados', () => {
   it('no consulta mappings (no entra al fallback) cuando todas las filas existen', async () => {
-    vi.mocked(listCounterVariablesForSite).mockResolvedValue([makeCounter()]);
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([makeCounter()]);
 
-    const days = lastNDays(2);
-    const diaIsos = days.map((d) => getDayRangeChile(d).diaIso);
-    const matMap = new Map(
-      diaIsos.map((iso) => [
-        iso,
-        {
-          sitio_id: 'S1',
-          variable_id: 'V1',
-          rol: 'totalizador',
-          dia: iso,
-          inicio: '07:00',
-          fin: '19:00',
-          valor_inicio: 0,
-          valor_fin: 80,
-          delta: 80,
-          unidad: 'm3',
-          muestras: 144,
-          resets_detectados: 0,
-          ultimo_dato: null,
-          actualizado_at: '',
-        },
-      ]),
+    const diaIsos = lastNDays(2).map((d) => getDayRangeChile(d).diaIso);
+    vi.mocked(listContadorJornadaBySiteRolDias).mockResolvedValue(
+      diaIsos.map((d) => makeJornadaRow(d)),
     );
-    vi.mocked(listContadorJornadaBySiteRolDias).mockResolvedValue(matMap);
 
     const series = await getJornadaSeries({
       sitioId: 'S1',
@@ -284,12 +379,35 @@ describe('getJornadaSeries — fast path: todos los días materializados', () =>
     expect(series).toHaveLength(2);
     expect(series.every((p) => p.delta === 80)).toBe(true);
   });
+
+  it('suma las jornadas de los dos equipos el día del recambio', async () => {
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([
+      makeCounter(),
+      makeCounter({ variable_id: 'V2' }),
+    ]);
+
+    const dia = hoyIso();
+    vi.mocked(listContadorJornadaBySiteRolDias).mockResolvedValue([
+      makeJornadaRow(dia, { variable_id: 'V1', delta: 60 }),
+      makeJornadaRow(dia, { variable_id: 'V2', delta: 25 }),
+    ]);
+
+    const series = await getJornadaSeries({
+      sitioId: 'S1',
+      rol: 'totalizador',
+      dias: 1,
+      inicio: '07:00',
+      fin: '19:00',
+    });
+
+    expect(series[0]!.delta).toBe(85);
+  });
 });
 
 describe('getJornadaSeries — fallback: sin filas materializadas', () => {
   it('consulta mappings (intenta el fallback) cuando no hay filas de jornada', async () => {
-    vi.mocked(listCounterVariablesForSite).mockResolvedValue([makeCounter()]);
-    vi.mocked(listContadorJornadaBySiteRolDias).mockResolvedValue(new Map());
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([makeCounter()]);
+    vi.mocked(listContadorJornadaBySiteRolDias).mockResolvedValue([]);
     vi.mocked(getMappingsBySiteId).mockResolvedValue([]);
 
     const series = await getJornadaSeries({
@@ -308,7 +426,7 @@ describe('getJornadaSeries — fallback: sin filas materializadas', () => {
 
 describe('getJornadaSeries — sin contador', () => {
   it('devuelve serie vacía sin consultar nada más', async () => {
-    vi.mocked(listCounterVariablesForSite).mockResolvedValue([]);
+    vi.mocked(listCounterVariablesForSiteAndRol).mockResolvedValue([]);
 
     const series = await getJornadaSeries({
       sitioId: 'S1',

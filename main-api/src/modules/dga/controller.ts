@@ -19,19 +19,22 @@
  */
 import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
-import { ForbiddenError, UnauthorizedError, ValidationError } from '../../shared/errors';
+import { ForbiddenError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import { assertSiteAccessById } from '../../middlewares/siteAccess';
 import { z } from 'zod';
 import {
+  BulkSlotActionPayload,
   ListReviewQueueParams,
   PatchPozoDgaConfigPayload,
   QueryDatoDgaParams,
   ReconocerSensorPayload,
   ReviewSlotActionPayload,
+  SlotsResumenParams,
   UpsertInformantePayload,
 } from './schema';
 import {
+  applyBulkSlotAction,
   applyReviewDecision,
   deleteInformanteService,
   getDatoDgaBySite,
@@ -46,8 +49,25 @@ import {
   verifySniaSubmission,
 } from './service';
 import type { AuthUser } from '../../shared/permissions';
-import { getPozoDgaConfig, reconocerSensorDefectuoso } from './repo';
+import {
+  BULK_SLOT_LIMIT,
+  countSlotsByEstado,
+  getPozoDgaConfig,
+  reconocerSensorDefectuoso,
+} from './repo';
 import { formatRutForDga } from '../../utils/rut';
+import { query } from '../../config/dbHelpers';
+import { logger } from '../../config/logger';
+
+// Reglas de alerta estándar (CommonJS compartido con los controllers JS).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const alertasPorDefectoMod = require('../../services/alertasPorDefecto.js') as {
+  crearAlertasPorDefecto: (
+    db: { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }> },
+    input: { sitioId: string; userId?: string | null },
+  ) => Promise<{ creadas: string[]; existentes: string[]; omitidas: string[] }>;
+};
+const { crearAlertasPorDefecto } = alertasPorDefectoMod;
 
 function getUser(req: Request): AuthUser | undefined {
   return (req as Request & { user?: AuthUser }).user;
@@ -157,6 +177,17 @@ export async function patchPozoDgaConfigHandler(
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
     const result = await patchPozoDgaConfigService(siteId, parsed.data);
+    if (parsed.data.dga_activo === true) {
+      // Al activar DGA el pozo pasa a necesitar las reglas de comprobante y de
+      // derecho. Idempotente y sin await: no condiciona la respuesta del PATCH.
+      const userId = (req as { user?: { id?: string } }).user?.id ?? null;
+      crearAlertasPorDefecto({ query }, { sitioId: siteId, userId }).catch((err: Error) =>
+        logger.warn(
+          { site_id: siteId, err: err.message },
+          'dga: no se pudieron crear las alertas por defecto al activar DGA',
+        ),
+      );
+    }
     res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
@@ -250,8 +281,8 @@ export async function listReviewQueueHandler(
     } else if (user?.tipo !== 'SuperAdmin') {
       throw new ForbiddenError('site_id requerido para este rol');
     }
-    const rows = await listReviewQueue(parsed.data);
-    res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
+    const { slots, total, sitios } = await listReviewQueue(parsed.data);
+    res.json(ok(slots, { count: slots.length, total, sitios, durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }
@@ -272,6 +303,78 @@ export async function reviewSlotActionHandler(
     await assertSiteAccessById(user, parsed.data.site_id);
     const result = await applyReviewDecision({
       ...parsed.data,
+      admin_email: user?.email ?? 'desconocido',
+    });
+    res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /dga/sites/:siteId/slots/resumen?desde&hasta — conteo por estado.
+ *
+ * Existe para que la acción en bloque no se aplique a ciegas: el operador ve
+ * cuántos slots hay y en qué estado ANTES de decidir. Es lectura pura, así que
+ * no pide 2FA — solo el mismo scope de sitio que el resto del detalle.
+ */
+export async function slotsResumenHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = String(req.params.siteId ?? '').trim();
+    if (!siteId) throw new ValidationError('siteId requerido');
+    const parsed = SlotsResumenParams.safeParse(req.query);
+    if (!parsed.success) {
+      throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
+    }
+    const user = getUser(req);
+    await assertSiteAccessById(user, siteId);
+    const rows = await countSlotsByEstado({ site_id: siteId, ...parsed.data });
+    res.json(
+      ok(
+        {
+          estados: rows,
+          total: rows.reduce((acc, r) => acc + r.total, 0),
+          limite: BULK_SLOT_LIMIT,
+        },
+        { durationMs: elapsedMs(startedAt) },
+      ),
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /dga/sites/:siteId/slots/bulk — acción en bloque sobre un rango.
+ *
+ * `recalcular` devuelve los slots a `vacio` para que el fill los recompute con
+ * la config actual del `reg_map`; `dar_de_baja` los cierra como `fallido` con
+ * la nota del admin. Nunca toca `enviado` ni `enviando`.
+ *
+ * 2FA + Admin/SuperAdmin, igual que el descarte de a uno.
+ */
+export async function bulkSlotActionHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const parsed = BulkSlotActionPayload.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
+    }
+    const siteId = String(req.params.siteId ?? '').trim();
+    const user = getUser(req);
+    await assertSiteAccessById(user, siteId);
+    const result = await applyBulkSlotAction({
+      ...parsed.data,
+      site_id: siteId,
       admin_email: user?.email ?? 'desconocido',
     });
     res.json(ok(result, { durationMs: elapsedMs(startedAt) }));

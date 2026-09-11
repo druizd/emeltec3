@@ -239,6 +239,9 @@ function buildResumen(variables: DashboardVariable[]): DashboardResumen {
   for (const variable of variables) {
     const role = dashboardRoleForVariable(variable);
     if (role === 'generico') continue;
+    // Mismo criterio que findHistoricalVariable: un mapeo roto no pisa al que
+    // ya calculó para ese rol. Sin esto el resumen dependía del ORDER BY alias.
+    if (resumen[role]?.ok && variable.ok === false) continue;
     resumen[role] = {
       ok: variable.ok,
       valor: variable.valor,
@@ -344,7 +347,23 @@ function findHistoricalVariable(
       }
     }
 
-    if (score > bestScore) {
+    if (score === 0) continue;
+
+    // Entre candidatos al rol, la variable que sí calculó le gana a la rota
+    // aunque puntúe menos. Dos mapeos con el mismo rol son el resto típico de
+    // un recambio de equipo (el registro viejo ya no llega) y el bono del
+    // totalizador uint32 (110 vs 90 del rol) no puede premiar a un mapeo que
+    // está fallando: eso dejó a S128 declarando acumulado null a DGA el
+    // 04-09-2026. A igual salud manda el puntaje y, a igual puntaje, el orden.
+    // Mismo criterio que services/siteTelemetryService.js (#199).
+    const bestRoto = best !== null && best.ok === false;
+    const variableRota = variable.ok === false;
+    const gana =
+      best === null ||
+      (bestRoto && !variableRota) ||
+      (bestRoto === variableRota && score > bestScore);
+
+    if (gana) {
       best = variable;
       bestScore = score;
     }

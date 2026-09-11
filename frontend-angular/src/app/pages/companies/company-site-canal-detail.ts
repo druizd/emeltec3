@@ -18,6 +18,7 @@ import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { WellStatCardComponent } from '../../components/ui/well-stat-card';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { tabDesdeQuery } from '../../shared/detail-tab-query';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
 import {
   CompanyService,
@@ -36,7 +37,7 @@ import { SiteVariableSettingsPanelComponent } from './components/site-variable-s
 import { DatoDgaRow, DgaService } from '../../services/dga.service';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
-import type { CompanyNode } from '@emeltec/shared';
+import type { ApiResponse, CompanyNode, SiteDashboardHistoryPayload } from '@emeltec/shared';
 import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
 
 /**
@@ -182,6 +183,7 @@ interface SiteDashboardData {
 }
 
 type DetailTab = 'dga' | 'operacion' | 'alertas' | 'bitacora' | 'analisis';
+const DETAIL_TABS: DetailTab[] = ['dga', 'operacion', 'alertas', 'bitacora', 'analisis'];
 type OperationMode = 'realtime' | 'turnos';
 
 @Component({
@@ -1734,11 +1736,22 @@ type OperationMode = 'realtime' | 'turnos';
             </div>
           }
 
+          <!--
+            Operacion vive FUERA de la cadena @if/@else de arriba a proposito: se
+            oculta con [class.hidden] en vez de destruirse para no perder el
+            estado de los graficos ni reiniciar el polling en vivo al cambiar de
+            pestana. Por eso la condicion tiene que mirar tambien los paneles:
+            sin settingsPanelOpen() / historyPanelOpen() se dibuja ADEMAS del
+            panel abierto, apilado debajo, con dos role="tabpanel" visibles a la
+            vez y el polling corriendo por detras.
+          -->
           <div
             role="tabpanel"
             id="tabpanel-operacion"
             aria-labelledby="tab-operacion"
-            [class.hidden]="activeDetailTab() !== 'operacion'"
+            [class.hidden]="
+              activeDetailTab() !== 'operacion' || settingsPanelOpen() || historyPanelOpen()
+            "
           >
             <app-water-detail-operacion />
           </div>
@@ -2385,7 +2398,7 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
             }
             <p class="px-5 py-2 text-caption-xs text-slate-500 italic">
-              Para configurar informantes, transport y caudal máx del pozo, usá el botón
+              Para configurar informantes, transport y caudal máx del pozo, usa el botón
               <span class="font-semibold text-primary-container">Configurar reporte DGA</span> del
               panel de Settings del pozo.
             </p>
@@ -3285,13 +3298,17 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Deep-link `?tab=alertas` desde la campana del header.
+    const tabSolicitada = tabDesdeQuery(this.route, DETAIL_TABS);
+    if (tabSolicitada) this.setDetailTab(tabSolicitada);
+
     this.clockSub = timer(0, 1000).subscribe(() => this.currentTime.set(new Date()));
     this.startDashboardPolling(siteId);
     // historyPolling lazy — solo arranca cuando se abre la modal Historial.
     this.startMonthlyCountersPolling(siteId);
 
     this.companyService.fetchHierarchy().subscribe({
-      next: (res: any) => {
+      next: (res) => {
         if (!res.ok) {
           this.router.navigate(['/companies']);
           return;
@@ -4112,7 +4129,7 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
       return;
     }
     if (!from || !to) {
-      this.dgaReportError.set('Seleccioná un rango de fechas.');
+      this.dgaReportError.set('Selecciona un rango de fechas.');
       return;
     }
 
@@ -4401,7 +4418,7 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
 
   private refreshDashboardSnapshot(siteId: string): void {
     this.companyService.getSiteDashboardData(siteId).subscribe({
-      next: (res: any) => {
+      next: (res) => {
         const payload = res?.ok === false ? null : res?.data || res || null;
         if (!payload) return;
         this.syncServerClock(payload.server_time);
@@ -4418,7 +4435,7 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
     if (!siteId) return;
 
     this.companyService.fetchHierarchy().subscribe({
-      next: (res: any) => {
+      next: (res) => {
         if (!res.ok) return;
         const match = this.findAccessibleSite(res.data, siteId);
         if (!match) return;
@@ -4457,9 +4474,9 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
 
   private loadHydratedSite(match: SiteContext): void {
     this.companyService.getSites(match.subCompany.id).subscribe({
-      next: (json: any) => {
+      next: (json) => {
         const hydratedSite = json.ok
-          ? (json.data || []).find((site: any) => site.id === match.site.id)
+          ? (json.data || []).find((site) => site.id === match.site.id)
           : null;
 
         this.siteContext.set({
@@ -4495,7 +4512,7 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
           ),
         ),
       )
-      .subscribe((res: any) => {
+      .subscribe((res) => {
         if (!res) return;
 
         const payload = res?.ok === false ? null : res?.data || res || null;
@@ -4554,7 +4571,7 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
             );
         }),
       )
-      .subscribe((res: any) => {
+      .subscribe((res) => {
         if (!res) return;
 
         const apiRows = this.extractHistoryApiRows(res);
@@ -4574,10 +4591,12 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  private extractHistoryApiRows(res: any): HistoricalTelemetryApiRow[] {
+  private extractHistoryApiRows(
+    res: ApiResponse<SiteDashboardHistoryPayload> | null | undefined,
+  ): HistoricalTelemetryApiRow[] {
     if (res?.ok === false) return [];
-    const rows = res?.data?.rows || res?.data || [];
-    return Array.isArray(rows) ? rows : [];
+    const rows = res?.data?.rows ?? [];
+    return Array.isArray(rows) ? (rows as unknown as HistoricalTelemetryApiRow[]) : [];
   }
 
   private mapHistoryApiRow(

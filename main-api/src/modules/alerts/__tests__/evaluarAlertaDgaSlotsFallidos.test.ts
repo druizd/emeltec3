@@ -2,7 +2,10 @@
  * Tests unitarios para evaluarAlertaDgaSlotsFallidos.
  *
  * Spec: §"dga_slots_fallidos" — todos los escenarios.
- * ADR-6, ADR-6a: cooldown chequeado DENTRO del evaluador (primer paso).
+ * ADR-6: el veredicto pasa por `debeNotificar`, que es quien aplica el cooldown,
+ * agrupa las repeticiones de un evento reconocido y rearma cuando la condición
+ * se normaliza. Un slot fallido no se arregla solo, así que sin esa agrupación
+ * la condición avisaba una vez por cooldown de forma indefinida.
  * Resultado: valor_texto=String(n), valor_detectado=NULL, severidad=alerta.severidad.
  */
 import { describe, it, expect, vi } from 'vitest';
@@ -49,71 +52,85 @@ const BASE_ALERTA = {
   sitio_desc: 'Pozo Norte',
 };
 
-function makeClient(responses: Array<{ rows: unknown[] }>) {
+/**
+ * Cliente de base falso que responde según el SQL recibido, no por posición.
+ * El orden de las consultas depende del estado del evento abierto (reconocido o
+ * no), así que un arreglo posicional se rompe en cuanto el evaluador deja de
+ * empezar siempre por el cooldown.
+ */
+function makeClient(opts: {
+  eventoAbierto?: { id: string; reconocida_at: string | null } | null;
+  dentroDeCooldown?: boolean;
+  dgaActivo?: boolean;
+  fallidos?: number;
+}) {
   const calls: Array<{ sql: string; params: unknown[] }> = [];
-  let idx = 0;
   const client = {
-    query: vi.fn(async (sql: string, params: unknown[]) => {
-      calls.push({ sql, params });
-      const resp = responses[idx++];
-      if (!resp) throw new Error(`Sin respuesta stub para llamada #${idx}: ${sql.slice(0, 80)}`);
-      return resp;
-    }),
     _calls: calls,
+    query: vi.fn(async (sql: string, params: unknown[] = []) => {
+      calls.push({ sql, params });
+      if (sql.includes('FROM alertas_eventos') && sql.includes('resuelta = FALSE')) {
+        return { rows: opts.eventoAbierto ? [opts.eventoAbierto] : [] };
+      }
+      if (sql.includes('SELECT 1 FROM alertas_eventos')) {
+        return { rows: opts.dentroDeCooldown ? [{ '?column?': 1 }] : [] };
+      }
+      if (sql.includes('FROM pozo_config')) {
+        return { rows: (opts.dgaActivo ?? true) ? [{ '?column?': 1 }] : [] };
+      }
+      if (sql.includes('COUNT(*)') && sql.includes('dato_dga')) {
+        return { rows: [{ n: opts.fallidos ?? 0 }] };
+      }
+      if (sql.startsWith('INSERT INTO alertas_eventos')) {
+        return { rows: [{ id: 'evento-sf-nuevo' }] };
+      }
+      return { rows: [] };
+    }),
   };
   return client;
 }
+
+const hizoCount = (c: ReturnType<typeof makeClient>) =>
+  c._calls.some((x) => x.sql.toUpperCase().includes('COUNT'));
+const hizoInsert = (c: ReturnType<typeof makeClient>) =>
+  c._calls.some((x) => x.sql.toUpperCase().includes('INSERT'));
+const hizoUpdate = (c: ReturnType<typeof makeClient>, frag: string) =>
+  c._calls.some((x) => x.sql.includes('UPDATE alertas_eventos') && x.sql.includes(frag));
+const insertDe = (c: ReturnType<typeof makeClient>) =>
+  c._calls.find((x) => x.sql.toUpperCase().includes('INSERT'));
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('evaluarAlertaDgaSlotsFallidos — cooldown activo', () => {
   it('cooldown activo → NO emite COUNT query, NO inserta alertas_eventos', async () => {
-    // Primera query: cooldown → devuelve un evento reciente
-    const client = makeClient([{ rows: [{ triggered_at: new Date().toISOString() }] }]);
+    const client = makeClient({ dentroDeCooldown: true, fallidos: 3 });
 
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
 
-    // Solo debe haberse ejecutado la query de cooldown, ninguna otra
-    expect(client._calls).toHaveLength(1);
-    const hasCount = client._calls.some((c) => c.sql.toUpperCase().includes('COUNT'));
-    expect(hasCount).toBe(false);
-    const hasInsert = client._calls.some((c) => c.sql.toUpperCase().includes('INSERT'));
-    expect(hasInsert).toBe(false);
+    // El COUNT sobre dato_dga se evalúa de forma diferida: si el cooldown ya
+    // corta el ciclo, no se paga (ADR-6a).
+    expect(hizoCount(client)).toBe(false);
+    expect(hizoInsert(client)).toBe(false);
   });
 });
 
-// Respuesta stub para pozo_config lookup (dga_activo=TRUE → fila presente).
-// Se necesita después del cooldown check en cada test donde DGA está activo.
-const DGA_ACTIVO_ROW = { rows: [{ '?column?': 1 }] };
-
 describe('evaluarAlertaDgaSlotsFallidos — COUNT = 0', () => {
   it('COUNT = 0 fallidos → no inserta alertas_eventos', async () => {
-    const client = makeClient([
-      { rows: [] }, // cooldown: sin evento reciente
-      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
-      { rows: [{ n: 0 }] }, // COUNT query: sin fallidos
-    ]);
+    const client = makeClient({ fallidos: 0 });
 
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
 
-    const hasInsert = client._calls.some((c) => c.sql.toUpperCase().includes('INSERT'));
-    expect(hasInsert).toBe(false);
+    expect(hizoInsert(client)).toBe(false);
   });
 });
 
 describe('evaluarAlertaDgaSlotsFallidos — COUNT >= 1', () => {
   it('COUNT = 3 → inserta alertas_eventos con valor_texto="3", valor_detectado=NULL, severidad=alerta.severidad', async () => {
-    const insertResult = { rows: [{ id: 'evento-sf-1' }] };
-    const client = makeClient([
-      { rows: [] }, // cooldown: no activo
-      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
-      { rows: [{ n: 3 }] }, // COUNT: 3 slots fallidos
-      insertResult, // INSERT alertas_eventos
-    ]);
+    const client = makeClient({ fallidos: 3 });
 
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
 
-    const insertCall = client._calls.find((c) => c.sql.toUpperCase().includes('INSERT'));
+    const insertCall = insertDe(client);
     expect(insertCall).toBeDefined();
 
     const params = insertCall!.params;
@@ -126,33 +143,21 @@ describe('evaluarAlertaDgaSlotsFallidos — COUNT >= 1', () => {
   });
 
   it('COUNT = 1 → también inserta (umbral es >= 1, no > 1)', async () => {
-    const insertResult = { rows: [{ id: 'evento-sf-2' }] };
-    const client = makeClient([
-      { rows: [] },
-      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
-      { rows: [{ n: 1 }] },
-      insertResult,
-    ]);
+    const client = makeClient({ fallidos: 1 });
 
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
 
-    const hasInsert = client._calls.some((c) => c.sql.toUpperCase().includes('INSERT'));
-    expect(hasInsert).toBe(true);
+    expect(hizoInsert(client)).toBe(true);
   });
 
   it('mensaje incluye texto en español con el count de slots', async () => {
-    const insertResult = { rows: [{ id: 'evento-sf-3' }] };
-    const client = makeClient([
-      { rows: [] },
-      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
-      { rows: [{ n: 5 }] },
-      insertResult,
-    ]);
+    const client = makeClient({ fallidos: 5 });
 
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
 
-    const insertCall = client._calls.find((c) => c.sql.toUpperCase().includes('INSERT'));
-    const mensaje = insertCall!.params.find((p) => typeof p === 'string' && p.includes('fallido'));
+    const mensaje = insertDe(client)!.params.find(
+      (p) => typeof p === 'string' && p.includes('fallido'),
+    );
     expect(mensaje).toBeDefined();
     // El mensaje debe incluir el count
     expect(mensaje as string).toMatch(/5/);
@@ -166,20 +171,13 @@ describe('evaluarAlertaDgaSlotsFallidos — notificarUsuarios', () => {
     const qMock = mockQuery as ReturnType<typeof vi.fn>;
     qMock.mockResolvedValue({ rows: [] }); // SELECT usuarios: sin resultados (ok para el test)
 
-    const insertResult = { rows: [{ id: 'evento-sf-4' }] };
-    const client = makeClient([
-      { rows: [] },
-      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
-      { rows: [{ n: 2 }] },
-      insertResult,
-    ]);
+    const client = makeClient({ fallidos: 2 });
 
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
 
     // La consulta de notificación se dispara (fire-and-forget async).
     // Verificamos que se intentó insertar el evento.
-    const hasInsert = client._calls.some((c) => c.sql.toUpperCase().includes('INSERT'));
-    expect(hasInsert).toBe(true);
+    expect(hizoInsert(client)).toBe(true);
   });
 });
 
@@ -192,20 +190,14 @@ describe('evaluarAlertaDgaSlotsFallidos — DGA desactivado (W-1)', () => {
    *
    * Escenario residual: el sitio tuvo DGA activo, acumuló slots 'fallido' en dato_dga
    * y luego el operador desactivó dga_activo=FALSE. La fila `alertas` puede seguir
-   * activa. El evaluador DEBE salir temprano consultando pozo_config.dga_activo.
+   * activa. El evaluador DEBE tratar la condición como no cumplida.
    */
   it('pozo_config.dga_activo=FALSE para el sitio → el evaluador sale sin INSERT aunque COUNT > 0', async () => {
-    const client = makeClient([
-      { rows: [] }, // cooldown: no activo
-      { rows: [] }, // pozo_config lookup: dga_activo=FALSE → sin filas
-      { rows: [{ n: 3 }] }, // COUNT dato_dga: 3 slots fallidos (datos residuales)
-      // No debe llegarse a este punto — si hay INSERT es un bug
-    ]);
+    const client = makeClient({ dgaActivo: false, fallidos: 3 });
 
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
 
-    const hasInsert = client._calls.some((c) => c.sql.toUpperCase().includes('INSERT'));
-    expect(hasInsert).toBe(false);
+    expect(hizoInsert(client)).toBe(false);
 
     // El evaluador debe haber chequeado pozo_config
     const hasPozoConfigCheck = client._calls.some(
@@ -213,5 +205,58 @@ describe('evaluarAlertaDgaSlotsFallidos — DGA desactivado (W-1)', () => {
         c.sql.toLowerCase().includes('pozo_config') && c.sql.toLowerCase().includes('dga_activo'),
     );
     expect(hasPozoConfigCheck).toBe(true);
+  });
+
+  it('DGA desactivado con un evento reconocido abierto → lo resuelve para rearmar', async () => {
+    const client = makeClient({
+      eventoAbierto: { id: 'EV1', reconocida_at: '2026-08-18T10:00:00Z' },
+      dgaActivo: false,
+      fallidos: 3,
+    });
+
+    await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
+
+    expect(hizoUpdate(client, 'resuelta = TRUE')).toBe(true);
+    expect(hizoInsert(client)).toBe(false);
+  });
+});
+
+describe('evaluarAlertaDgaSlotsFallidos — evento reconocido', () => {
+  it('reconocido y el slot sigue fallido → agrupa la repetición, no crea evento ni correo', async () => {
+    const client = makeClient({
+      eventoAbierto: { id: 'EV1', reconocida_at: '2026-08-18T10:00:00Z' },
+      fallidos: 4,
+    });
+
+    await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
+
+    expect(hizoInsert(client)).toBe(false);
+    expect(hizoUpdate(client, 'repeticiones')).toBe(true);
+  });
+
+  it('reconocido y sin fallidos → resuelve el evento para volver a avisar la próxima vez', async () => {
+    const client = makeClient({
+      eventoAbierto: { id: 'EV1', reconocida_at: '2026-08-18T10:00:00Z' },
+      fallidos: 0,
+    });
+
+    await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
+
+    expect(hizoUpdate(client, 'resuelta = TRUE')).toBe(true);
+    expect(hizoInsert(client)).toBe(false);
+  });
+
+  it('abierto SIN reconocer y con fallidos → sigue rigiendo el cooldown, no se auto-resuelve', async () => {
+    const client = makeClient({
+      eventoAbierto: { id: 'EV1', reconocida_at: null },
+      dentroDeCooldown: true,
+      fallidos: 4,
+    });
+
+    await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
+
+    expect(hizoInsert(client)).toBe(false);
+    expect(hizoUpdate(client, 'repeticiones')).toBe(false);
+    expect(hizoUpdate(client, 'resuelta = TRUE')).toBe(false);
   });
 });

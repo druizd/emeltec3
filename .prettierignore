@@ -18,3 +18,6 @@ infra-db/init-db
 main-api/preview-email-digest-*.html
 # Design system bundle — referencia vendored, no fuente mantenida.
 docs/design-system
+# Configuración y temas de Obsidian del vault de documentación: archivos de
+# terceros, no fuente del proyecto.
+docs/vault/.obsidian

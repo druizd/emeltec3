@@ -208,7 +208,7 @@ interface DgaReportRow {
             </div>
           }
           <p class="px-5 py-2 text-caption-xs text-slate-500 italic">
-            Para configurar informantes, transport y caudal máx del pozo, usá el botón
+            Para configurar informantes, transport y caudal máx del pozo, usa el botón
             <span class="font-semibold text-primary-container">Configurar reporte DGA</span> del
             panel de Settings del pozo.
           </p>
@@ -571,7 +571,7 @@ export class WaterDetailDgaReporteComponent {
       return;
     }
     if (!from || !to) {
-      this.dgaReportError.set('Seleccioná un rango de fechas.');
+      this.dgaReportError.set('Selecciona un rango de fechas.');
       return;
     }
 

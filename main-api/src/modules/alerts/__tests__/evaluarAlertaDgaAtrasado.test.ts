@@ -1,11 +1,14 @@
 /**
- * Tests unitarios para evaluarAlertaDgaAtrasado (hotfix dga_user → pozo_config).
+ * Tests unitarios para evaluarAlertaDgaAtrasado.
  *
- * Estrategia: el evaluador recibe `client` como parámetro → stub directo,
- * sin mocks pesados. Módulos con side-effects al importar (dbHelpers, logger,
- * appConfig) se mockean con vi.mock hoisteado.
+ * La referencia del atraso es el ÚLTIMO SLOT CON COMPROBANTE SNIA
+ * (`dato_dga.comprobante`), no `pozo_config.dga_last_run_at`: ese campo lo
+ * marca el fill cada vez que calcula un slot, aunque el envío lleve días
+ * fallando. S127 (Agrosuper) estuvo 3 días sin comprobante y figuraba al día.
  *
- * Spec: §Part 1 "DGA Lag Math Preserved", §"DGA Config Query Shape Equivalence".
+ * Estrategia: el evaluador recibe `client` como parámetro → stub directo con
+ * una cola de respuestas. Módulos con side-effects al importar (dbHelpers,
+ * logger, appConfig) se mockean con vi.mock hoisteado.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -40,7 +43,7 @@ const BASE_ALERTA = {
   sub_empresa_id: null,
   sitio_id: 'sitio-1',
   creado_por: 'user-1',
-  variable_key: 'nivel_freatico',
+  variable_key: 'dga',
   condicion: 'dga_atrasado' as const,
   umbral_bajo: 0,
   umbral_alto: 0,
@@ -52,8 +55,7 @@ const BASE_ALERTA = {
 };
 
 /**
- * Crea un cliente fake con una cola de respuestas.
- * Cada llamada a client.query() consume una respuesta de la cola.
+ * Cliente fake con una cola de respuestas: cada client.query() consume una.
  * Registra todas las llamadas para inspección.
  */
 function makeClient(responses: Array<{ rows: unknown[] }>) {
@@ -71,9 +73,13 @@ function makeClient(responses: Array<{ rows: unknown[] }>) {
   return client;
 }
 
+function insertDe(client: ReturnType<typeof makeClient>) {
+  return client._calls.find((c) => c.sql.includes('INSERT'));
+}
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe('evaluarAlertaDgaAtrasado — consulta SQL (hotfix dga_user → pozo_config)', () => {
+describe('evaluarAlertaDgaAtrasado — consulta de referencia', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -82,8 +88,7 @@ describe('evaluarAlertaDgaAtrasado — consulta SQL (hotfix dga_user → pozo_co
     vi.useRealTimers();
   });
 
-  it('la consulta de config apunta a pozo_config, dga_activo, sitio_id — NO usa dga_user', async () => {
-    // Simula "sin config activa" → función retorna sin insertar evento.
+  it('la referencia sale de dato_dga.comprobante, no de dga_last_run_at ni de dga_user', async () => {
     const client = makeClient([{ rows: [] }]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
 
@@ -91,152 +96,128 @@ describe('evaluarAlertaDgaAtrasado — consulta SQL (hotfix dga_user → pozo_co
     const sql = client._calls[0]!.sql;
     expect(sql).toMatch(/pozo_config/i);
     expect(sql).toMatch(/dga_activo/i);
+    expect(sql).toMatch(/dato_dga/);
+    expect(sql).toMatch(/comprobante IS NOT NULL/);
+    expect(sql).not.toMatch(/dga_last_run_at/);
     expect(sql).not.toMatch(/dga_user/i);
-    expect(sql).not.toMatch(/dga_user/); // case-sensitive double-check
   });
 
-  it('la consulta usa sitio_id (no site_id) como parámetro de filtro', async () => {
+  it('la consulta usa sitio_id como parámetro de filtro', async () => {
     const client = makeClient([{ rows: [] }]);
     await evaluarAlertaDgaAtrasado(client, { ...BASE_ALERTA, sitio_id: 'S99' });
-
-    const params = client._calls[0]!.params;
-    expect(params).toContain('S99');
+    expect(client._calls[0]!.params).toContain('S99');
   });
 
-  it('sin config activa retorna sin insertar alertas_eventos', async () => {
-    const client = makeClient([{ rows: [] }]); // config query: sin filas
+  it('sin config DGA activa retorna sin insertar alertas_eventos', async () => {
+    const client = makeClient([{ rows: [] }]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
-
-    // Solo debe haber ocurrido la consulta de config, ningún INSERT.
     expect(client._calls).toHaveLength(1);
-    expect(client._calls[0]!.sql).not.toMatch(/INSERT/i);
+    expect(insertDe(client)).toBeUndefined();
   });
 });
 
-describe('evaluarAlertaDgaAtrasado — lag math y tiers', () => {
+describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('lag 12h (< 24h umbral media) → no inserta alertas_eventos', async () => {
-    // last_run_at hace 12h con periodicidad dia → lag efectivo = 0h (dentro del periodo)
-    const now = new Date('2026-06-21T12:00:00Z').getTime();
-    vi.setSystemTime(now);
-
-    const lastRunAt = new Date(now - 12 * 3_600_000).toISOString(); // 12h atrás
-    const configRow = {
-      periodicidad: 'dia',
-      last_run_at: lastRunAt,
+  function configCon(ultimoComprobanteHaceHoras: number, periodicidad = 'dia') {
+    const now = Date.now();
+    return {
+      periodicidad,
+      ultimo_comprobante_ts: new Date(now - ultimoComprobanteHaceHoras * 3_600_000).toISOString(),
       fecha_inicio: '2026-01-01',
-      hora_inicio: '06:00:00',
+      hora_inicio: '00:00:00',
     };
+  }
+
+  it('comprobante hace 12h con periodicidad dia → dentro del periodo, no inserta', async () => {
+    vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
+    const client = makeClient([{ rows: [configCon(12)] }, { rows: [] }]);
+    await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
+    expect(insertDe(client)).toBeUndefined();
+  });
+
+  it('comprobante hace 54h con periodicidad dia → lag 30h → severidad media', async () => {
+    vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
     const client = makeClient([
-      { rows: [configRow] }, // config query
-      { rows: [] }, // last severity query
+      { rows: [configCon(54)] },
+      { rows: [] },
+      { rows: [{ id: 'evento-1' }] },
     ]);
-
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
-
-    // No debe haber INSERT (lag < 24h → tierSev = null y lastRank = 0)
-    const hasSeverityInsert = client._calls.some((c) => c.sql.includes('INSERT'));
-    expect(hasSeverityInsert).toBe(false);
+    const ins = insertDe(client);
+    expect(ins).toBeDefined();
+    expect(ins!.params).toContain('media');
+    expect(String(ins!.params[6])).toMatch(/sin comprobante/i);
+    expect(String(ins!.params[6])).toMatch(/Último comprobante SNIA/);
   });
 
-  it('lag 30h (>= 24h, < 48h) → inserta con severidad media', async () => {
-    const now = new Date('2026-06-21T12:00:00Z').getTime();
-    vi.setSystemTime(now);
-
-    // periodicidad=dia → period=24h; last_run_at=54h atrás → lag=54h-24h=30h efectivo
-    const lastRunAt = new Date(now - 54 * 3_600_000).toISOString();
-    const configRow = {
-      periodicidad: 'dia',
-      last_run_at: lastRunAt,
+  it('pozo horario con 3 días sin comprobante (caso S127) → severidad crítica', async () => {
+    vi.setSystemTime(new Date('2026-09-02T13:00:00Z'));
+    // Último comprobante: slot 30-08 10:00Z. Periodicidad hora → esperado 11:00Z.
+    // Lag = 02-09 13:00 − 30-08 11:00 = 74h ≥ 72h → crítica.
+    const config = {
+      periodicidad: 'hora',
+      ultimo_comprobante_ts: '2026-08-30T10:00:00Z',
       fecha_inicio: '2026-01-01',
-      hora_inicio: '06:00:00',
+      hora_inicio: '00:00:00',
     };
-    const insertResult = { rows: [{ id: 'evento-1' }] };
+    const client = makeClient([{ rows: [config] }, { rows: [] }, { rows: [{ id: 'evento-2' }] }]);
+    await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
+    const ins = insertDe(client);
+    expect(ins).toBeDefined();
+    expect(ins!.params).toContain('critica');
+  });
 
+  it('ya notificada esa severidad o mayor → no inserta de nuevo', async () => {
+    vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
+    const client = makeClient([{ rows: [configCon(54)] }, { rows: [{ severidad: 'alta' }] }]);
+    await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
+    expect(insertDe(client)).toBeUndefined();
+  });
+
+  it('recupera: comprobante reciente tras un evento alto → inserta el evento de recuperación resuelto', async () => {
+    vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
     const client = makeClient([
-      { rows: [configRow] }, // config query
-      { rows: [] }, // last severity query (sin evento previo)
-      insertResult, // INSERT alertas_eventos
+      { rows: [configCon(2, 'hora')] },
+      { rows: [{ severidad: 'alta' }] },
+      { rows: [] },
     ]);
-
-    // También se llama a query() global para notificarUsuarios — necesitamos mockear eso
-    // La función notificarUsuarios usa el `query` global, no el client. Ya lo mockeamos arriba.
-    // Pero para este test, solo validamos el INSERT via client.
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
-
-    const insertCall = client._calls.find((c) => c.sql.includes('INSERT'));
-    expect(insertCall).toBeDefined();
-    // El 8º parámetro es la severidad.
-    expect(insertCall!.params).toContain('media');
+    const ins = insertDe(client);
+    expect(ins).toBeDefined();
+    expect(ins!.sql).toMatch(/'baja',TRUE,TRUE/);
+    expect(String(ins!.params[5])).toMatch(/al día/);
   });
 
-  it('lag 80h (>= 72h) → inserta con severidad critica', async () => {
-    const now = new Date('2026-06-21T12:00:00Z').getTime();
-    vi.setSystemTime(now);
-
-    // periodicidad=dia → period=24h; last_run_at=104h atrás → lag=104-24=80h
-    const lastRunAt = new Date(now - 104 * 3_600_000).toISOString();
-    const configRow = {
+  it('sin ningún comprobante todavía: la referencia es fecha_inicio/hora_inicio (lag 2h → no inserta)', async () => {
+    vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
+    // fecha_inicio 2026-06-20 06:00 (UTC-4 = 10:00Z) + 24h = 21 10:00Z → lag 2h
+    const config = {
       periodicidad: 'dia',
-      last_run_at: lastRunAt,
-      fecha_inicio: '2026-01-01',
-      hora_inicio: '06:00:00',
-    };
-    const insertResult = { rows: [{ id: 'evento-2' }] };
-
-    const client = makeClient([{ rows: [configRow] }, { rows: [] }, insertResult]);
-
-    await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
-
-    const insertCall = client._calls.find((c) => c.sql.includes('INSERT'));
-    expect(insertCall).toBeDefined();
-    expect(insertCall!.params).toContain('critica');
-  });
-
-  it('fallback fecha_inicio/hora_inicio cuando last_run_at es null', async () => {
-    const now = new Date('2026-06-21T12:00:00Z').getTime();
-    vi.setSystemTime(now);
-
-    // fecha_inicio=2026-06-20, hora_inicio=06:00:00 (UTC-4 = 10:00 UTC)
-    // expected_next = 2026-06-20T10:00:00Z + 24h = 2026-06-21T10:00:00Z
-    // now = 2026-06-21T12:00:00Z → lag = 2h < 24h → no inserta
-    const configRow = {
-      periodicidad: 'dia',
-      last_run_at: null,
+      ultimo_comprobante_ts: null,
       fecha_inicio: '2026-06-20',
       hora_inicio: '06:00:00',
     };
-    const client = makeClient([{ rows: [configRow] }, { rows: [] }]);
-
+    const client = makeClient([{ rows: [config] }, { rows: [] }]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
-
-    const hasSeverityInsert = client._calls.some((c) => c.sql.includes('INSERT'));
-    expect(hasSeverityInsert).toBe(false);
+    expect(insertDe(client)).toBeUndefined();
   });
 
-  it('fallback fecha_inicio/hora_inicio con lag >= 24h → inserta con severidad media', async () => {
-    const now = new Date('2026-06-22T12:00:00Z').getTime();
-    vi.setSystemTime(now);
-
-    // expected_next = 2026-06-20T10:00:00Z + 24h = 2026-06-21T10:00:00Z
-    // now = 2026-06-22T12:00:00Z → lag = 26h >= 24h → media
-    const configRow = {
+  it('sin ningún comprobante y lag ≥ 24h → inserta media y lo dice en el mensaje', async () => {
+    vi.setSystemTime(new Date('2026-06-22T12:00:00Z'));
+    const config = {
       periodicidad: 'dia',
-      last_run_at: null,
+      ultimo_comprobante_ts: null,
       fecha_inicio: '2026-06-20',
       hora_inicio: '06:00:00',
     };
-    const insertResult = { rows: [{ id: 'evento-3' }] };
-
-    const client = makeClient([{ rows: [configRow] }, { rows: [] }, insertResult]);
-
+    const client = makeClient([{ rows: [config] }, { rows: [] }, { rows: [{ id: 'evento-3' }] }]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
-
-    const insertCall = client._calls.find((c) => c.sql.includes('INSERT'));
-    expect(insertCall).toBeDefined();
-    expect(insertCall!.params).toContain('media');
+    const ins = insertDe(client);
+    expect(ins).toBeDefined();
+    expect(ins!.params).toContain('media');
+    expect(String(ins!.params[6])).toMatch(/Nunca se ha recibido un comprobante/);
   });
 });

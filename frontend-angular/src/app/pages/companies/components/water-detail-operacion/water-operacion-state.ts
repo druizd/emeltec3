@@ -8,6 +8,7 @@ import {
   debounceTime,
   of,
   switchMap,
+  tap,
   timer,
 } from 'rxjs';
 import {
@@ -49,9 +50,16 @@ export class WaterOperacionStateService {
   readonly jornadaInicio = signal('07:00');
   readonly jornadaFin = signal('07:00');
 
-  // Flag para no salvar durante el load inicial: cuando el GET completa,
-  // setea los signals → effect() veria un cambio y haria PUT redundante.
-  private configHydrated = false;
+  // Snapshot serializado de lo que el backend tiene guardado. null = todavia
+  // no hidratamos, no se salva nada.
+  //
+  // Antes esto era un booleano `configHydrated` que se ponia en true dentro
+  // del subscribe del GET, justo despues de setear los signals. Los effects de
+  // Angular son ASINCRONOS: para cuando el effect corria, el flag ya estaba en
+  // true, veia los signals cambiados y disparaba un PUT con exactamente lo que
+  // acababa de leer. De ahi el `PUT /operacion-config` en cada carga de sitio.
+  // Comparar contra el snapshot no depende del timing del effect.
+  private lastPersistedConfig: string | null = null;
   // Trigger de PUT: cada cambio en los signals empuja al subject; con debounce
   // hacemos un solo PUT por rafaga.
   private readonly configSaveTrigger$ = new Subject<void>();
@@ -59,20 +67,28 @@ export class WaterOperacionStateService {
   // Effect en constructor (inject context): cada cambio en los 4 signals
   // dispara el subject si ya hidratamos. El subject (debounced) hace el PUT.
   private readonly configSaveEffect = effect(() => {
-    // Tocar signals para registrar dependencia.
-    void this.numTurnos();
-    void this.turnosConfig();
-    void this.jornadaInicio();
-    void this.jornadaFin();
-    if (!this.configHydrated || !this.activeSiteId) return;
+    // serializeConfig() lee los 4 signals → registra la dependencia.
+    const snapshot = this.serializeConfig();
+    if (this.lastPersistedConfig === null || !this.activeSiteId) return;
+    if (snapshot === this.lastPersistedConfig) return;
     this.configSaveTrigger$.next();
   });
+
+  /** Forma canonica de la config, para comparar borrador vs persistido. */
+  private serializeConfig(): string {
+    return JSON.stringify({
+      num_turnos: this.numTurnos(),
+      turnos: this.turnosConfig().slice(0, 3),
+      jornada_inicio: this.jornadaInicio(),
+      jornada_fin: this.jornadaFin(),
+    });
+  }
 
   readonly diaOffset = signal(0);
 
   // Preset puede ser null cuando el operador edita fechas manuales que no
   // matchean ninguno de los 3 presets canónicos (7d, 30d, 90d ending hoy).
-  // El UI dejá de resaltar cualquier botón cuando preset === null.
+  // El UI deja de resaltar cualquier botón cuando preset === null.
   readonly preset = signal<OperacionPreset | null>('30d');
   readonly fechaDesde = signal(this.isoTodayMinus(30));
   readonly fechaHasta = signal(this.isoTodayMinus(0));
@@ -103,6 +119,14 @@ export class WaterOperacionStateService {
   private readonly jornadaInicio$ = toObservable(this.jornadaInicio);
   private readonly jornadaFin$ = toObservable(this.jornadaFin);
 
+  // Ventana de contadores que piden los gráficos de flujo. El diario nunca
+  // baja de 90 días (el Resumen por Período los necesita para su preset 90d)
+  // y el API tope en 120; el mensual admite 12/24/36 (tope del API: 36).
+  readonly diasContadores = signal(90);
+  readonly mesesContadores = signal(12);
+  private readonly diasContadores$ = toObservable(this.diasContadores);
+  private readonly mesesContadores$ = toObservable(this.mesesContadores);
+
   /**
    * Arranca polling de config + turnos. Liviano: 1 GET inicial + save loop on
    * change. SIEMPRE necesario en Operacion (incluso para la tab Hoy que usa
@@ -130,13 +154,17 @@ export class WaterOperacionStateService {
     this.countersSiteId = siteId;
 
     this.monthlyCountersLoading.set(true);
-    this.monthlySub = timer(0, 10 * 60_000)
+    this.monthlySub = combineLatest([timer(0, 10 * 60_000), this.mesesContadores$])
       .pipe(
-        switchMap(() =>
-          this.companyService
-            .getSiteMonthlyCounters(siteId, { rol: 'totalizador', meses: 12 })
-            .pipe(catchError(() => of(null))),
-        ),
+        switchMap(([, meses]) => {
+          this.monthlyCountersLoading.set(true);
+          return this.companyService
+            .getSiteMonthlyCounters(siteId, {
+              rol: 'totalizador',
+              meses: Math.min(Math.max(meses, 1), 36),
+            })
+            .pipe(catchError(() => of(null)));
+        }),
       )
       .subscribe((res) => {
         this.monthlyCountersLoading.set(false);
@@ -145,15 +173,21 @@ export class WaterOperacionStateService {
       });
 
     this.dailyCountersLoading.set(true);
-    // 90 dias: cubre el chart de 30 dias + el preset 90d del Resumen por
-    // Periodo. Sub-componentes filtran client-side al rango que necesitan.
-    this.dailySub = timer(0, 10 * 60_000)
+    // Minimo 90 dias: cubre el preset 90d del Resumen por Periodo. Los
+    // graficos de flujo piden mas cuando el usuario elige un rango mas largo
+    // (tope del API: 120). Sub-componentes filtran client-side al rango que
+    // necesitan.
+    this.dailySub = combineLatest([timer(0, 10 * 60_000), this.diasContadores$])
       .pipe(
-        switchMap(() =>
-          this.companyService
-            .getSiteDailyCounters(siteId, { rol: 'totalizador', dias: 90 })
-            .pipe(catchError(() => of(null))),
-        ),
+        switchMap(([, dias]) => {
+          this.dailyCountersLoading.set(true);
+          return this.companyService
+            .getSiteDailyCounters(siteId, {
+              rol: 'totalizador',
+              dias: Math.min(Math.max(dias, 90), 120),
+            })
+            .pipe(catchError(() => of(null)));
+        }),
       )
       .subscribe((res) => {
         this.dailyCountersLoading.set(false);
@@ -191,7 +225,7 @@ export class WaterOperacionStateService {
   stopCountersPolling(): void {
     this.stopContadoresPolling();
     this.activeSiteId = null;
-    this.configHydrated = false;
+    this.lastPersistedConfig = null;
   }
 
   /**
@@ -199,7 +233,7 @@ export class WaterOperacionStateService {
    * defaults; los aplicamos igual para mantener un comportamiento consistente.
    */
   private hydrateOperacionConfig(siteId: string): void {
-    this.configHydrated = false;
+    this.lastPersistedConfig = null;
     this.companyService
       .getSiteOperacionConfig(siteId)
       .pipe(
@@ -224,7 +258,9 @@ export class WaterOperacionStateService {
           this.jornadaInicio.set(cfg.jornada_inicio);
           this.jornadaFin.set(cfg.jornada_fin);
         }
-        this.configHydrated = true;
+        // Con datos o con error, lo que quedo en pantalla es lo que el
+        // backend tiene: ese es el snapshot base.
+        this.lastPersistedConfig = this.serializeConfig();
       });
   }
 
@@ -242,14 +278,19 @@ export class WaterOperacionStateService {
           const activeId = this.activeSiteId;
           if (!activeId) return of(null);
           const turnos: SiteOperacionTurno[] = this.turnosConfig().slice(0, 3);
-          return this.companyService
-            .updateSiteOperacionConfig(activeId, {
-              num_turnos: this.numTurnos(),
-              turnos,
-              jornada_inicio: this.jornadaInicio(),
-              jornada_fin: this.jornadaFin(),
-            })
-            .pipe(catchError(() => of(null)));
+          const payload = {
+            num_turnos: this.numTurnos(),
+            turnos,
+            jornada_inicio: this.jornadaInicio(),
+            jornada_fin: this.jornadaFin(),
+          };
+          const sent = JSON.stringify(payload);
+          return this.companyService.updateSiteOperacionConfig(activeId, payload).pipe(
+            // Guardado OK → eso es lo persistido. Sin esto, volver a un valor
+            // ya guardado dispararia otro PUT identico.
+            tap(() => (this.lastPersistedConfig = sent)),
+            catchError(() => of(null)),
+          );
         }),
         takeUntilDestroyed(this.destroyRef),
       )

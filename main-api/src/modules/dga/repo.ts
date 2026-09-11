@@ -344,6 +344,155 @@ export async function listVacioSlotsStale(
   return r.rows;
 }
 
+// ============================================================================
+// Slots liberados como `no_data_stale` (checks G y H del reconciler)
+// ============================================================================
+
+/**
+ * Un slot que el fill liberó a `requires_review` con `no_data_stale` queda
+ * muerto: el fill solo mira `estatus='vacio'`, así que nadie lo recomputa
+ * aunque el dato llegue después. Estas dos consultas cierran ese agujero —
+ * una rescata los que ya tienen dato, la otra da de baja los que nunca lo
+ * van a tener para que dejen de contar en la alerta `review_queue_acumulacion`
+ * (ver alerts/worker.ts, que cuenta requires_review sin filtro de antigüedad).
+ */
+export interface NoDataStaleRow {
+  site_id: string;
+  ts: string;
+  dias: number;
+}
+
+/**
+ * Slots `no_data_stale` cuyo bucket exacto YA existe en `equipo_1min`: el dato
+ * llegó tarde (backfill del equipo, red recuperada, reproceso del consumer).
+ *
+ * El match es el mismo `id_serial + bucket` exacto que usa
+ * `getDashboardBucketExact` en el fill: si aparece acá, el fill lo encuentra.
+ * Ojo con relajarlo a match aproximado — rompería la consistencia
+ * dashboard ↔ DGA que el fill preserva a propósito.
+ */
+export async function listNoDataStaleConDatoTardio(limit = 500): Promise<NoDataStaleRow[]> {
+  const r = await query<NoDataStaleRow>(
+    `SELECT d.site_id,
+            d.ts,
+            EXTRACT(EPOCH FROM (now() - d.ts)) / 86400 AS dias
+       FROM dato_dga d
+       JOIN sitio s ON s.id = d.site_id
+      WHERE d.estatus     = 'requires_review'
+        AND d.fail_reason = 'no_data_stale'
+        AND s.id_serial IS NOT NULL
+        AND EXISTS (SELECT 1
+                      FROM equipo_1min e
+                     WHERE e.id_serial = s.id_serial
+                       AND e.bucket    = d.ts)
+      ORDER BY d.ts ASC
+      LIMIT $1`,
+    [limit],
+    { name: 'dga__no_data_stale_con_dato_tardio' },
+  );
+  return r.rows;
+}
+
+/**
+ * Devuelve el slot a `vacio` para que el fill lo recompute con el dato tardío.
+ * `intentos` vuelve a 0: el slot nunca llegó a postearse, los intentos previos
+ * eran del fill, no de SNIA.
+ *
+ * El WHERE reconfirma estatus y fail_reason, así que dos ciclos solapados no
+ * pisan un slot que ya cambió de estado.
+ */
+export async function resetSlotAVacio(input: { site_id: string; ts: string }): Promise<boolean> {
+  const r = await query(
+    `UPDATE dato_dga
+        SET estatus             = 'vacio',
+            fail_reason         = NULL,
+            next_retry_at       = NULL,
+            intentos            = 0,
+            validation_warnings = COALESCE(validation_warnings, '[]'::jsonb)
+                                  || jsonb_build_array(jsonb_build_object(
+                                       'code', 'no_data_rescatado',
+                                       'reason', 'El bucket llego tarde a equipo_1min. '
+                                                 || 'Slot devuelto a vacio para que el fill lo recompute.',
+                                       'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                     ))
+      WHERE site_id     = $1
+        AND ts          = $2
+        AND estatus     = 'requires_review'
+        AND fail_reason = 'no_data_stale'`,
+    [input.site_id, input.ts],
+    { name: 'dga__reset_slot_a_vacio' },
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+/**
+ * Slots `no_data_stale` más viejos que `dias` y que SIGUEN sin bucket. Pasado
+ * ese plazo el dato no va a llegar (la ventana de backfill de los equipos es
+ * de horas, no de semanas) y dejarlos en la cola solo mantiene a los sitios
+ * sobre el umbral de `review_queue_acumulacion`, escondiendo los slots nuevos.
+ *
+ * Un sitio sin `id_serial` cae acá también: sin serial el fill jamás va a
+ * encontrar el bucket.
+ */
+export async function listNoDataStaleVencidos(
+  dias: number,
+  limit = 500,
+): Promise<NoDataStaleRow[]> {
+  const r = await query<NoDataStaleRow>(
+    `SELECT d.site_id,
+            d.ts,
+            EXTRACT(EPOCH FROM (now() - d.ts)) / 86400 AS dias
+       FROM dato_dga d
+       JOIN sitio s ON s.id = d.site_id
+      WHERE d.estatus     = 'requires_review'
+        AND d.fail_reason = 'no_data_stale'
+        AND d.ts < now() - ($1 || ' days')::interval
+        AND NOT EXISTS (SELECT 1
+                          FROM equipo_1min e
+                         WHERE e.id_serial = s.id_serial
+                           AND e.bucket    = d.ts)
+      ORDER BY d.ts ASC
+      LIMIT $2`,
+    [dias, limit],
+    { name: 'dga__no_data_stale_vencidos' },
+  );
+  return r.rows;
+}
+
+/**
+ * Baja definitiva de un slot sin dato: `fallido` + `no_data_definitivo`, con el
+ * motivo y el plazo aplicado escritos en `validation_warnings`. Es una baja
+ * DOCUMENTADA, no un borrado: el slot sigue consultable en el detalle del sitio
+ * y el warning explica por qué nunca se reportó a la DGA.
+ */
+export async function markSlotNoDataDefinitivo(input: {
+  site_id: string;
+  ts: string;
+  dias_umbral: number;
+}): Promise<boolean> {
+  const r = await query(
+    `UPDATE dato_dga
+        SET estatus             = 'fallido',
+            fail_reason         = 'no_data_definitivo',
+            next_retry_at       = NULL,
+            validation_warnings = COALESCE(validation_warnings, '[]'::jsonb)
+                                  || jsonb_build_array(jsonb_build_object(
+                                       'code', 'no_data_definitivo',
+                                       'reason', 'Sin bucket en equipo_1min tras ' || $3::text
+                                                 || ' dias. El equipo no emitio en esa ventana y el dato '
+                                                 || 'ya no puede recuperarse: el slot NO se reporto a la DGA.',
+                                       'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                     ))
+      WHERE site_id     = $1
+        AND ts          = $2
+        AND estatus     = 'requires_review'
+        AND fail_reason = 'no_data_stale'`,
+    [input.site_id, input.ts, input.dias_umbral],
+    { name: 'dga__mark_no_data_definitivo' },
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
 export async function findLastValidTotalizador(
   siteId: string,
   beforeTs: string,
@@ -573,6 +722,78 @@ export async function markSlotEnviado(input: {
   );
 }
 
+/**
+ * Marca 'enviado' un slot que NO acabamos de enviar: ya existía un audit OK
+ * con comprobante (pre-check anti-doble-envío, o reconciler tras un crash).
+ *
+ * Existe aparte de `markSlotEnviado` porque ese exige `estatus='enviando'` y
+ * este camino corre ANTES del lock, con el slot en 'pendiente' — el guard no
+ * calzaba y el UPDATE afectaba 0 filas en silencio, dejando el slot en
+ * 'pendiente' y relistado cada ciclo para siempre.
+ *
+ * `estatus <> 'enviado'` lo hace idempotente y evita pisar un slot ya cerrado.
+ * No incrementa `intentos`: no hubo intento nuevo contra SNIA.
+ */
+export async function markSlotEnviadoSinReenvio(input: {
+  site_id: string;
+  ts: string;
+  comprobante: string;
+}): Promise<boolean> {
+  const r = await query(
+    `UPDATE dato_dga
+        SET estatus       = 'enviado',
+            comprobante   = $3,
+            next_retry_at = NULL,
+            fail_reason   = NULL
+      WHERE site_id = $1
+        AND ts      = $2
+        AND estatus <> 'enviado'`,
+    [input.site_id, input.ts, input.comprobante],
+    { name: 'dga__mark_enviado_sin_reenvio' },
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+/**
+ * SNIA aceptó la medición ('00') pero la respuesta no trajo comprobante.
+ * No se puede marcar 'enviado' (no hay folio que respalde el envío ante DGA)
+ * y tampoco se puede reenviar (§6.3). Va a 'requires_review' con
+ * `next_retry_at = NULL` para sacarlo de la cola de envío, y queda un warning
+ * en `validation_warnings` para la revisión manual en MIA-DGA.
+ */
+export async function markSlotOkSinComprobante(input: {
+  site_id: string;
+  ts: string;
+}): Promise<boolean> {
+  const r = await query(
+    `UPDATE dato_dga
+        SET estatus             = 'requires_review',
+            fail_reason         = 'dga_ok_sin_comprobante',
+            next_retry_at       = NULL,
+            validation_warnings = COALESCE(validation_warnings, '[]'::jsonb)
+                                  || jsonb_build_array(jsonb_build_object(
+                                       'code', 'dga_ok_sin_comprobante',
+                                       'reason', 'SNIA respondio status 00 sin numeroComprobante. '
+                                                 || 'La medicion esta en MIA-DGA pero sin folio local. '
+                                                 || 'Verificar manualmente; NO reenviar (Res 2170 6.3).',
+                                       'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                     ))
+      WHERE site_id = $1
+        AND ts      = $2
+        AND estatus <> 'enviado'`,
+    [input.site_id, input.ts],
+    { name: 'dga__mark_ok_sin_comprobante' },
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+/**
+ * Acepta 'pendiente' además de 'enviando': los pre-checks de submission
+ * (codigo_obra ausente/inválido, pozo sin informante) rechazan ANTES del lock,
+ * con el slot todavía en 'pendiente'. Con el guard limitado a 'enviando' esos
+ * tres rechazos afectaban 0 filas en silencio: no se registraba `fail_reason`
+ * ni se incrementaba `intentos`, y el slot volvía a la cola cada ciclo.
+ */
 export async function markSlotRechazado(input: {
   site_id: string;
   ts: string;
@@ -590,7 +811,7 @@ export async function markSlotRechazado(input: {
                             END
       WHERE site_id = $1
         AND ts      = $2
-        AND estatus = 'enviando'
+        AND estatus IN ('pendiente', 'enviando')
       RETURNING intentos, estatus`,
     [input.site_id, input.ts, input.fail_reason, input.max_retry_attempts],
     { name: 'dga__mark_rechazado' },
@@ -834,17 +1055,45 @@ export interface ReviewSlotRow {
   referencia_informante: string | null;
 }
 
-export async function listSlotsRequiresReview(input: {
+export interface ReviewQueueFiltros {
   site_id?: string | undefined;
-  limit?: number | undefined;
-}): Promise<ReviewSlotRow[]> {
-  const limit = Math.min(input.limit ?? 100, 500);
-  const args: unknown[] = [limit];
+  /** ISO 8601 con offset. Inclusivo. */
+  desde?: string | undefined;
+  /** ISO 8601 con offset. Inclusivo. */
+  hasta?: string | undefined;
+}
+
+/**
+ * WHERE compartido por el listado y el conteo. Que los dos deriven de acá es
+ * lo que hace que el "mostrando N de M" no mienta: si divergieran, el total
+ * podría contar filas que el listado nunca muestra.
+ *
+ * `args` se recibe ya inicializado porque el listado necesita `$1` para el
+ * LIMIT y el conteo no lleva ninguno.
+ */
+function whereReviewQueue(f: ReviewQueueFiltros, args: unknown[]): string {
   let where = `d.estatus = 'requires_review'`;
-  if (input.site_id) {
-    args.push(input.site_id);
+  if (f.site_id) {
+    args.push(f.site_id);
     where += ` AND d.site_id = $${args.length}`;
   }
+  if (f.desde) {
+    args.push(f.desde);
+    where += ` AND d.ts >= $${args.length}::timestamptz`;
+  }
+  if (f.hasta) {
+    args.push(f.hasta);
+    where += ` AND d.ts <= $${args.length}::timestamptz`;
+  }
+  return where;
+}
+
+export async function listSlotsRequiresReview(
+  input: ReviewQueueFiltros & { limit?: number | undefined },
+): Promise<ReviewSlotRow[]> {
+  const limit = Math.min(input.limit ?? 100, 500);
+  const args: unknown[] = [limit];
+  const where = whereReviewQueue(input, args);
   const r = await query<ReviewSlotRow>(
     `SELECT
         d.site_id,
@@ -865,6 +1114,59 @@ export async function listSlotsRequiresReview(input: {
      LIMIT $1`,
     args,
     { name: 'dga__list_review_queue' },
+  );
+  return r.rows;
+}
+
+/**
+ * Total de slots que matchean los filtros, SIN el tope del listado. La página
+ * corta en 100 y sin este número el usuario no tiene cómo saber que hay más:
+ * un tope que se lee como total es exactamente el error que hacía que la
+ * alerta de doble envío dijera "100".
+ */
+export async function countSlotsRequiresReview(input: ReviewQueueFiltros): Promise<number> {
+  const args: unknown[] = [];
+  const where = whereReviewQueue(input, args);
+  const r = await query<{ total: number }>(
+    // El JOIN a pozo_config es INNER y NO es decorativo: replica el del
+    // listado, que descarta los slots cuyo sitio no tiene config. Sin él el
+    // total cuenta filas que la página no puede mostrar y el aviso de
+    // "hay N más" queda prendido para siempre, sin filtro que lo resuelva.
+    `SELECT COUNT(*)::int AS total
+       FROM dato_dga d
+       JOIN pozo_config pc ON pc.sitio_id = d.site_id
+      WHERE ${where}`,
+    args,
+    { name: 'dga__count_review_queue' },
+  );
+  return r.rows[0]?.total ?? 0;
+}
+
+/**
+ * Sitios presentes en la cola, para poblar el selector del filtro.
+ *
+ * A propósito NO aplica los filtros: si el selector se recortara según el
+ * filtro activo, elegir un sitio lo dejaría fuera de su propia lista y no
+ * habría forma de volver. El listado es la vista filtrada; esto es el catálogo.
+ */
+export interface ReviewQueueSitio {
+  site_id: string;
+  codigo_obra: string | null;
+  referencia_informante: string | null;
+}
+export async function listReviewQueueSites(): Promise<ReviewQueueSitio[]> {
+  const r = await query<ReviewQueueSitio>(
+    `SELECT DISTINCT
+            d.site_id,
+            pc.obra_dga    AS codigo_obra,
+            inf.referencia AS referencia_informante
+       FROM dato_dga d
+       JOIN pozo_config pc          ON pc.sitio_id = d.site_id
+       LEFT JOIN dga_informante inf ON inf.rut = pc.dga_informante_rut
+      WHERE d.estatus = 'requires_review'
+      ORDER BY d.site_id`,
+    [],
+    { name: 'dga__review_queue_sites' },
   );
   return r.rows;
 }
@@ -930,11 +1232,179 @@ export async function markReviewSlotFailedManual(input: {
                                      ))
       WHERE site_id = $1
         AND ts      = $2
-        AND estatus = 'requires_review'`,
+        AND estatus IN ('requires_review', 'pendiente')`,
     [input.site_id, input.ts, input.admin_note, input.admin_email],
     { name: 'dga__mark_review_failed' },
   );
   return (r.rowCount ?? 0) > 0;
+}
+
+// ============================================================================
+// Acciones en bloque sobre un rango de slots
+// ============================================================================
+
+/**
+ * Estados que una acción en bloque puede tocar.
+ *
+ * `enviado` queda FUERA a propósito: ya salió a SNIA con folio y reescribirlo
+ * sería falsear una declaración hecha. `enviando` también, porque hay un envío
+ * en vuelo y pisarlo dejaría el slot y la auditoría en desacuerdo.
+ */
+const BULK_TOUCHABLE_ESTADOS = ['pendiente', 'requires_review', 'fallido'] as const;
+
+/**
+ * Tope de slots por request. Un mes horario son ~744, así que 800 cubre el
+ * caso real (recalcular un mes tras corregir un mapeo) sin permitir que un
+ * rango escrito con un cero de más barra un año entero de una.
+ */
+export const BULK_SLOT_LIMIT = 800;
+
+/**
+ * Prefijo que marca una baja hecha a mano desde la plataforma.
+ *
+ * Un `fallido` puede ser dos cosas muy distintas: un slot que agotó sus
+ * reintentos contra SNIA, o uno que un operador cerró a propósito porque el
+ * dato no era declarable. Mostrar los dos como "Fallido" hace que un evento
+ * esperado —un recambio de instrumento— se lea como una falla del sistema.
+ */
+export const BAJA_MANUAL_PREFIX = 'baja_';
+
+/**
+ * Devuelve los slots a `vacio` para que el fill los recompute con la
+ * configuración actual del `reg_map`.
+ *
+ * Es la contraparte de corregir un mapeo: el valor que ya está en `dato_dga`
+ * quedó materializado con la config vieja y no se recalcula solo. No destruye
+ * nada — el crudo sigue en `equipo` y el fill lo rearma— así que es la más
+ * segura de las acciones en bloque.
+ *
+ * `validation_warnings` se limpia porque describía los valores viejos. Si el
+ * fill vuelve a llenar el slot los reescribe igual (ver
+ * `transitionSlotToPendiente`), pero si NO hay crudo el slot se queda en
+ * `vacio` y unos warnings viejos sobre un valor que ya no está serían basura.
+ *
+ * OJO: se limpia a `'[]'::jsonb`, NO a NULL. La columna es
+ * `JSONB NOT NULL DEFAULT '[]'` (migración 2026-05-16), así que un NULL revienta
+ * la constraint y el endpoint devuelve 500.
+ */
+export async function resetSlotsToVacio(input: {
+  site_id: string;
+  desde: string;
+  hasta: string;
+}): Promise<number> {
+  const r = await query(
+    `WITH objetivo AS (
+       SELECT ts
+         FROM dato_dga
+        WHERE site_id = $1
+          AND ts >= $2
+          AND ts <  $3
+          AND estatus = ANY($4::text[])
+        ORDER BY ts
+        LIMIT ${BULK_SLOT_LIMIT}
+     )
+     UPDATE dato_dga d
+        SET estatus             = 'vacio',
+            fail_reason         = NULL,
+            next_retry_at       = NULL,
+            validation_warnings = '[]'::jsonb
+       FROM objetivo o
+      WHERE d.site_id = $1
+        AND d.ts      = o.ts`,
+    [input.site_id, input.desde, input.hasta, [...BULK_TOUCHABLE_ESTADOS]],
+    { name: 'dga__reset_slots_vacio' },
+  );
+  return r.rowCount ?? 0;
+}
+
+/**
+ * Da de baja documentada un rango de slots: `fallido` con la nota del admin en
+ * `validation_warnings`, igual que el descarte de a uno.
+ *
+ * Para el caso en que el dato existe pero no es declarable — un totalizador que
+ * retrocede, un instrumento mal configurado durante una ventana conocida — y
+ * hay que dejar constancia de por qué nunca se reportó a la DGA.
+ */
+export async function bulkDiscardSlots(input: {
+  site_id: string;
+  desde: string;
+  hasta: string;
+  /** Motivo tipificado. Va a `fail_reason` como `baja_<tipo>`, consultable. */
+  motivo_tipo: string;
+  admin_note: string;
+  admin_email: string;
+}): Promise<number> {
+  const r = await query(
+    `WITH objetivo AS (
+       SELECT ts
+         FROM dato_dga
+        WHERE site_id = $1
+          AND ts >= $2
+          AND ts <  $3
+          AND estatus = ANY($6::text[])
+        ORDER BY ts
+        LIMIT ${BULK_SLOT_LIMIT}
+     )
+     UPDATE dato_dga d
+        SET estatus             = 'fallido',
+            fail_reason         = $7::text,
+            next_retry_at       = NULL,
+            validation_warnings = COALESCE(d.validation_warnings, '[]'::jsonb)
+                                  || jsonb_build_array(jsonb_build_object(
+                                       'code', 'admin_discarded_bulk',
+                                       'motivo', $8::text,
+                                       'reason', $4::text,
+                                       'by', $5::text,
+                                       'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                     ))
+       FROM objetivo o
+      WHERE d.site_id = $1
+        AND d.ts      = o.ts`,
+    [
+      input.site_id,
+      input.desde,
+      input.hasta,
+      input.admin_note,
+      input.admin_email,
+      [...BULK_TOUCHABLE_ESTADOS],
+      `${BAJA_MANUAL_PREFIX}${input.motivo_tipo}`,
+      input.motivo_tipo,
+    ],
+    { name: 'dga__bulk_discard_slots' },
+  );
+  return r.rowCount ?? 0;
+}
+
+/**
+ * Conteo por estado del rango, distinguiendo las bajas manuales.
+ *
+ * `baja_manual` sale de `fail_reason LIKE 'baja\_%'`. No cubre los descartes de
+ * a uno viejos, porque `markReviewSlotFailedManual` guarda la nota del admin
+ * como `fail_reason` en vez de un código — ahí no hay nada que matchear.
+ */
+export async function countSlotsByEstado(input: {
+  site_id: string;
+  desde: string;
+  hasta: string;
+}): Promise<{ estatus: string; baja_manual: boolean; total: number }[]> {
+  const r = await query<{ estatus: string; baja_manual: boolean; total: string }>(
+    `SELECT estatus,
+            COALESCE(fail_reason LIKE $4, FALSE) AS baja_manual,
+            count(*)                             AS total
+       FROM dato_dga
+      WHERE site_id = $1
+        AND ts >= $2
+        AND ts <  $3
+      GROUP BY estatus, 2
+      ORDER BY estatus, 2`,
+    [input.site_id, input.desde, input.hasta, `${BAJA_MANUAL_PREFIX}%`],
+    { name: 'dga__count_slots_by_estado' },
+  );
+  return r.rows.map((row) => ({
+    estatus: row.estatus,
+    baja_manual: row.baja_manual === true,
+    total: Number(row.total),
+  }));
 }
 
 // ============================================================================
@@ -1010,7 +1480,8 @@ export async function reconcileMarkEnviado(input: {
             next_retry_at = NULL,
             fail_reason   = NULL
       WHERE site_id = $1
-        AND ts      = $2`,
+        AND ts      = $2
+        AND estatus <> 'enviado'`,
     [input.site_id, input.ts, input.comprobante],
     { name: 'dga__reconcile_mark_enviado' },
   );
@@ -1040,22 +1511,31 @@ export async function listEnviadoSinAudit(): Promise<EnviadoSinAuditRow[]> {
 }
 
 /**
- * Verifica si ya existe un audit OK (status='00' + comprobante) para
- * (site_id, ts). Usado por submission como pre-check anti-doble-envío
- * (Res 2170 §6.3 prohíbe retransmitir mediciones ya recibidas).
+ * Verifica si ya existe un audit OK (status='00') para (site_id, ts). Usado
+ * por submission como pre-check anti-doble-envío (Res 2170 §6.3 prohíbe
+ * retransmitir mediciones ya recibidas).
+ *
+ * NO filtra por `api_n_comprobante IS NOT NULL`. Un '00' significa que SNIA
+ * aceptó la medición, tenga o no comprobante parseable en la respuesta: el
+ * dato YA está en MIA-DGA y reenviarlo es justamente la retransmisión que
+ * §6.3 castiga. Exigir comprobante dejaba pasar los '00' sin comprobante y
+ * el slot se reenviaba cada 24h acumulando una fila '00' por intento — la
+ * causa raíz de los slots con 2+ audits OK.
+ *
+ * `comprobante` puede venir null; el llamador decide qué hacer (no puede
+ * marcar 'enviado' sin comprobante que respalde el envío ante DGA).
  */
 export async function findExistingSuccessfulAudit(
   siteId: string,
   ts: string,
-): Promise<{ comprobante: string } | null> {
-  const r = await query<{ comprobante: string }>(
+): Promise<{ comprobante: string | null } | null> {
+  const r = await query<{ comprobante: string | null }>(
     `SELECT api_n_comprobante AS comprobante
        FROM dga_send_audit
       WHERE site_id = $1
         AND ts = $2
         AND dga_status_code = '00'
-        AND api_n_comprobante IS NOT NULL
-      ORDER BY sent_at DESC
+      ORDER BY (api_n_comprobante IS NOT NULL) DESC, sent_at DESC
       LIMIT 1`,
     [siteId, ts],
     { name: 'dga__find_existing_ok_audit' },
@@ -1063,24 +1543,85 @@ export async function findExistingSuccessfulAudit(
   return r.rows[0] ?? null;
 }
 
+/**
+ * Clase de duplicado. No todo slot con 2+ audits '00' es un doble envío real
+ * a SNIA, y tratarlos igual convertía la alerta en ruido:
+ *
+ *  - `importador`: al menos una fila es `transport='legacy-import'`, que es una
+ *    fila sintética del importador del CSV histórico y NO un POST de este
+ *    sistema (ver comentario de la columna en 2026-05-16-dga-pipeline-refactor).
+ *    El importador tampoco es idempotente entre corridas. SNIA recibió la
+ *    medición una sola vez → no hay exposición §6.3.
+ *  - `sin_comprobante`: hay filas '00' sin comprobante. Es la firma del bug del
+ *    pre-check (ver `findExistingSuccessfulAudit`). Requiere revisión manual,
+ *    pero no prueba doble aceptación.
+ *  - `mismo_comprobante`: un envío real logueado más de una vez. SNIA tiene un
+ *    registro.
+ *  - `doble_envio_real`: 2+ comprobantes DISTINTOS emitidos por SNIA para el
+ *    mismo (site_id, ts) → dos registros en MIA-DGA. ESTA es la exposición
+ *    Res 2170 §6.3 y la única que exige cruce manual en MIA-DGA.
+ */
+export type DoubleSendClass =
+  | 'doble_envio_real'
+  | 'mismo_comprobante'
+  | 'sin_comprobante'
+  | 'importador';
+
 export interface DoubleSendRow {
   site_id: string;
   ts: string;
   ok_count: number;
+  comprobantes: number;
+  sin_comprobante: number;
+  transports: string;
+  clase: DoubleSendClass;
 }
+
+/**
+ * `LIMIT` alto y deliberado: el 100 anterior no era un techo de seguridad sino
+ * un tope silencioso que hacía que la alerta reportara "100" cuando el total
+ * real podía ser mucho mayor. `countDoubleSubmission` da el total sin tope.
+ */
 export async function listDoubleSubmission(): Promise<DoubleSendRow[]> {
   const r = await query<DoubleSendRow>(
-    `SELECT site_id, ts, COUNT(*)::int AS ok_count
+    `SELECT site_id,
+            ts,
+            COUNT(*)::int                                              AS ok_count,
+            COUNT(DISTINCT api_n_comprobante)::int                     AS comprobantes,
+            COUNT(*) FILTER (WHERE api_n_comprobante IS NULL)::int      AS sin_comprobante,
+            string_agg(DISTINCT transport, ',' ORDER BY transport)      AS transports,
+            CASE
+              WHEN bool_or(transport = 'legacy-import')        THEN 'importador'
+              WHEN COUNT(*) FILTER (WHERE api_n_comprobante IS NULL) > 0
+                                                              THEN 'sin_comprobante'
+              WHEN COUNT(DISTINCT api_n_comprobante) > 1       THEN 'doble_envio_real'
+              ELSE 'mismo_comprobante'
+            END                                                        AS clase
        FROM dga_send_audit
       WHERE dga_status_code = '00'
       GROUP BY site_id, ts
      HAVING COUNT(*) > 1
       ORDER BY site_id, ts
-      LIMIT 100`,
+      LIMIT 2000`,
     [],
     { name: 'dga__double_submission' },
   );
   return r.rows;
+}
+
+/** Total real de slots con 2+ audits OK, sin tope. Para no subreportar. */
+export async function countDoubleSubmission(): Promise<number> {
+  const r = await query<{ total: number }>(
+    `SELECT COUNT(*)::int AS total
+       FROM (SELECT site_id, ts
+               FROM dga_send_audit
+              WHERE dga_status_code = '00'
+              GROUP BY site_id, ts
+             HAVING COUNT(*) > 1) d`,
+    [],
+    { name: 'dga__double_submission_count' },
+  );
+  return r.rows[0]?.total ?? 0;
 }
 
 // ============================================================================

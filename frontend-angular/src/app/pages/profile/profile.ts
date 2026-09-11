@@ -1651,6 +1651,11 @@ export class ProfileComponent implements OnInit {
       .subscribe({
         next: (res) => {
           if (res.ok) {
+            // El cambio cierra las demás sesiones; la API devuelve un token
+            // nuevo para que esta no muera con ellas.
+            if (res.token && res.data) {
+              this.auth.login(res.token, res.data);
+            }
             this.setProfile(res.data);
             this.currentPassword.set('');
             this.newPassword.set('');
@@ -1659,7 +1664,7 @@ export class ProfileComponent implements OnInit {
             this.showNewPassword.set(false);
             this.showConfirmPassword.set(false);
             this.passwordConfirmOpen.set(false);
-            this.passwordMsg.set('Contraseña actualizada.');
+            this.passwordMsg.set('Contraseña actualizada. Se cerraron las otras sesiones.');
           }
           this.passwordSaving.set(false);
         },

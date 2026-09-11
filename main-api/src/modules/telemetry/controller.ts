@@ -5,14 +5,19 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
 import { elapsedMs, nowHrtime } from '../../shared/time';
-import { ValidationError } from '../../shared/errors';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../shared/errors';
 import {
   historyQuerySchema,
+  keysQuerySchema,
   onlineQuerySchema,
   presetQuerySchema,
   mergeKeyAliases,
 } from './schema';
 import { authorizedSerial } from './serialAccess';
+// Módulos v1 (CommonJS) reutilizados — misma validación de sitio que /api/data.
+import pool from '../../config/db';
+import { resolveRequestedSiteForSerial } from '../../services/dataAccess';
+import type { AuthUser } from '../../shared/permissions';
 import {
   getAvailableKeysFor,
   getHistory,
@@ -236,7 +241,7 @@ export async function getKeysHandler(
   next: NextFunction,
 ): Promise<void> {
   const startedAt = nowHrtime();
-  const parsed = onlineQuerySchema.safeParse(req.query);
+  const parsed = keysQuerySchema.safeParse(req.query);
   if (!parsed.success)
     return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
@@ -245,10 +250,29 @@ export async function getKeysHandler(
       res.json(ok([], { serial_id: null, count: 0, durationMs: elapsedMs(startedAt) }));
       return;
     }
-    const result = await getAvailableKeysFor(serial);
+
+    // `sitio_id` opcional: acota el equipo a una obra. Sin él la respuesta
+    // sigue siendo la del datalogger completo (modo descubrimiento).
+    const requestedSite = parsed.data.sitio_id ?? parsed.data.site_id ?? null;
+    const resolvedSite = await resolveRequestedSiteForSerial(
+      pool,
+      (req as Request & { user?: AuthUser }).user,
+      requestedSite,
+      serial,
+    );
+    if (resolvedSite.error) {
+      const { status, message } = resolvedSite.error;
+      if (status === 403) return next(new ForbiddenError(message));
+      if (status === 404) return next(new NotFoundError(message));
+      return next(new ValidationError(message));
+    }
+    const siteFilter = resolvedSite.site ? resolvedSite.site.id : null;
+
+    const result = await getAvailableKeysFor(serial, siteFilter);
     const durationMs = elapsedMs(startedAt);
     const payload = ok(result.keys, {
       serial_id: result.serialId,
+      sitio_id: siteFilter,
       count: result.keys.length,
       durationMs,
     });

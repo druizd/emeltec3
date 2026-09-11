@@ -26,6 +26,7 @@ export type {
   CreateSubCompanyPayload,
   CreateVariableMapPayload,
   DetectedDevice,
+  DetectedDeviceSite,
   PozoConfig,
   SiteRecord,
   SiteTypeCatalogItem,

@@ -51,6 +51,14 @@ export interface CreateSitePayload {
   pozo_config?: PozoConfig | null;
 }
 
+/** Sitio asociado a un serial detectado. Un serial puede tener varios. */
+export interface DetectedDeviceSite {
+  id: string;
+  descripcion: string;
+  tipo_sitio?: string | null;
+  activo?: boolean | null;
+}
+
 export interface DetectedDevice {
   id_serial: string;
   total_registros: number;
@@ -62,8 +70,12 @@ export interface DetectedDevice {
   ultima_llegada?: string | null;
   ultima_llegada_local?: string | null;
   desfase_segundos?: number | null;
+  /** Primer sitio del serial. Se mantiene por compatibilidad; ver `sitios`. */
   sitio_id?: string | null;
   sitio_descripcion?: string | null;
+  /** Todos los sitios que comparten el serial (misma subempresa). */
+  sitios?: DetectedDeviceSite[] | null;
+  sitios_count?: number;
   empresa_id?: string | null;
   empresa_nombre?: string | null;
   sub_empresa_id?: string | null;
@@ -91,6 +103,9 @@ export interface SiteDashboardData {
   pozo_config?: {
     profundidad_pozo_m?: number | string | null;
     profundidad_sensor_m?: number | string | null;
+    /** Derecho DGA (L/s). Operación dibuja la línea del límite en el caudal en vivo. */
+    dga_caudal_max_lps?: number | string | null;
+    dga_caudal_tolerance_pct?: number | string | null;
   } | null;
   ultima_lectura?: {
     time?: string | null;
@@ -102,7 +117,74 @@ export interface SiteDashboardData {
   variables?: DashboardVariable[];
 }
 
+/** Un rol histórico dentro de una fila: caudal, nivel, totalizador, freático. */
+export interface SiteDashboardHistoryRole {
+  ok: boolean;
+  valor: number | string | null;
+  unidad?: string | null;
+  alias?: string | null;
+  error?: string | null;
+}
+
+/**
+ * Una señal digital dentro de una fila histórica. `valor` es 1 o 0 — nunca un
+ * booleano, para que el gráfico y el CSV la traten como cualquier otra serie.
+ * `ok: false` (con `error`) es un instante en que el bit no se pudo leer: no
+ * es lo mismo que un 0 y no debe dibujarse como apagado.
+ */
+export interface SiteDashboardHistoryDigital {
+  ok: boolean;
+  valor: number | null;
+  alias: string;
+  bit: number;
+  error: string | null;
+}
+
 export interface SiteDashboardHistoryEntry {
   timestamp: string;
-  variables: Record<string, string | number | boolean | null>;
+  fecha?: string;
+  received_at?: string | null;
+  caudal?: SiteDashboardHistoryRole;
+  nivel?: SiteDashboardHistoryRole;
+  totalizador?: SiteDashboardHistoryRole;
+  nivel_freatico?: SiteDashboardHistoryRole;
+  /**
+   * Señales digitales del sitio, indexadas por la clave de respuesta de cada
+   * variable. Objeto vacío cuando el sitio no tiene ninguna configurada — el
+   * shape de la fila no depende de la configuración.
+   */
+  digitales?: Record<string, SiteDashboardHistoryDigital>;
+}
+
+/** Paginación de `GET /api/companies/sites/:siteId/dashboard-history`. */
+export interface SiteDashboardHistoryPagination {
+  limit: number;
+  page: number;
+  page_size: number;
+  /** `null` cuando el conteo total no se pudo calcular. */
+  total: number | null;
+  total_pages: number;
+  has_more: boolean;
+  granularity?: string;
+  source?: string;
+}
+
+/**
+ * `data` de `GET /api/companies/sites/:siteId/dashboard-history`.
+ *
+ * El endpoint NO devuelve un array plano: envuelve las filas junto al sitio y
+ * la paginación. El tipo declaraba `SiteDashboardHistoryEntry[]` y los
+ * componentes compensaban anotando la respuesta como `any`, lo que además
+ * escondía el acceso a `data.pagination`.
+ */
+export interface SiteDashboardHistoryPayload {
+  site: {
+    id: string;
+    descripcion: string | null;
+    id_serial: string | null;
+    tipo_sitio: string | null;
+    activo?: boolean | null;
+  };
+  rows: SiteDashboardHistoryEntry[];
+  pagination?: SiteDashboardHistoryPagination;
 }

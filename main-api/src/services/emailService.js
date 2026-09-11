@@ -260,6 +260,224 @@ ${securityNoteHtml('Por seguridad, no compartas este código con nadie. Si no so
   }
 };
 
+/**
+ * Invitación a activar la cuenta — SIN código.
+ *
+ * Antes, tanto la creación de usuario como el reset administrativo enviaban un
+ * OTP por `sendWelcomeEmail`. Ese código era inservible: la activación pasa por
+ * `auth-api POST /api/auth/setup/start`, que emite un OTP nuevo y sobreescribe
+ * `otp_hash`. El usuario recibía "tu código de acceso es XXXXXX" y ese valor
+ * nunca funcionaba. Ahora se lo invita a ir al login, donde recibirá el código
+ * de verdad al definir su contraseña.
+ *
+ * @param {'nueva_cuenta'|'reset_admin'} motivo
+ */
+function buildAccountAccessEmail(nombreCompleto, { motivo } = {}) {
+  {
+    const nombre = (nombreCompleto || '').trim() || 'usuario';
+    const esReset = motivo === 'reset_admin';
+
+    const eyebrow = esReset ? 'Acceso restablecido' : 'Bienvenido a Emeltec Cloud';
+    const titulo = esReset ? 'Tu acceso fue restablecido' : `Hola ${escapeHtml(nombre)},`;
+    const cuerpo = esReset
+      ? 'Un administrador restableció el acceso a tu cuenta, por lo que tu contraseña anterior ya no es válida y las sesiones abiertas se cerraron. Ingresa al portal con tu correo para crear una contraseña nueva; ahí te enviaremos un código de verificación.'
+      : 'Tu cuenta en Emeltec Cloud ya está creada. Ingresa al portal con este correo para definir tu contraseña; en ese momento te enviaremos un código de verificación para confirmarla.';
+    const nota = esReset
+      ? 'Si no esperabas este restablecimiento, contacta a tu administrador antes de continuar.'
+      : 'Si no reconoces esta invitación, ignora este correo o contacta a soporte.';
+
+    const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${eyebrow}</p>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">${titulo}</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">${cuerpo}</p>
+            </td>
+          </tr>
+${ctaButtonHtml(ACCESS_URL, esReset ? 'Crear contraseña nueva' : 'Definir mi contraseña')}
+${securityNoteHtml(nota)}`;
+
+    const asunto = esReset
+      ? 'Tu acceso fue restablecido · Emeltec Cloud'
+      : 'Activa tu cuenta · Emeltec Cloud';
+
+    const html = renderShell({
+      title: asunto,
+      preheader: esReset
+        ? 'Crea una contraseña nueva para volver a entrar.'
+        : 'Define tu contraseña para entrar por primera vez.',
+      contentHtml,
+    });
+
+    return {
+      subject: asunto,
+      html,
+      text: [
+        esReset ? 'Hola,' : `Hola ${nombre},`,
+        '',
+        esReset
+          ? 'Un administrador restableció el acceso a tu cuenta. Tu contraseña anterior ya no es válida y las sesiones abiertas se cerraron.'
+          : 'Tu cuenta en Emeltec Cloud ya está creada.',
+        '',
+        `Ingresa con este correo en: ${ACCESS_URL}`,
+        'Al definir tu contraseña te enviaremos un código de verificación.',
+        '',
+        nota,
+      ].join('\n'),
+    };
+  }
+}
+
+exports.sendAccountAccessEmail = async (emailDestino, nombreCompleto, opciones = {}) => {
+  try {
+    const data = await enviar({
+      to: emailDestino,
+      ...buildAccountAccessEmail(nombreCompleto, opciones),
+    });
+    return { ok: true, id: data.id };
+  } catch (error) {
+    console.error('[emailService] Error enviando invitacion de acceso:', error.message);
+    return { ok: false, error: error.message };
+  }
+};
+
+// Código OTP para restablecer la contraseña. Separado de sendWelcomeEmail
+// porque aquel habla de "acceso a la plataforma": quien pidió recuperar su
+// contraseña recibía un correo que parecía de login, y la nota de seguridad
+// ("si no solicitaste este acceso") apuntaba al evento equivocado.
+function buildPasswordResetEmail(nombreCompleto, code, minutes = 30) {
+  {
+    const nombre = (nombreCompleto || '').trim() || 'usuario';
+    const otp = String(code ?? '');
+    const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Restablecer contraseña</p>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">Hola ${escapeHtml(nombre)},</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">Recibimos una solicitud para cambiar la contraseña de tu cuenta. Usa el siguiente código para confirmarla. Es de un solo uso y expira en <strong style="color:#1E293B;">${minutes} minutos</strong>.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F8FAFC;border:1px solid rgba(13,175,189,0.35);border-radius:10px;">
+                <tr>
+                  <td style="padding:22px 24px;text-align:center;">
+                    <p style="margin:0 0 10px;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Código de restablecimiento</p>
+                    <p style="margin:0;font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;font-size:34px;font-weight:600;letter-spacing:10px;color:#0DAFBD;line-height:1;">${escapeHtml(otp)}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+${securityNoteHtml('Si no pediste cambiar tu contraseña, NO uses este código: tu contraseña actual sigue vigente. Avisa a soporte lo antes posible.')}`;
+
+    const html = renderShell({
+      title: 'Restablecer contraseña · Emeltec',
+      preheader: `Tu código para restablecer la contraseña expira en ${minutes} minutos.`,
+      contentHtml,
+    });
+
+    return {
+      subject: 'Código para restablecer tu contraseña · Emeltec Cloud',
+      html,
+      text: [
+        `Hola ${nombre},`,
+        '',
+        'Recibimos una solicitud para cambiar la contraseña de tu cuenta.',
+        `Tu código de restablecimiento es: ${otp}`,
+        `Válido por ${minutes} minutos. Es de un solo uso.`,
+        '',
+        'Si no pediste cambiar tu contraseña, NO uses este código: tu contraseña',
+        'actual sigue vigente. Avisa a soporte lo antes posible.',
+      ].join('\n'),
+    };
+  }
+}
+
+exports.sendPasswordResetEmail = async (emailDestino, nombreCompleto, code, minutes = 30) => {
+  try {
+    const data = await enviar({
+      to: emailDestino,
+      ...buildPasswordResetEmail(nombreCompleto, code, minutes),
+    });
+    return { ok: true, id: data.id };
+  } catch (error) {
+    console.error('[emailService] Error enviando correo de restablecimiento:', error.message);
+    return { ok: false, error: error.message };
+  }
+};
+
+// Aviso posterior al cambio efectivo de contraseña. Es la defensa principal
+// frente a un restablecimiento no autorizado: el titular se entera aunque el
+// atacante controle el flujo.
+function buildPasswordChangedEmail(nombreCompleto, { origen, ip, ts } = {}) {
+  {
+    const nombre = (nombreCompleto || '').trim() || 'usuario';
+    const cuando = ts ? new Date(ts) : new Date();
+    const fecha = cuando.toLocaleString('es-CL', { timeZone: 'America/Santiago' });
+    const origenLabel =
+      { recuperacion: 'recuperación desde el login', perfil: 'cambio desde tu perfil' }[origen] ||
+      'cambio de contraseña';
+
+    const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Seguridad de la cuenta</p>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">Tu contraseña fue cambiada</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">Hola ${escapeHtml(nombre)}, la contraseña de tu cuenta en Emeltec Cloud acaba de cambiar. Todas las sesiones abiertas se cerraron.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;">
+                <tr>
+                  <td style="padding:18px 24px;font-size:13px;line-height:1.7;color:#475569;">
+                    <strong style="color:#1E293B;">Origen:</strong> ${escapeHtml(origenLabel)}<br />
+                    <strong style="color:#1E293B;">Fecha:</strong> ${escapeHtml(fecha)}<br />
+                    <strong style="color:#1E293B;">IP:</strong> ${escapeHtml(ip || 'no registrada')}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+${securityNoteHtml('Si no fuiste tú, tu cuenta está comprometida: contacta a soporte de inmediato para bloquearla.')}`;
+
+    const html = renderShell({
+      title: 'Tu contraseña fue cambiada · Emeltec',
+      preheader: 'La contraseña de tu cuenta en Emeltec Cloud acaba de cambiar.',
+      contentHtml,
+    });
+
+    return {
+      subject: 'Tu contraseña fue cambiada · Emeltec Cloud',
+      html,
+      text: [
+        `Hola ${nombre},`,
+        '',
+        'La contraseña de tu cuenta en Emeltec Cloud acaba de cambiar.',
+        'Todas las sesiones abiertas se cerraron.',
+        '',
+        `Origen: ${origenLabel}`,
+        `Fecha: ${fecha}`,
+        `IP: ${ip || 'no registrada'}`,
+        '',
+        'Si no fuiste tú, tu cuenta está comprometida: contacta a soporte de',
+        'inmediato para bloquearla.',
+      ].join('\n'),
+    };
+  }
+}
+
+exports.sendPasswordChangedEmail = async (emailDestino, nombreCompleto, opciones = {}) => {
+  try {
+    const data = await enviar({
+      to: emailDestino,
+      ...buildPasswordChangedEmail(nombreCompleto, opciones),
+    });
+    return { ok: true, id: data.id };
+  } catch (error) {
+    console.error('[emailService] Error enviando aviso de cambio de contraseña:', error.message);
+    return { ok: false, error: error.message };
+  }
+};
+
 // Código 2FA step-up para acciones sensibles (borrar alarma, crear/eliminar
 // usuario). Mismo diseño branded que el resto de los correos.
 exports.send2faCode = async ({ to, code, minutes = 5 }) => {
@@ -268,7 +486,7 @@ exports.send2faCode = async ({ to, code, minutes = 5 }) => {
     const contentHtml = `          <tr>
             <td style="padding:36px 40px 4px;">
               <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Verificación de seguridad</p>
-              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">Confirmá la acción</h1>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">Confirma la acción</h1>
               <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">Usa este código para confirmar una acción sensible en Emeltec Cloud. Es de un solo uso y expira en <strong style="color:#1E293B;">${minutes} minutos</strong>.</p>
             </td>
           </tr>
@@ -284,7 +502,7 @@ exports.send2faCode = async ({ to, code, minutes = 5 }) => {
               </table>
             </td>
           </tr>
-${securityNoteHtml('Si no solicitaste esta acción, ignora este correo y revisá el acceso a tu cuenta.')}`;
+${securityNoteHtml('Si no solicitaste esta acción, ignora este correo y revisa el acceso a tu cuenta.')}`;
 
     const html = renderShell({
       title: 'Código de verificación · Emeltec',
@@ -394,7 +612,10 @@ exports.sendAlertEmail = async (emailDestino, nombreCompleto, mensaje, regla) =>
       SEVERIDAD_GRADIENT[regla.severidad] ||
       `linear-gradient(90deg,${accentColor} 0%,${accentColor} 100%)`;
     const alias = regla.reg_alias || regla.variable_key || 'N/A';
-    const sitio = regla.sitio_desc || regla.sitio_id || 'N/A';
+    // "CCU · Quilicura · Pozo 10 · OB-1306-98" cuando el worker la trae; el
+    // serial queda en su propia fila porque al operador no le dice nada.
+    const sitio = regla.sitio_etiqueta || regla.sitio_desc || regla.sitio_id || 'N/A';
+    const sitioUrl = regla.sitio_url || ACCESS_URL;
     const severidad = labelSeveridad(regla.severidad);
     const valorDetectado = regla.valor_detectado ?? 'sin dato disponible';
     const condicion = regla.condicion_texto || regla.condicion || 'N/A';
@@ -414,7 +635,7 @@ ${infoTableHtml(
   [
     ['Alerta', escapeHtml(nombreAlerta)],
     ['Sitio', escapeHtml(sitio)],
-    ['Equipo', escapeHtml(serial)],
+    ['Serial del equipo', escapeHtml(serial)],
     ['Variable', escapeHtml(alias)],
     [
       'Valor detectado',
@@ -424,7 +645,7 @@ ${infoTableHtml(
   ],
   accentColor,
 )}
-${ctaButtonHtml(ACCESS_URL, 'Ver en la plataforma', accentColor)}
+${ctaButtonHtml(sitioUrl, 'Ver el sitio en la plataforma', accentColor)}
 ${securityNoteHtml('Esta es una notificación automática del sistema de monitoreo Emeltec. Revisa la plataforma para tomar acción si corresponde.')}`;
 
     const html = renderShell({
@@ -445,13 +666,13 @@ ${securityNoteHtml('Esta es una notificación automática del sistema de monitor
         '',
         `Severidad: ${severidad}`,
         `Sitio: ${sitio}`,
-        `Equipo: ${serial}`,
+        `Serial del equipo: ${serial}`,
         `Variable: ${alias}`,
         `Valor detectado: ${valorDetectado}`,
         `Regla: ${condicion}`,
         `Alerta: ${nombreAlerta}`,
         '',
-        `Ver en plataforma: ${ACCESS_URL}`,
+        `Ver el sitio en la plataforma: ${sitioUrl}`,
       ].join('\n'),
       html,
     });
@@ -671,6 +892,16 @@ ${securityNoteHtml('Notificación automática del sistema de monitoreo Emeltec. 
 exports._renderHealthDigestHtml = (input) => buildDigestHtml(input);
 exports._renderHealthEventHtml = (input) => buildEventHtml(input);
 
+// Renders del ciclo de contraseña, expuestos para poder asertar el HTML: en modo
+// simulado `enviar` solo loguea asunto y texto, así que el HTML —lo que el
+// cliente de correo realmente muestra— quedaba sin verificar. Devuelven
+// { subject, html, text }; los senders no hacen más que agregarles `to`.
+exports._renderPasswordResetEmail = (nombre, code, minutes) =>
+  buildPasswordResetEmail(nombre, code, minutes);
+exports._renderPasswordChangedEmail = (nombre, opciones) =>
+  buildPasswordChangedEmail(nombre, opciones);
+exports._renderAccountAccessEmail = (nombre, opciones) => buildAccountAccessEmail(nombre, opciones);
+
 exports.sendHealthDigest = async ({
   to,
   mode,
@@ -815,6 +1046,31 @@ ${securityNoteHtml('Si ya no usas esta plataforma, no es necesario que hagas nad
  * @param {string} tipo - 'logins_fallidos' | 'cambio_rol'
  * @param {object} detalles - información adicional de la alerta
  */
+/**
+ * Etiquetas legibles para las filas de detalle de una alerta. Sin esto el mail
+ * mostraba la clave cruda en mayúsculas ("ULTIMO_TARGET"), que no le dice nada
+ * a quien lo recibe. Las claves sin entrada acá caen al fallback: guiones bajos
+ * convertidos en espacios.
+ */
+const ALERTA_DETALLE_LABELS = {
+  total_cambios: 'Cambios detectados',
+  actor_nombre: 'Responsable del cambio',
+  actor_email: 'Correo del responsable',
+  actor_id: 'ID del responsable',
+  actor_ip: 'IP de origen',
+  target_nombre: 'Usuario afectado',
+  target_email: 'Correo del afectado',
+  target_id: 'ID del afectado',
+  rol_anterior: 'Rol anterior',
+  rol_nuevo: 'Rol nuevo',
+  rol_actual: 'Rol actual en el sistema',
+  fecha: 'Fecha y hora',
+  intentos: 'Intentos',
+  ventana_minutos: 'Ventana (minutos)',
+};
+
+const etiquetaDetalle = (clave) => ALERTA_DETALLE_LABELS[clave] || String(clave).replace(/_/g, ' ');
+
 exports.sendAlertaSeguridad = async (to, tipo, detalles) => {
   try {
     const tipoLabel =
@@ -828,7 +1084,7 @@ exports.sendAlertaSeguridad = async (to, tipo, detalles) => {
     const detallesRows = Object.entries(detalles || {})
       .map(
         ([k, v]) =>
-          `<tr><td style="padding:8px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:700;width:40%;">${escapeHtml(k)}</td><td style="padding:8px 14px;font-size:13px;color:#1E293B;">${escapeHtml(String(v ?? '—'))}</td></tr>`,
+          `<tr><td style="padding:8px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:700;width:40%;">${escapeHtml(etiquetaDetalle(k))}</td><td style="padding:8px 14px;font-size:13px;color:#1E293B;">${escapeHtml(String(v ?? '—'))}</td></tr>`,
       )
       .join('');
 
@@ -863,7 +1119,7 @@ ${securityNoteHtml('Esta alerta fue generada automáticamente por el sistema de 
       text: [
         `ALERTA DE SEGURIDAD: ${tipoLabel}`,
         '',
-        ...Object.entries(detalles || {}).map(([k, v]) => `${k}: ${v}`),
+        ...Object.entries(detalles || {}).map(([k, v]) => `${etiquetaDetalle(k)}: ${v}`),
         '',
         `Revisa en: ${ACCESS_URL}`,
       ].join('\n'),

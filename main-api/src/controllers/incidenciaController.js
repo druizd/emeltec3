@@ -1,5 +1,9 @@
 const pool = require('../config/db');
-const { userCanAccessSiteId } = require('../services/dataAccess');
+const {
+  userCanAccessSiteId,
+  buildUserSiteScope,
+  canAccessSite,
+} = require('../services/dataAccess');
 
 const ORIGENES = ['terreno', 'remota'];
 const CATEGORIAS = ['sensor', 'comunicacion', 'mecanico', 'electrico', 'otro'];
@@ -10,12 +14,19 @@ function esSuperAdmin(req) {
   return req.user?.tipo === 'SuperAdmin';
 }
 
-function tieneAcceso(req, incidencia) {
+/**
+ * Alcance real por sitio, no la comparación manual empresa/sub-empresa que
+ * había antes: esa reimplementación ignoraba al Vendedor, cuyo alcance son las
+ * maletas piloto de cualquier empresa más los sitios asignados en
+ * `usuario_sitio`. Es el mismo defecto que se corrigió en alertaController.
+ */
+async function tieneAcceso(req, incidencia) {
   if (esSuperAdmin(req)) return true;
-  if (incidencia.empresa_id !== req.user.empresa_id) return false;
-  if (req.user.sub_empresa_id && incidencia.sub_empresa_id !== req.user.sub_empresa_id)
-    return false;
-  return true;
+  if (incidencia.sitio_id) {
+    return userCanAccessSiteId(pool, req.user, incidencia.sitio_id);
+  }
+  // Incidencia sin sitio (no debería ocurrir): cae al alcance por empresa.
+  return canAccessSite(req.user, incidencia);
 }
 
 const SELECT_FIELDS = `
@@ -113,16 +124,18 @@ exports.listarIncidencias = async (req, res) => {
   const params = [];
   const conditions = [];
 
-  if (!esSuperAdmin(req)) {
-    params.push(req.user.empresa_id);
-    conditions.push(`i.empresa_id = $${params.length}`);
-    if (req.user.sub_empresa_id) {
-      params.push(req.user.sub_empresa_id);
-      conditions.push(`i.sub_empresa_id = $${params.length}`);
+  // Mismo criterio de alcance que listarAlertas: el JOIN_CLAUSE ya trae
+  // `sitio s`, así que el filtro va sobre el sitio y no sobre la empresa
+  // denormalizada en la incidencia.
+  if (esSuperAdmin(req)) {
+    if (empresa_id) {
+      params.push(empresa_id);
+      conditions.push(`i.empresa_id = $${params.length}`);
     }
-  } else if (empresa_id) {
-    params.push(empresa_id);
-    conditions.push(`i.empresa_id = $${params.length}`);
+  } else {
+    const scope = buildUserSiteScope(req.user, 's', params.length + 1);
+    conditions.push(scope.clause || 'FALSE');
+    params.push(...scope.params);
   }
 
   if (sitio_id) {
@@ -173,8 +186,10 @@ exports.listarIncidencias = async (req, res) => {
     listParams,
   );
 
+  // El WHERE referencia `s` (alcance por sitio), así que el COUNT necesita el
+  // mismo JOIN que la consulta principal.
   const { rows: countRows } = await pool.query(
-    `SELECT COUNT(*) FROM incidencias i ${where}`,
+    `SELECT COUNT(*) FROM incidencias i LEFT JOIN sitio s ON s.id = i.sitio_id ${where}`,
     params,
   );
 
@@ -192,7 +207,7 @@ exports.obtenerIncidencia = async (req, res) => {
   const { rows } = await pool.query(`SELECT ${SELECT_FIELDS} ${JOIN_CLAUSE} WHERE i.id = $1`, [id]);
   if (!rows.length) return res.status(404).json({ ok: false, error: 'Incidencia no encontrada' });
   const inc = rows[0];
-  if (!tieneAcceso(req, inc)) {
+  if (!(await tieneAcceso(req, inc))) {
     return res.status(403).json({ ok: false, error: 'Sin acceso a esta incidencia' });
   }
   res.json({ ok: true, data: enrich(inc) });
@@ -326,7 +341,7 @@ exports.actualizarIncidencia = async (req, res) => {
   if (!existing.length)
     return res.status(404).json({ ok: false, error: 'Incidencia no encontrada' });
 
-  if (!tieneAcceso(req, existing[0])) {
+  if (!(await tieneAcceso(req, existing[0]))) {
     return res.status(403).json({ ok: false, error: 'Sin acceso a esta incidencia' });
   }
 
@@ -421,7 +436,7 @@ exports.eliminarIncidencia = async (req, res) => {
   const { id } = req.params;
   const { rows } = await pool.query('SELECT * FROM incidencias WHERE id = $1', [id]);
   if (!rows.length) return res.status(404).json({ ok: false, error: 'Incidencia no encontrada' });
-  if (!tieneAcceso(req, rows[0])) {
+  if (!(await tieneAcceso(req, rows[0]))) {
     return res.status(403).json({ ok: false, error: 'Sin acceso a esta incidencia' });
   }
   await pool.query('DELETE FROM incidencias WHERE id = $1', [id]);

@@ -14,6 +14,8 @@ import {
   listPendingForSubmission,
   lockSlotForSending,
   markSlotEnviado,
+  markSlotEnviadoSinReenvio,
+  markSlotOkSinComprobante,
   markSlotRechazado,
   type PendingSubmissionRow,
 } from './repo';
@@ -124,17 +126,27 @@ async function processSlot(
     return 'skipped';
   }
 
-  // Pre-check anti-doble-envío (Res 2170 §6.3): si ya hay audit OK con
-  // comprobante para este (site_id, ts), NO reenviar. Auto-corregimos al
-  // estado 'enviado' usando el comprobante existente (reconciler check B
-  // hace lo mismo pero solo en su ciclo horario; acá lo cubrimos en línea).
+  // Pre-check anti-doble-envío (Res 2170 §6.3): si ya hay audit OK para este
+  // (site_id, ts), NO reenviar. Cubre en línea lo que el reconciler (check B)
+  // solo haría en su ciclo horario.
   const existingOk = await findExistingSuccessfulAudit(slot.site_id, slot.ts);
   if (existingOk) {
+    // Sin comprobante no hay folio que respalde el envío ante DGA, pero SNIA
+    // igual aceptó la medición: reenviar sería retransmisión (§6.3). Sale de
+    // la cola a revisión manual en vez de reintentar cada 24h.
+    if (!existingOk.comprobante) {
+      logger.error(
+        { site_id: slot.site_id, ts: slot.ts },
+        'submission: audit OK sin comprobante para slot — a requires_review, NO se reenvía',
+      );
+      await markSlotOkSinComprobante({ site_id: slot.site_id, ts: slot.ts });
+      return 'skipped';
+    }
     logger.warn(
       { site_id: slot.site_id, ts: slot.ts, comprobante: existingOk.comprobante },
       'submission: audit OK ya existe para slot — auto-fix a enviado sin reenviar',
     );
-    await markSlotEnviado({
+    await markSlotEnviadoSinReenvio({
       site_id: slot.site_id,
       ts: slot.ts,
       comprobante: existingOk.comprobante,
@@ -249,6 +261,21 @@ async function processSlot(
     return 'enviado';
   }
 
+  // `ok` ya implica status '00': SNIA ACEPTÓ la medición. Si no vino
+  // numeroComprobante no hay folio para marcar 'enviado', pero reintentar sería
+  // retransmitir un dato que MIA-DGA ya tiene (Res 2170 §6.3). Antes este caso
+  // caía al `markSlotRechazado` de abajo con next_retry_at +24h y se reenviaba
+  // al día siguiente, sumando una fila de audit '00' por intento: es la causa
+  // raíz de los slots con 2+ audits OK que reporta el reconciler (check D).
+  if (result.ok) {
+    logger.error(
+      { site_id: slot.site_id, ts: slot.ts, dga_message: result.dga_message },
+      'submission: SNIA respondió 00 sin numeroComprobante — a requires_review, NO se reenvía',
+    );
+    await markSlotOkSinComprobante({ site_id: slot.site_id, ts: slot.ts });
+    return 'skipped';
+  }
+
   // SNIA ya tiene el registro (envío previo cuya respuesta se perdió, ej.
   // timeout). Reenviar cada 24h solo quema intentos y arriesga bloqueo por
   // retransmisión (Res 2170 §6.3) — el dato SÍ está reportado.
@@ -292,10 +319,32 @@ async function processSlot(
   return terminal ? 'fallido' : 'rechazado';
 }
 
+/**
+ * Guard de reentrada. Un ciclo peor-caso son MAX_PER_CYCLE × (throttle 1s +
+ * timeout HTTP 15s) ≈ 13 min con los defaults, contra un poll de 5 min: sin
+ * este flag los ciclos se solapan, multiplican la carga a SNIA (justo lo que
+ * Res 2170 §6.1 pide evitar) y ensanchan las ventanas de carrera con el
+ * reconciler. El lock optimista impide el doble envío del mismo slot, pero eso
+ * no vuelve inofensivo el solapamiento.
+ */
+let cycleRunning = false;
+
 export async function runSubmissionCycle(): Promise<void> {
   beat('dgaSubmission');
   if (!config.dga.submissionEnabled) return;
+  if (cycleRunning) {
+    logger.warn('DGA submission: ciclo anterior aún en curso — se omite este tick');
+    return;
+  }
+  cycleRunning = true;
+  try {
+    await runSubmissionCycleInner();
+  } finally {
+    cycleRunning = false;
+  }
+}
 
+async function runSubmissionCycleInner(): Promise<void> {
   let pending: PendingSubmissionRow[];
   try {
     pending = await listPendingForSubmission(MAX_PER_CYCLE);

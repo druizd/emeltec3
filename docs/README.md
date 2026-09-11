@@ -9,20 +9,26 @@
 | [ARQUITECTURA-FLUJO-DATOS.md](./ARQUITECTURA-FLUJO-DATOS.md)     | Flujo de datos end-to-end (ingesta → DB → frontend) |
 | [contadores-delta-algorithm.md](./contadores-delta-algorithm.md) | Algoritmo de contadores delta                       |
 | [mathei-simulation-worker.md](./mathei-simulation-worker.md)     | Worker de simulación Mathei                         |
+| [senales-digitales-bits.md](./senales-digitales-bits.md)         | Señales digitales: separar una palabra en bits      |
 
 ## DGA (cumplimiento regulatorio)
 
-| Doc                                                | Tema                                                            |
-| -------------------------------------------------- | --------------------------------------------------------------- |
-| [dga-reporte-proceso.md](./dga-reporte-proceso.md) | Diseño del proceso de reporte DGA (workers, estados, lifecycle) |
-| [dga-smoke-tests.md](./dga-smoke-tests.md)         | Checklist de smoke tests del pipeline DGA                       |
+| Doc                                                                              | Tema                                                                                 |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [dga-reporte-proceso.md](./dga-reporte-proceso.md)                               | Diseño del proceso de reporte DGA (workers, estados, lifecycle)                      |
+| [dga-smoke-tests.md](./dga-smoke-tests.md)                                       | Checklist de smoke tests del pipeline DGA                                            |
+| [dga-mantenimiento-slots.md](./dga-mantenimiento-slots.md)                       | Recalcular y dar de baja slots por rango: endpoints, candados y auditoría            |
+| [s128-recambio-caudalimetro-2026-09.md](./s128-recambio-caudalimetro-2026-09.md) | Caso S128: recambio de caudalímetro, m³/h declarado como L/s y subdeclaración a SNIA |
 
 ## Operación
 
-| Doc                              | Tema                                                      |
-| -------------------------------- | --------------------------------------------------------- |
-| [deployment.md](./deployment.md) | Runbook de despliegue (VM Azure, docker-compose, secrets) |
-| [testing.md](./testing.md)       | Guía de testing y conteo de suites                        |
+| Doc                                                                            | Tema                                                                                   |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| [deployment.md](./deployment.md)                                               | Runbook de despliegue (VM Azure, docker-compose, secrets)                              |
+| [testing.md](./testing.md)                                                     | Guía de testing y conteo de suites                                                     |
+| [ftp-pipeline.md](./ftp-pipeline.md)                                           | Pipeline FTP de ingesta: servidores, dispositivos, scripts, datos cargados             |
+| [import-historico-telemetria.md](./import-historico-telemetria.md)             | Runbook para cargar el histórico de telemetría cruda de un sitio nuevo                 |
+| [import-historico-telemetria-BRIEF.md](./import-historico-telemetria-BRIEF.md) | Brief entregable a proveedor/IA que convierte el histórico crudo al formato de ingesta |
 
 ## Diseño
 

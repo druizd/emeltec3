@@ -30,6 +30,17 @@ try {
   }
 }
 
+let periodComparisonController = null;
+try {
+  periodComparisonController = require(
+    path.join(__dirname, '..', '..', 'dist', 'modules', 'periodComparison', 'controller'),
+  );
+} catch (err) {
+  if (err && err.code !== 'MODULE_NOT_FOUND') {
+    console.warn('[companyRoutes] No se pudo cargar periodComparison controller:', err.message);
+  }
+}
+
 // Todas las rutas de companies requieren autenticación
 router.use(protect);
 
@@ -107,6 +118,12 @@ router.post('/sites/:siteId/variables', companyController.createSiteVariableMap)
 router.patch('/sites/:siteId/variables/:mapId', companyController.updateSiteVariableMap);
 router.delete('/sites/:siteId/variables/:mapId', companyController.deleteSiteVariableMap);
 
+// Comparación de períodos A vs B de todos los sitios de una sub-empresa o
+// empresa en una sola llamada (la Vista General hacía 3 requests por sitio).
+// El handler resuelve la autorización por alcance igual que `/:id/sites`.
+if (periodComparisonController) {
+  router.get('/:id/period-comparison', periodComparisonController.getPeriodComparisonHandler);
+}
 router.get('/:id/sites', companyController.getCompanySites);
 
 module.exports = router;

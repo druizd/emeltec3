@@ -10,6 +10,8 @@ const {
   getRequestMetrics,
   registerVariableMetrics,
 } = require('../services/metricsService');
+const { resolveRequestedSiteForSerial } = require('../services/dataAccess');
+const { AVAILABLE_KEYS_SQL } = require('../services/availableKeysQuery');
 
 const PRESET_ALIASES = {
   '24h': { amount: 24, unit: 'hours', canonical: '24h' },
@@ -147,6 +149,14 @@ async function respond(res, filters, rows, endpoint, serialId, options = {}) {
     response_time_ms: durationMs,
     metrics,
   });
+}
+
+/** Lee el `sitio_id` opcional (alias `site_id`) con que se acota un serial. */
+function parseRequestedSiteId(query) {
+  let raw = query.sitio_id ?? query.site_id ?? null;
+  if (Array.isArray(raw)) raw = raw[0] ?? null;
+  const value = raw === null || raw === undefined ? '' : String(raw).trim();
+  return value || null;
 }
 
 function sendMissing(res, ...params) {
@@ -589,42 +599,24 @@ async function getAvailableKeys(req, res, next) {
       return respondWithoutAvailableSerial(res, 'GET /api/data/keys', startedAt);
     }
 
-    const { rows } = await pool.query(
-      `
-      WITH mapped AS (
-        SELECT rm.d1 AS nombre_dato
-        FROM sitio s
-        JOIN reg_map rm ON rm.sitio_id = s.id
-        WHERE s.id_serial = $1
-          AND rm.d1 IS NOT NULL
-        UNION
-        SELECT rm.d2 AS nombre_dato
-        FROM sitio s
-        JOIN reg_map rm ON rm.sitio_id = s.id
-        WHERE s.id_serial = $1
-          AND rm.d2 IS NOT NULL
-      ),
-      latest AS (
-        SELECT data
-        FROM equipo
-        WHERE id_serial = $1
-        ORDER BY time DESC
-        LIMIT 1
-      ),
-      latest_keys AS (
-        SELECT jsonb_object_keys(data) AS nombre_dato
-        FROM latest
-      )
-      SELECT nombre_dato
-      FROM (
-        SELECT nombre_dato FROM mapped
-        UNION
-        SELECT nombre_dato FROM latest_keys
-      ) keys
-      ORDER BY nombre_dato ASC
-      `,
-      [serialValue],
+    // `sitio_id` opcional: acota el equipo a una sola obra. Sin él la respuesta
+    // sigue siendo la del datalogger completo (modo descubrimiento).
+    const resolvedSite = await resolveRequestedSiteForSerial(
+      pool,
+      req.user,
+      parseRequestedSiteId(req.query),
+      serialValue,
     );
+    if (resolvedSite.error) {
+      return res.status(resolvedSite.error.status).json({
+        ok: false,
+        error: resolvedSite.error.message,
+        message: resolvedSite.error.message,
+      });
+    }
+    const siteFilter = resolvedSite.site ? resolvedSite.site.id : null;
+
+    const { rows } = await pool.query(AVAILABLE_KEYS_SQL, [serialValue, siteFilter]);
 
     const keys = rows.map((row) => row.nombre_dato);
 
@@ -632,6 +624,7 @@ async function getAvailableKeys(req, res, next) {
       res,
       {
         serial_id: serialValue,
+        sitio_id: siteFilter,
       },
       keys,
       'GET /api/data/keys',

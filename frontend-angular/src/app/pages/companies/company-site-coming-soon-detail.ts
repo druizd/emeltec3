@@ -6,12 +6,19 @@ import { type SiteContext, findAccessibleSite } from '../../shared/site-context'
 import { CompanyService } from '../../services/company.service';
 import { getSiteTypeUi, normalizeSiteType } from '../../shared/site-type-ui';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
+import { SiteDigitalSignalsTimelineComponent } from './components/site-digital-signals-timeline';
 import { SkeletonComponent } from '../../components/ui/skeleton';
 
 @Component({
   selector: 'app-company-site-coming-soon-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, SiteVariableSettingsPanelComponent, SkeletonComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    SiteVariableSettingsPanelComponent,
+    SiteDigitalSignalsTimelineComponent,
+    SkeletonComponent,
+  ],
   template: `
     <div class="min-h-full bg-[#f4f7fa] px-4 pb-8 pt-4 text-slate-700 md:px-6">
       @if (siteContext(); as context) {
@@ -63,6 +70,8 @@ import { SkeletonComponent } from '../../components/ui/skeleton';
               [accentSoft]="accentSoft()"
             />
           } @else {
+            <app-site-digital-signals-timeline [siteId]="context.site.id" />
+
             <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div class="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                 <div>

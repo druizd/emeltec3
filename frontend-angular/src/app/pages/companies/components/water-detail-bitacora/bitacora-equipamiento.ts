@@ -551,7 +551,7 @@ export class BitacoraEquipamientoComponent implements OnInit {
       this.askConfirm(
         {
           title: 'Guardar cambios',
-          message: `¿Confirmás los cambios en el equipo "${f.nombre.trim()}"?`,
+          message: `¿Confirmas los cambios en el equipo "${f.nombre.trim()}"?`,
           confirmText: 'Guardar',
           tone: 'primary',
           icon: 'edit',

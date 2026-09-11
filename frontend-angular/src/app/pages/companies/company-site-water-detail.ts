@@ -13,6 +13,7 @@ import {
 import { InlineErrorComponent } from '../../components/ui/inline-error';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { tabDesdeQuery } from '../../shared/detail-tab-query';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 import { CompanyService, type ContadorMensualPoint } from '../../services/company.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
@@ -163,6 +164,7 @@ interface SiteDashboardData {
 }
 
 type DetailTab = 'dga' | 'operacion' | 'alertas' | 'bitacora' | 'analisis';
+const DETAIL_TABS: DetailTab[] = ['dga', 'operacion', 'alertas', 'bitacora', 'analisis'];
 type OperationMode = 'realtime' | 'turnos';
 
 @Component({
@@ -641,11 +643,22 @@ type OperationMode = 'realtime' | 'turnos';
             </div>
           }
 
+          <!--
+            Operacion vive FUERA de la cadena @if/@else de arriba a proposito: se
+            oculta con [class.hidden] en vez de destruirse para no perder el
+            estado de los graficos ni reiniciar el polling en vivo al cambiar de
+            pestana. Por eso la condicion tiene que mirar tambien los paneles:
+            sin settingsPanelOpen() / historyPanelOpen() se dibuja ADEMAS del
+            panel abierto, apilado debajo, con dos role="tabpanel" visibles a la
+            vez y el polling corriendo por detras.
+          -->
           <div
             role="tabpanel"
             id="tabpanel-operacion"
             aria-labelledby="tab-operacion"
-            [class.hidden]="activeDetailTab() !== 'operacion'"
+            [class.hidden]="
+              activeDetailTab() !== 'operacion' || settingsPanelOpen() || historyPanelOpen()
+            "
           >
             <app-water-detail-operacion />
           </div>
@@ -1064,6 +1077,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       this.router.navigate(['/companies']);
       return;
     }
+
+    // Deep-link `?tab=alertas` desde la campana del header.
+    const tabSolicitada = tabDesdeQuery(this.route, DETAIL_TABS);
+    if (tabSolicitada) this.setDetailTab(tabSolicitada);
 
     this.clockSub = timer(0, 1000).subscribe(() => this.currentTime.set(new Date()));
     this.startDashboardPolling(siteId);

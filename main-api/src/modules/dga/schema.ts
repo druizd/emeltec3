@@ -73,6 +73,10 @@ export type PatchPozoDgaConfigPayload = z.infer<typeof PatchPozoDgaConfigPayload
 
 export const ListReviewQueueParams = z.object({
   site_id: z.string().trim().min(1).max(10).optional(),
+  // Rango inclusivo sobre dato_dga.ts. Opcionales e independientes: se puede
+  // pedir "desde el 1 de junio" sin tope superior.
+  desde: z.string().datetime({ offset: true }).optional(),
+  hasta: z.string().datetime({ offset: true }).optional(),
   limit: z.coerce.number().int().positive().max(500).optional(),
 });
 export type ListReviewQueueParams = z.infer<typeof ListReviewQueueParams>;
@@ -101,6 +105,51 @@ export const ReviewSlotActionPayload = z.object({
 });
 export type ReviewSlotActionPayload = z.infer<typeof ReviewSlotActionPayload>;
 
+/**
+ * Acción en bloque sobre un rango de slots.
+ *
+ * `recalcular` los devuelve a `vacio` para que el fill los recompute con la
+ * config actual del `reg_map` — la contraparte de corregir un mapeo, porque el
+ * valor ya materializado en `dato_dga` no se recalcula solo.
+ *
+ * `dar_de_baja` los cierra como `fallido` con la nota del admin, para el dato
+ * que existe pero no es declarable.
+ *
+ * `nota` es obligatoria en las dos: queda en la auditoría y, en la baja,
+ * también dentro del slot. Un rango sin explicación es exactamente lo que hace
+ * imposible reconstruir después por qué un mes no se declaró.
+ */
+/**
+ * Motivo tipificado de una baja. Va a `fail_reason` como `baja_<tipo>`, así
+ * queda consultable: "todas las bajas por recambio de instrumento" es una
+ * query, no una búsqueda de texto libre en las notas.
+ *
+ * Existe porque `fallido` se lee como "el sistema falló", y un slot cerrado
+ * porque estaban cambiando el caudalímetro es un evento esperado, no una falla.
+ */
+export const MotivoBaja = z.enum([
+  'recambio_instrumento',
+  'sin_dato_crudo',
+  'dato_no_confiable',
+  'otro',
+]);
+export type MotivoBaja = z.infer<typeof MotivoBaja>;
+
+export const BulkSlotActionPayload = z
+  .object({
+    action: z.enum(['recalcular', 'dar_de_baja']),
+    desde: z.string().datetime({ offset: true }),
+    hasta: z.string().datetime({ offset: true }),
+    /** Solo aplica a `dar_de_baja`; en `recalcular` se ignora. */
+    motivo_tipo: MotivoBaja.default('otro'),
+    nota: z.string().trim().min(5).max(500),
+  })
+  .refine((v) => new Date(v.desde) < new Date(v.hasta), {
+    message: 'desde debe ser anterior a hasta',
+    path: ['hasta'],
+  });
+export type BulkSlotActionPayload = z.infer<typeof BulkSlotActionPayload>;
+
 // ============================================================================
 // Lectura mediciones
 // ============================================================================
@@ -111,3 +160,15 @@ export const QueryDatoDgaParams = z.object({
   hasta: z.string().datetime({ offset: true }),
 });
 export type QueryDatoDgaParams = z.infer<typeof QueryDatoDgaParams>;
+
+/** Rango para el resumen por estado que precede a una acción en bloque. */
+export const SlotsResumenParams = z
+  .object({
+    desde: z.string().datetime({ offset: true }),
+    hasta: z.string().datetime({ offset: true }),
+  })
+  .refine((v) => new Date(v.desde) < new Date(v.hasta), {
+    message: 'desde debe ser anterior a hasta',
+    path: ['hasta'],
+  });
+export type SlotsResumenParams = z.infer<typeof SlotsResumenParams>;

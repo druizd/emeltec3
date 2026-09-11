@@ -3,7 +3,6 @@
  * Creadas por migration 009_site_contador_daily_jornada.js.
  */
 import { query } from '../../config/dbHelpers';
-import type { ContadorDiarioPoint, ContadorJornadaPoint } from './types';
 
 // ── Tipos de fila ─────────────────────────────────────────────────────────────
 
@@ -41,7 +40,11 @@ export interface ContadorJornadaRow {
 
 // ── Helpers de conversión ─────────────────────────────────────────────────────
 
-function diaToIso(dia: unknown): string {
+/**
+ * Normaliza el campo `dia` a 'YYYY-MM-DD'. node-pg parsea columnas DATE como
+ * Date object, y `String(date).slice(0,10)` daría el día local del proceso.
+ */
+export function diaToIso(dia: unknown): string {
   if (dia instanceof Date) return dia.toISOString().slice(0, 10);
   return String(dia).slice(0, 10);
 }
@@ -151,14 +154,18 @@ export async function upsertContadorJornada(row: {
 /**
  * Lee filas materializadas de site_contador_diario para un sitio/rol
  * en el rango de días indicado (array de 'YYYY-MM-DD').
- * Devuelve map dia_iso -> ContadorDiarioRow.
+ *
+ * Devuelve las filas TAL CUAL, sin indexar por día: un día puede tener varias
+ * (una por equipo) cuando cae en un recambio de caudalímetro, y colapsarlas
+ * acá con `map.set(dia, fila)` hacía ganar arbitrariamente a la última que
+ * devolvía Postgres. Agrupar y sumar es del service.
  */
 export async function listContadorDiarioBySiteRolDias(
   sitioId: string,
   rol: string,
   dias: string[],
-): Promise<Map<string, ContadorDiarioRow>> {
-  if (dias.length === 0) return new Map();
+): Promise<ContadorDiarioRow[]> {
+  if (dias.length === 0) return [];
   const result = await query<ContadorDiarioRow>(
     `
     SELECT sitio_id, variable_id, rol, dia, valor_inicio, valor_fin, delta, unidad,
@@ -171,17 +178,15 @@ export async function listContadorDiarioBySiteRolDias(
     [sitioId, rol, dias],
     { name: 'cont_daily__list_diario' },
   );
-  const out = new Map<string, ContadorDiarioRow>();
-  for (const row of result.rows) {
-    out.set(diaToIso(row.dia), row);
-  }
-  return out;
+  return result.rows;
 }
 
 /**
  * Lee filas materializadas de site_contador_jornada para un sitio/rol
  * con una ventana inicio/fin específica en el rango de días.
- * Devuelve map dia_iso -> ContadorJornadaRow.
+ *
+ * Igual que `listContadorDiarioBySiteRolDias`: devuelve las filas sin indexar,
+ * porque puede haber más de una por día (una por equipo).
  */
 export async function listContadorJornadaBySiteRolDias(
   sitioId: string,
@@ -189,8 +194,8 @@ export async function listContadorJornadaBySiteRolDias(
   inicio: string,
   fin: string,
   dias: string[],
-): Promise<Map<string, ContadorJornadaRow>> {
-  if (dias.length === 0) return new Map();
+): Promise<ContadorJornadaRow[]> {
+  if (dias.length === 0) return [];
   const result = await query<ContadorJornadaRow>(
     `
     SELECT sitio_id, variable_id, rol, dia, inicio, fin, valor_inicio, valor_fin, delta, unidad,
@@ -205,41 +210,5 @@ export async function listContadorJornadaBySiteRolDias(
     [sitioId, rol, inicio, fin, dias],
     { name: 'cont_daily__list_jornada' },
   );
-  const out = new Map<string, ContadorJornadaRow>();
-  for (const row of result.rows) {
-    out.set(diaToIso(row.dia), row);
-  }
-  return out;
-}
-
-// ── Conversión a tipos de API ─────────────────────────────────────────────────
-
-export function diarioRowToPoint(
-  row: ContadorDiarioRow,
-  unidadFallback: string | null,
-): ContadorDiarioPoint {
-  return {
-    dia: diaToIso(row.dia),
-    delta: row.delta != null ? Number(row.delta) : null,
-    unidad: row.unidad ?? unidadFallback,
-    muestras: row.muestras,
-    ultimo_dato: row.ultimo_dato,
-    resets_detectados: row.resets_detectados,
-  };
-}
-
-export function jornadaRowToPoint(
-  row: ContadorJornadaRow,
-  unidadFallback: string | null,
-): ContadorJornadaPoint {
-  return {
-    dia: diaToIso(row.dia),
-    inicio: row.inicio,
-    fin: row.fin,
-    delta: row.delta != null ? Number(row.delta) : null,
-    unidad: row.unidad ?? unidadFallback,
-    muestras: row.muestras,
-    ultimo_dato: row.ultimo_dato,
-    resets_detectados: row.resets_detectados,
-  };
+  return result.rows;
 }

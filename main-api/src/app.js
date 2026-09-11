@@ -24,6 +24,7 @@ const coldRoomRoutes = require('./routes/coldRoomRoutes');
 const twoFactorRoutes = require('./routes/twoFactorRoutes');
 const errorMiddleware = require('./middlewares/errorMiddleware');
 const { auditMutations } = require('./services/auditLog');
+const { auditResolver } = require('./services/auditResolver');
 
 const app = express();
 
@@ -96,25 +97,6 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // Bitácora automática Ley 21.663: registra mutaciones (POST/PUT/PATCH/DELETE)
 // en /api/users, /api/companies, /api/alertas tras ejecutarse el handler.
 // El resolver mapea cada path → action key (e.g. POST /api/users → 'usuario.create').
-const auditResolver = (req) => {
-  const path = req.originalUrl.split('?')[0];
-  let targetType = null;
-  if (path.startsWith('/api/users')) targetType = 'usuario';
-  else if (path.startsWith('/api/companies')) targetType = 'empresa';
-  else if (path.startsWith('/api/eventos')) targetType = 'evento';
-  else if (path.startsWith('/api/alertas')) targetType = 'alerta';
-  else if (path.startsWith('/api/incidencias')) targetType = 'incidencia';
-  else if (path.startsWith('/api/documentos')) targetType = 'documento';
-  const verb =
-    { POST: 'create', PUT: 'update', PATCH: 'update', DELETE: 'delete' }[req.method] || 'mutate';
-  // El id aparece como último segmento numérico/alfanumérico tras la base de recursos.
-  const targetId = (req.params && (req.params.id || req.params.sitioId)) || null;
-  return {
-    action: targetType ? `${targetType}.${verb}` : `${req.method.toLowerCase()}.unknown`,
-    targetType,
-    targetId,
-  };
-};
 
 // Rutas funcionales del backend.
 app.use('/api/health', healthRoutes);

@@ -1,5 +1,6 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
+import { DgaSlotsMantenimientoComponent } from './dga-slots-mantenimiento';
 import {
   Component,
   OnDestroy,
@@ -19,6 +20,7 @@ import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton
 import { WellDiagramSkeletonComponent } from '../../../../components/ui/well-diagram-skeleton';
 import { WellStatCardComponent } from '../../../../components/ui/well-stat-card';
 import { type ContadorMensualPoint, CompanyService } from '../../../../services/company.service';
+import { AuthService } from '../../../../services/auth.service';
 import { DatoDgaRow, DgaService } from '../../../../services/dga.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 
@@ -99,6 +101,7 @@ interface SiteDashboardData {
     ChartSkeletonComponent,
     TableSkeletonComponent,
     WellStatCardComponent,
+    DgaSlotsMantenimientoComponent,
   ],
   template: `
     <ng-container>
@@ -1001,6 +1004,19 @@ interface SiteDashboardData {
             </article>
           </div>
         </section>
+
+        <!-- Mantenimiento de slots: recalcular tras corregir un mapeo, o dar de
+             baja el tramo cuyo dato no es declarable. Antes solo por SQL.
+             Modal, y solo para quien puede usarlo: los endpoints son
+             SuperAdmin/Admin, así que a los demás el panel solo les daría 403. -->
+        @if (mantenimientoOpen() && canReviewDga()) {
+          <app-dga-slots-mantenimiento
+            [siteId]="siteId()"
+            (slotsChanged)="onSlotsChanged()"
+            (cerrar)="mantenimientoOpen.set(false)"
+          />
+        }
+
         <!-- Registros DGA -->
         <section
           class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
@@ -1024,6 +1040,31 @@ interface SiteDashboardData {
                 <span class="material-symbols-outlined text-[16px]">calendar_month</span>
                 {{ dgaSelectedRangeLabel() }}
               </button>
+              @if (canReviewDga()) {
+                <button
+                  type="button"
+                  (click)="mantenimientoOpen.set(true)"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container active:scale-95"
+                  title="Mantenimiento de slots"
+                  aria-label="Abrir mantenimiento de slots: recalcular o dar de baja un rango"
+                >
+                  <!--
+                    El tamano va por style y no por text-[Npx]: la hoja de
+                    Google que carga la fuente (index.html) declara
+                    font-size 24px para .material-symbols-outlined y le gana a
+                    la utilidad de Tailwind. Verificado en produccion: todos los
+                    iconos del proyecto renderizan a 24px sin importar la clase.
+
+                    A 24px el glifo de llave queda a 7px de cada borde en un
+                    boton de 38px, y como su tinta llena la caja en diagonal
+                    (a diferencia de calendar_month, que es un rectangulo con
+                    margenes) se lee como si se saliera. A 20px respira.
+                  -->
+                  <span class="material-symbols-outlined" style="font-size: 20px" aria-hidden="true"
+                    >build</span
+                  >
+                </button>
+              }
               <span class="text-slate-500">{{ dgaTotalRecordsLabel() }}</span>
             </div>
           </div>
@@ -1565,6 +1606,14 @@ interface SiteDashboardData {
 export class WaterDetailDgaComponent implements OnInit, OnDestroy {
   private readonly dgaService = inject(DgaService);
   private readonly companyService = inject(CompanyService);
+  private readonly authService = inject(AuthService);
+
+  /**
+   * Gate del mantenimiento de slots. Los endpoints son SuperAdmin/Admin
+   * (`canReviewDga` es exactamente esa combinación), así que a los demás el
+   * botón solo les daría un 403 tras llenar el formulario.
+   */
+  readonly canReviewDga = this.authService.canReviewDga;
 
   // Inputs
   siteId = input.required<string>();
@@ -1583,6 +1632,8 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
 
   // DGA signals
   dgaDateFilterOpen = signal(false);
+  /** Modal de mantenimiento de slots. */
+  mantenimientoOpen = signal(false);
   dgaDateFrom = signal(chileMonthStart());
   dgaDateTo = signal(chileToday());
   dgaRowsPerPage = signal(10);
@@ -1948,6 +1999,16 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
     const obra = this.obraDga();
     if (!obra) return null;
     return `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas?codigoObra=${encodeURIComponent(obra)}&numeroComprobante=${encodeURIComponent(comprobante)}`;
+  }
+
+  /**
+   * Tras recalcular o dar de baja un rango, la tabla y el último envío quedaron
+   * viejos. El fill tarda minutos en repoblar lo recalculado, así que esto
+   * refresca lo que ya cambió (los estados) y no espera al relleno.
+   */
+  onSlotsChanged(): void {
+    void this.loadDgaReports();
+    this.loadUltimoEnvio(this.siteId());
   }
 
   private async loadDgaReports(): Promise<void> {

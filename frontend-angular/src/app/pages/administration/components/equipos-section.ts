@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import type { DetectedDevice } from '../../../services/administration.service';
+import type { DetectedDevice, DetectedDeviceSite } from '../../../services/administration.service';
 import { AdminSectionShellComponent } from './admin-section-shell';
 import { AdminTableToolbarComponent } from './admin-table-toolbar';
 import { AdminPaginationComponent } from './admin-pagination';
@@ -87,9 +87,15 @@ const PAGE_SIZE = 10;
                     {{ deviceDataCountLabel(device) }}
                   </td>
                   <td class="px-4 py-3" data-label="Sitio">
-                    <span [class]="statusBadgeClass(device.sitio_id ? 'success' : 'warning')">
-                      {{ device.sitio_descripcion || 'Sin asignar' }}
-                    </span>
+                    @if (deviceSites(device).length) {
+                      <div class="site-badges">
+                        @for (site of deviceSites(device); track site.id) {
+                          <span [class]="statusBadgeClass('success')">{{ site.descripcion }}</span>
+                        }
+                      </div>
+                    } @else {
+                      <span [class]="statusBadgeClass('warning')">Sin asignar</span>
+                    }
                   </td>
                 </tr>
               }
@@ -150,6 +156,12 @@ const PAGE_SIZE = 10;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--color-on-surface-muted);
+      }
+
+      .site-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
       }
 
       .device-time-stack {
@@ -241,7 +253,9 @@ export class EquiposSectionComponent {
         this.deviceClockSkewLabel(device),
         String(this.deviceDataCount(device)),
         String(device.total_registros),
-        device.sitio_descripcion || '',
+        this.deviceSites(device)
+          .map((site) => site.descripcion)
+          .join(' '),
         device.empresa_nombre || '',
         device.sub_empresa_nombre || '',
       ]),
@@ -251,6 +265,19 @@ export class EquiposSectionComponent {
   readonly paginatedDevices = computed<DetectedDevice[]>(() =>
     this.paginate(this.filteredDevices(), this.page()),
   );
+
+  /**
+   * Sitios que comparten el serial. Un datalogger puede alimentar varios
+   * sitios de la misma subempresa; el backend los agrega en `sitios`. Se cae
+   * a los campos escalares si la respuesta viene de una API vieja.
+   */
+  deviceSites(device: DetectedDevice): DetectedDeviceSite[] {
+    if (device.sitios?.length) return device.sitios;
+    if (device.sitio_id) {
+      return [{ id: device.sitio_id, descripcion: device.sitio_descripcion || device.sitio_id }];
+    }
+    return [];
+  }
 
   onSearchChange(value: string): void {
     this.search.set(value);

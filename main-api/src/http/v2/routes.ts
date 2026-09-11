@@ -34,6 +34,8 @@ import {
   patchPozoDgaConfigHandler,
   queryDatoDgaHandler,
   reconocerSensorDefectuosoHandler,
+  bulkSlotActionHandler,
+  slotsResumenHandler,
   reviewSlotActionHandler,
   upsertInformanteHandler,
 } from '../../modules/dga/controller';
@@ -94,6 +96,17 @@ const auditDgaMutations = auditMutations((req) => {
       action: `dga.review.${req.body?.action ?? 'unknown'}`,
       targetType: 'dato_dga',
       targetId: `${req.body?.site_id ?? ''}::${req.body?.ts ?? ''}`,
+    };
+  }
+  // POST /dga/sites/:siteId/slots/bulk — la nota del operador y el rango son
+  // la única constancia de por qué un tramo se recalculó o no se declaró, así
+  // que van al audit_log y no al fallback `unknown`.
+  const bulkMatch = /^\/dga\/sites\/([^/]+)\/slots\/bulk$/.exec(path);
+  if (req.method === 'POST' && bulkMatch) {
+    return {
+      action: `dga.slots.${req.body?.action ?? 'unknown'}`,
+      targetType: 'dato_dga',
+      targetId: `${bulkMatch[1] ?? ''}::${req.body?.desde ?? ''}..${req.body?.hasta ?? ''}`,
     };
   }
   const reconMatch = path.match(/^\/dga\/sites\/([^/]+)\/reconocer-sensor-defectuoso$/);
@@ -186,6 +199,7 @@ router.delete(
 router.get(
   '/dga/sites/:siteId/pozo-config',
   protect,
+  blockDemoAccess,
   requireSiteParamAccess(),
   getPozoDgaConfigHandler,
 );
@@ -201,16 +215,24 @@ router.patch(
 router.get(
   '/dga/sites/:siteId/live-preview',
   protect,
+  blockDemoAccess,
   requireSiteParamAccess(),
   getDgaLivePreviewHandler,
 );
 router.get(
   '/dga/sites/:siteId/ultimo-envio',
   protect,
+  blockDemoAccess,
   requireSiteParamAccess(),
   getUltimoEnvioHandler,
 );
-router.get('/dga/sites/:siteId/verify', protect, requireSiteParamAccess(), verifySniaHandler);
+router.get(
+  '/dga/sites/:siteId/verify',
+  protect,
+  blockDemoAccess,
+  requireSiteParamAccess(),
+  verifySniaHandler,
+);
 
 // =====================================================================
 // Bitácora del sitio: ficha + equipamiento.
@@ -297,7 +319,10 @@ router.patch('/sites/bitacora/equipos/:id', protect, patchEquipoHandler);
 router.delete('/sites/bitacora/equipos/:id', protect, deleteEquipoHandler);
 
 // Mediciones (Detalle de Registros + CSV)
-router.get('/dga/dato', protect, queryDatoDgaHandler);
+// blockDemoAccess acá y no solo en los .csv de abajo: sin esto un Vendedor
+// lee exactamente los mismos datos en JSON y el bloqueo de la descarga es
+// decorativo.
+router.get('/dga/dato', protect, blockDemoAccess, queryDatoDgaHandler);
 router.get('/dga/dato/export.csv', protect, blockDemoAccess, exportDatoDgaCsvHandler);
 router.get('/dga/export-directo.csv', protect, blockDemoAccess, exportDgaDirectoCsvHandler);
 
@@ -320,6 +345,26 @@ router.post(
   reviewSlotActionHandler,
 );
 
+// Resumen por estado del rango: lectura, alimenta la confirmacion previa.
+router.get(
+  '/dga/sites/:siteId/slots/resumen',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  slotsResumenHandler,
+);
+
+// Acción en bloque sobre un rango de slots: recalcular (vuelven a 'vacio' para
+// que el fill los recompute con la config actual) o dar de baja documentada.
+// Nunca toca 'enviado' ni 'enviando'. Mismas guardas que el descarte de a uno.
+router.post(
+  '/dga/sites/:siteId/slots/bulk',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  require2fa,
+  auditDgaMutations,
+  bulkSlotActionHandler,
+);
+
 // Reconocer sensor defectuoso: marca reg_map + incidencia + acepta backlog.
 router.post(
   '/dga/sites/:siteId/reconocer-sensor-defectuoso',
@@ -328,6 +373,47 @@ router.post(
   require2fa,
   auditDgaMutations,
   reconocerSensorDefectuosoHandler,
+);
+
+// =====================================================================
+// Monitoreo interno (healthDigest): destinatarios del resumen diario y de
+// las escalaciones. Es config del equipo Emeltec, no de un tenant → solo
+// SuperAdmin. Mutaciones auditadas (Ley 21.663 §32).
+// =====================================================================
+import {
+  listDigestDestinatariosHandler,
+  replaceDigestDestinatariosHandler,
+  require2faIfNuevoDestinatario,
+  sendDigestPruebaHandler,
+} from '../../modules/healthDigest/destinatariosController';
+
+const auditDigestMutations = auditMutations(() => ({
+  action: 'health_digest.destinatarios.update',
+  targetType: 'health_digest_destinatario',
+  targetId: 'lista',
+}));
+
+router.get(
+  '/health-digest/destinatarios',
+  protect,
+  authorizeRoles('SuperAdmin'),
+  listDigestDestinatariosHandler,
+);
+// Agregar una dirección nueva exige 2FA (el resumen nombra instalaciones y
+// empresas); editar o quitar direcciones ya autorizadas, no.
+router.put(
+  '/health-digest/destinatarios',
+  protect,
+  authorizeRoles('SuperAdmin'),
+  require2faIfNuevoDestinatario,
+  auditDigestMutations,
+  replaceDigestDestinatariosHandler,
+);
+router.post(
+  '/health-digest/prueba',
+  protect,
+  authorizeRoles('SuperAdmin'),
+  sendDigestPruebaHandler,
 );
 
 export default router;

@@ -7,6 +7,7 @@ const {
   buildSiteDashboardData,
   mapHistoricalDashboardRow,
   createHistoricalRowMapper,
+  digitalMappings,
 } = require('../services/siteTelemetryService');
 const {
   getSiteTypeCatalog,
@@ -24,10 +25,17 @@ const SITE_COLUMNS =
   'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo, es_maleta_piloto';
 const MAP_COLUMNS =
   'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
+/** Igual que MAP_COLUMNS pero calificado con `r.`, para los SELECT que hacen JOIN. */
+const MAP_COLUMNS_R = MAP_COLUMNS.split(', ')
+  .map((col) => `r.${col}`)
+  .join(', ');
 const POZO_CONFIG_COLUMNS =
   'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
+// dga_caudal_max_lps / dga_caudal_tolerance_pct viajan en `pozo_config` del
+// dashboard para que Operación dibuje la línea del derecho DGA sobre el caudal
+// en tiempo real sin otra llamada. Sin derecho cargado llegan null y no se dibuja.
 const POZO_CONFIG_SELECT_COLUMNS =
-  'pc.sitio_id, pc.profundidad_pozo_m, pc.profundidad_sensor_m, pc.nivel_estatico_manual_m, pc.obra_dga, pc.slug, pc.created_at, pc.updated_at';
+  'pc.sitio_id, pc.profundidad_pozo_m, pc.profundidad_sensor_m, pc.nivel_estatico_manual_m, pc.obra_dga, pc.slug, pc.dga_caudal_max_lps, pc.dga_caudal_tolerance_pct, pc.created_at, pc.updated_at';
 const CONTACT_COLUMNS = `
   co.id::text,
   co.empresa_id,
@@ -220,6 +228,106 @@ function normalizeVariableTransform(value) {
   return normalized;
 }
 
+/** Anchos de palabra que admite la transformacion `bit`. */
+const BIT_WORD_WIDTHS = new Set([16, 32]);
+
+/**
+ * Valida los `parametros` de la transformacion `bit`. Devuelve el indice del
+ * bit ya normalizado, o `{ error }` con el mensaje para el tecnico.
+ */
+/**
+ * Valida `parametros.cut_off`. Devuelve un mensaje de error o null.
+ *
+ * `applyCutOff` ignora en silencio cualquier valor que no sea un número > 0, y
+ * ese silencio es justo lo que no queremos: el técnico escribe algo, guarda, no
+ * pasa nada y no hay forma de saber por qué. Preferimos rechazar con mensaje.
+ */
+function cutOffError(parametros) {
+  if (parametros.cut_off === undefined || parametros.cut_off === null) return null;
+  const n = Number(parametros.cut_off);
+  if (!Number.isFinite(n) || n < 0) {
+    return 'parametros.cut_off debe ser un numero mayor o igual a 0.';
+  }
+  return null;
+}
+
+function parseBitParams(parametros) {
+  const declarado = Number(parametros.palabra_bits);
+  const bits = BIT_WORD_WIDTHS.has(declarado) ? declarado : 16;
+  const bit = Number(parametros.bit);
+  if (!Number.isInteger(bit) || bit < 0 || bit >= bits) {
+    return { error: `parametros.bit debe ser un entero entre 0 y ${bits - 1}.` };
+  }
+  return { bit };
+}
+
+/** Indice de bit de un mapeo guardado; null si no lleva uno valido. */
+function bitIndexOf(mapping) {
+  const parametros = parseJsonObject(mapping.parametros) || {};
+  const bit = Number(parametros.bit);
+  return Number.isInteger(bit) ? bit : null;
+}
+
+/**
+ * Cual de dos mapeos sobre el mismo `d1` representa la fila del panel. Solo
+ * ocurre con las palabras separadas en bits: gana el analogico si lo hubiera y,
+ * entre bits, el de menor indice. Sin esto la fila mostraria el ultimo del
+ * ORDER BY alias y editarla abriria un bit al azar.
+ */
+function esMejorFilaQue(candidato, actual) {
+  const bitActual =
+    normalizeVariableTransform(actual.transformacion) === 'bit' ? bitIndexOf(actual) : null;
+  if (bitActual === null) return false;
+
+  const bitCandidato =
+    normalizeVariableTransform(candidato.transformacion) === 'bit' ? bitIndexOf(candidato) : null;
+  if (bitCandidato === null) return true;
+
+  return bitCandidato < bitActual;
+}
+
+/**
+ * Los roles de dashboard (caudal, nivel, totalizador, energia...) son magnitudes
+ * analogicas: un 0/1 metido ahi entraria a contadores, al resumen y a DGA como
+ * si fuera un caudal. Una senal digital vive siempre como `generico`.
+ */
+function bitRoleError(transformacion, rolDashboard) {
+  if (transformacion !== 'bit' || !rolDashboard || rolDashboard === 'generico') return null;
+  return 'Una senal digital no puede ocupar un rol de dashboard: usa el rol generico.';
+}
+
+/**
+ * Una palabra de senales digitales se configura como N variables que comparten
+ * `d1`, asi que el candado "un mapeo por dato original" no puede ser absoluto.
+ * Convivir se permite SOLO entre bits distintos de la misma palabra: mezclar un
+ * bit con una lectura analogica del mismo registro serian dos interpretaciones
+ * incompatibles del mismo dato, y getSiteVariables mostraria una de las dos al
+ * azar (indexa `mappingsByKey` por d1).
+ *
+ * @returns el mensaje de conflicto, o null si el mapeo entrante puede convivir.
+ */
+function findD1Conflict(existentes, { d1, transformacion, bit }) {
+  if (!existentes.length) return null;
+
+  if (transformacion !== 'bit') {
+    return `La variable ${d1} ya tiene un mapeo para este sitio.`;
+  }
+
+  const analogico = existentes.find(
+    (mapping) => normalizeVariableTransform(mapping.transformacion) !== 'bit',
+  );
+  if (analogico) {
+    return `La variable ${d1} ya esta mapeada como "${analogico.alias}" y no se puede separar en bits.`;
+  }
+
+  const ocupado = existentes.find((mapping) => bitIndexOf(mapping) === bit);
+  if (ocupado) {
+    return `El bit ${bit} de ${d1} ya lo usa "${ocupado.alias}".`;
+  }
+
+  return null;
+}
+
 function parseJsonObject(value) {
   if (value === undefined || value === null || value === '') return {};
   let parsed = value;
@@ -314,12 +422,30 @@ function utcTimestampSql(column) {
   return `TO_CHAR(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`;
 }
 
+/**
+ * Campos exportables. `digitales` es un PSEUDO-CAMPO: no es una columna sino
+ * una por señal digital del sitio, con el alias de cada una como encabezado.
+ * Por eso el header y cada fila se arman con flatMap y no con map.
+ */
 const HISTORY_EXPORT_FIELDS = {
   caudal: 'Caudal',
   nivel: 'Nivel',
   totalizador: 'Totalizador',
   nivel_freatico: 'Nivel Freatico',
+  digitales: 'Senales digitales',
 };
+
+const HISTORY_EXPORT_DEFAULT_FIELDS = [
+  'caudal',
+  'nivel',
+  'totalizador',
+  'nivel_freatico',
+  // Va al final del default a propósito: en un sitio con señales digitales se
+  // agregan columnas DESPUÉS de las cuatro de siempre, así que un consumidor
+  // que lee por posición las cuatro primeras no se rompe. En un sitio sin
+  // señales no agrega ninguna.
+  'digitales',
+];
 
 function parseHistoryExportFields(value) {
   const selected = cleanString(value)
@@ -327,9 +453,7 @@ function parseHistoryExportFields(value) {
     .map((field) => field.trim().toLowerCase())
     .filter((field) => Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_FIELDS, field));
 
-  return selected.length
-    ? [...new Set(selected)]
-    : ['caudal', 'nivel', 'totalizador', 'nivel_freatico'];
+  return selected.length ? [...new Set(selected)] : [...HISTORY_EXPORT_DEFAULT_FIELDS];
 }
 
 const HISTORY_EXPORT_GRANULARITY = {
@@ -588,15 +712,39 @@ async function upsertPozoConfig(client, siteId, rawConfig = {}) {
   return rows[0] || null;
 }
 
-async function ensureSerialAvailable(serialId, currentSiteId = null) {
+/**
+ * ¿Puede este serial usarse en un sitio del alcance indicado?
+ *
+ * Un mismo datalogger puede alimentar varios sitios: cada sitio tiene su
+ * propio reg_map, así que dos obras sobre el mismo equipo son legítimas
+ * mientras vivan en la MISMA subempresa.
+ *
+ * Fuera de esa subempresa no: /api/data/* autoriza por serial (ver
+ * services/dataAccess.js) y devuelve el jsonb crudo del equipo completo, así
+ * que compartirlo entre subempresas expondría los registros de una al usuario
+ * de la otra.
+ *
+ * @param {string} serialId
+ * @param {string|null} currentSiteId sitio que se está editando (se excluye)
+ * @param {{empresaId: string, subEmpresaId: string}|null} scope alcance donde
+ *   el serial compartido es aceptable. Sin scope, cualquier otro sitio con el
+ *   mismo serial es conflicto.
+ * @returns {Promise<object|null>} sitio en conflicto, o null si está libre.
+ */
+async function ensureSerialAvailable(serialId, currentSiteId = null, scope = null) {
   if (!serialId) return null;
 
   const params = [serialId];
-  let query = 'SELECT id, descripcion FROM sitio WHERE id_serial = $1';
+  let query = 'SELECT id, descripcion, empresa_id, sub_empresa_id FROM sitio WHERE id_serial = $1';
 
   if (currentSiteId) {
     params.push(currentSiteId);
     query += ` AND id <> $${params.length}`;
+  }
+
+  if (scope && scope.empresaId && scope.subEmpresaId) {
+    params.push(scope.empresaId, scope.subEmpresaId);
+    query += ` AND NOT (empresa_id = $${params.length - 1} AND sub_empresa_id = $${params.length})`;
   }
 
   query += ' LIMIT 1';
@@ -1150,9 +1298,16 @@ exports.createSite = async (req, res, next) => {
       return notFound(res, 'Subempresa no encontrada para esa empresa.');
     }
 
-    const serialOwner = await ensureSerialAvailable(idSerial);
+    const serialOwner = await ensureSerialAvailable(idSerial, null, {
+      empresaId,
+      subEmpresaId,
+    });
     if (serialOwner) {
-      return conflict(res, `El serial ${idSerial} ya esta asignado al sitio ${serialOwner.id}.`);
+      return conflict(
+        res,
+        `El serial ${idSerial} ya esta asignado al sitio ${serialOwner.id}, de otra subempresa. ` +
+          'Un serial solo se puede compartir entre sitios de la misma subempresa.',
+      );
     }
 
     await client.query('BEGIN');
@@ -1189,6 +1344,16 @@ exports.createSite = async (req, res, next) => {
     await refreshCompanySiteCount(client, empresaId);
 
     await client.query('COMMIT');
+
+    // Reglas de alerta estándar del sitio nuevo. Fuera de la transacción y sin
+    // await: un fallo acá no puede deshacer ni demorar la creación del sitio.
+    const { crearAlertasPorDefecto } = require('../services/alertasPorDefecto');
+    crearAlertasPorDefecto(db, { sitioId: id, userId: req.user?.id ?? null }).catch((err) =>
+      console.error('[sitios] no se pudieron crear las alertas por defecto', {
+        sitio: id,
+        err: err?.message,
+      }),
+    );
 
     res.status(201).json({
       ok: true,
@@ -1259,12 +1424,23 @@ exports.updateSite = async (req, res, next) => {
       updates.push(`descripcion = $${params.length}`);
     }
 
-    if (idSerial) {
-      const serialOwner = await ensureSerialAvailable(idSerial, siteId);
-      if (serialOwner) {
-        return conflict(res, `El serial ${idSerial} ya esta asignado al sitio ${serialOwner.id}.`);
-      }
+    // El serial efectivo tras el update. Se valida SIEMPRE, no solo cuando
+    // cambia el serial: mover el sitio a otra subempresa también saca a un
+    // serial compartido de su alcance seguro.
+    const nextSerial = idSerial || site.id_serial;
+    const serialOwner = await ensureSerialAvailable(nextSerial, siteId, {
+      empresaId: nextEmpresaId,
+      subEmpresaId: nextSubEmpresaId,
+    });
+    if (serialOwner) {
+      return conflict(
+        res,
+        `El serial ${nextSerial} ya esta asignado al sitio ${serialOwner.id}, de otra subempresa. ` +
+          'Un serial solo se puede compartir entre sitios de la misma subempresa.',
+      );
+    }
 
+    if (idSerial) {
       params.push(idSerial);
       updates.push(`id_serial = $${params.length}`);
     }
@@ -1465,16 +1641,42 @@ exports.getDetectedDevices = async (req, res, next) => {
           WHEN lr.received_at IS NULL THEN NULL
           ELSE ROUND(EXTRACT(EPOCH FROM (lr.time - lr.received_at)))::int
         END AS desfase_segundos,
-        s.id AS sitio_id,
-        s.descripcion AS sitio_descripcion,
+        s.sitio_id,
+        s.sitio_descripcion,
         s.tipo_sitio,
         s.activo,
+        s.sitios,
+        s.sitios_count,
         s.empresa_id,
         e.nombre AS empresa_nombre,
         s.sub_empresa_id,
         se.nombre AS sub_empresa_nombre
       FROM last_row lr
-      LEFT JOIN sitio s ON s.id_serial = lr.id_serial
+      -- Un serial puede alimentar varios sitios de la misma subempresa (mismo
+      -- datalogger, reg_map distinto). Se agregan en una sola fila para que el
+      -- serial siga siendo la clave de la tabla; los campos escalares quedan
+      -- con el primer sitio y "sitios" trae la lista completa.
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*)::int                                     AS sitios_count,
+          (ARRAY_AGG(si.id ORDER BY si.id))[1]              AS sitio_id,
+          (ARRAY_AGG(si.descripcion ORDER BY si.id))[1]     AS sitio_descripcion,
+          (ARRAY_AGG(si.tipo_sitio ORDER BY si.id))[1]      AS tipo_sitio,
+          (ARRAY_AGG(si.activo ORDER BY si.id))[1]          AS activo,
+          (ARRAY_AGG(si.empresa_id ORDER BY si.id))[1]      AS empresa_id,
+          (ARRAY_AGG(si.sub_empresa_id ORDER BY si.id))[1]  AS sub_empresa_id,
+          JSONB_AGG(
+            JSONB_BUILD_OBJECT(
+              'id', si.id,
+              'descripcion', si.descripcion,
+              'tipo_sitio', si.tipo_sitio,
+              'activo', si.activo
+            )
+            ORDER BY si.id
+          ) AS sitios
+        FROM sitio si
+        WHERE si.id_serial = lr.id_serial
+      ) s ON TRUE
       LEFT JOIN empresa e ON e.id = s.empresa_id
       LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
       ORDER BY lr.ultimo_registro DESC
@@ -2483,14 +2685,27 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     const pozoConfig = pozoConfigRes.rows[0] || null;
     const allMappings = mappingsRes.rows || [];
     const exportRoles = new Set(fields);
-    const mappings = allMappings.filter((m) => {
-      const rol = m.rol_dashboard || 'generico';
-      if (exportRoles.has(rol)) return true;
-      if (exportRoles.has('nivel_freatico') && m.transformacion === 'nivel_freatico') return true;
-      return false;
-    });
+    // Las señales digitales no se filtran por rol (viven todas en 'generico'):
+    // se resuelven por transformación, igual que en el histórico.
+    const digitales = exportRoles.has('digitales') ? digitalMappings(allMappings) : [];
+    const mappings = [
+      ...allMappings.filter((m) => {
+        const rol = m.rol_dashboard || 'generico';
+        if (exportRoles.has(rol)) return true;
+        if (exportRoles.has('nivel_freatico') && m.transformacion === 'nivel_freatico') return true;
+        return false;
+      }),
+      ...digitales.map((entry) => entry.mapping),
+    ];
     const delimiter = ';';
-    const header = ['Fecha', ...fields.map((field) => HISTORY_EXPORT_FIELDS[field])];
+    const header = [
+      'Fecha',
+      ...fields.flatMap((field) =>
+        field === 'digitales'
+          ? digitales.map((entry) => entry.alias)
+          : [HISTORY_EXPORT_FIELDS[field]],
+      ),
+    ];
 
     const filename = exportFileName(site, from, to, 'csv');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -2538,7 +2753,14 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
           const fecha = row.timestamp
             ? formatChileTimestamp(row.timestamp) || row.fecha
             : row.fecha;
-          return [fecha, ...fields.map((field) => csvValue(row[field]))]
+          return [
+            fecha,
+            ...fields.flatMap((field) =>
+              field === 'digitales'
+                ? digitales.map((entry) => csvValue(row.digitales?.[entry.key]))
+                : [csvValue(row[field])],
+            ),
+          ]
             .map((value) => csvCell(value, delimiter))
             .join(delimiter);
         });
@@ -2586,13 +2808,37 @@ exports.getSiteVariables = async (req, res, next) => {
       return notFound(res, 'Sitio no encontrado.');
     }
 
-    const superAdminError = requireSuperAdmin(req, res);
-    if (superAdminError) {
-      return superAdminError;
+    // LECTURA del reg_map: alcance de sitio, no SuperAdmin. Configurar una
+    // alarma exige elegir la variable y su alias/unidad, y eso lo hacen
+    // Admin/Gerente/Vendedor (ver alarmEditorRoles en alertaRoutes). Con
+    // requireSuperAdmin, a esos roles el panel de alarmas les quedaba sin
+    // reg_map: el rule-tester deshabilitado, el selector de variable
+    // degradado a texto libre y todas las variables marcadas "sin mapeo".
+    // Las MUTACIONES del reg_map (create/update/delete) siguen siendo
+    // exclusivas de SuperAdmin.
+    if (!(await canReadSite(req.user, site))) {
+      return forbidden(res, 'No tiene permisos para consultar este sitio.');
     }
 
+    // Se adjunta cuantos meses de contadores cuelgan de cada mapeo. El panel lo
+    // necesita para avisar antes de borrar: `site_contador_mensual.variable_id`
+    // tiene ON DELETE CASCADE, asi que eliminar un mapeo se lleva su Flujo
+    // Mensual completo en silencio. Son pocas filas por sitio (una por variable)
+    // y el agregado va sobre un indice por sitio, asi que no encarece el bundle.
     const mappingsRes = await db.query(
-      `SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`,
+      `SELECT ${MAP_COLUMNS_R},
+              COALESCE(c.meses, 0)::int AS contador_meses,
+              c.desde                   AS contador_desde,
+              c.hasta                   AS contador_hasta
+         FROM reg_map r
+         LEFT JOIN (
+           SELECT variable_id, count(*) AS meses, min(mes) AS desde, max(mes) AS hasta
+             FROM site_contador_mensual
+            WHERE sitio_id = $1
+            GROUP BY variable_id
+         ) c ON c.variable_id = r.id
+        WHERE r.sitio_id = $1
+        ORDER BY r.alias ASC`,
       [siteId],
     );
 
@@ -2609,7 +2855,17 @@ exports.getSiteVariables = async (req, res, next) => {
             }))
         : [];
 
-    const mappingsByKey = new Map(mappingsRes.rows.map((mapping) => [mapping.d1, mapping]));
+    // Una palabra separada en bits tiene VARIOS mapeos sobre el mismo d1 y la
+    // fila del panel muestra uno solo. Se elige de forma determinista (ver
+    // esMejorFilaQue); la lista completa viaja igual en `mappings`, que es de
+    // donde el panel arma el detalle bit por bit.
+    const mappingsByKey = new Map();
+    for (const mapping of mappingsRes.rows) {
+      const actual = mappingsByKey.get(mapping.d1);
+      if (!actual || esMejorFilaQue(mapping, actual)) {
+        mappingsByKey.set(mapping.d1, mapping);
+      }
+    }
     const variables = detectedRows.map((variable) => ({
       ...variable,
       mapping: mappingsByKey.get(variable.nombre_dato) || null,
@@ -2673,13 +2929,33 @@ exports.createSiteVariableMap = async (req, res, next) => {
       return badRequest(res, 'd2 es requerido para esta transformacion.');
     }
 
+    const rolError = bitRoleError(transformacion, rolDashboard);
+    if (rolError) {
+      return badRequest(res, rolError);
+    }
+
+    const cutError = cutOffError(parametros);
+    if (cutError) {
+      return badRequest(res, cutError);
+    }
+
+    let bitIndex = null;
+    if (transformacion === 'bit') {
+      const parsed = parseBitParams(parametros);
+      if (parsed.error) {
+        return badRequest(res, parsed.error);
+      }
+      bitIndex = parsed.bit;
+    }
+
     const existing = await db.query(
-      'SELECT id FROM reg_map WHERE sitio_id = $1 AND d1 = $2 LIMIT 1',
+      'SELECT id, alias, transformacion, parametros FROM reg_map WHERE sitio_id = $1 AND d1 = $2',
       [siteId, d1],
     );
 
-    if (existing.rows.length) {
-      return conflict(res, `La variable ${d1} ya tiene un mapeo para este sitio.`);
+    const choque = findD1Conflict(existing.rows, { d1, transformacion, bit: bitIndex });
+    if (choque) {
+      return conflict(res, choque);
     }
 
     const requestedId = cleanString(req.body.id);
@@ -2769,6 +3045,57 @@ exports.updateSiteVariableMap = async (req, res, next) => {
     const nextTransform = transformacion || current.transformacion || 'directo';
     if (['ieee754_32', 'uint32_registros'].includes(nextTransform) && !nextD2) {
       return badRequest(res, 'd2 es requerido para esta transformacion.');
+    }
+
+    const nextD1 =
+      req.body.d1 === undefined && req.body.nombre_dato === undefined
+        ? current.d1
+        : cleanString(req.body.d1 || req.body.nombre_dato);
+    const nextParametros =
+      parametros === undefined ? parseJsonObject(current.parametros) || {} : parametros;
+
+    const nextRol = rolDashboard === undefined ? current.rol_dashboard : rolDashboard;
+    const nextRolError = bitRoleError(nextTransform, nextRol);
+    if (nextRolError) {
+      return badRequest(res, nextRolError);
+    }
+
+    const nextCutError = cutOffError(nextParametros);
+    if (nextCutError) {
+      return badRequest(res, nextCutError);
+    }
+
+    let nextBit = null;
+    if (nextTransform === 'bit') {
+      const parsed = parseBitParams(nextParametros);
+      if (parsed.error) {
+        return badRequest(res, parsed.error);
+      }
+      nextBit = parsed.bit;
+    }
+
+    // El PATCH nunca revisó colisiones de d1. Con la palabra de bits sí importa,
+    // porque dos variables pueden apuntar legítimamente al mismo registro y hay
+    // que impedir que terminen en el mismo bit. Se revisa solo cuando cambia el
+    // dato original o cuando hay bits de por medio: así un sitio que ya arrastra
+    // dos mapeos sobre el mismo d1 (creados antes del candado) sigue editable.
+    const tocaBits =
+      nextTransform === 'bit' || normalizeVariableTransform(current.transformacion) === 'bit';
+    if (nextD1 !== current.d1 || tocaBits) {
+      const hermanos = await db.query(
+        `SELECT id, alias, transformacion, parametros
+           FROM reg_map
+          WHERE sitio_id = $1 AND d1 = $2 AND id <> $3`,
+        [siteId, nextD1, mapId],
+      );
+      const choque = findD1Conflict(hermanos.rows, {
+        d1: nextD1,
+        transformacion: nextTransform,
+        bit: nextBit,
+      });
+      if (choque) {
+        return conflict(res, choque);
+      }
     }
 
     const updates = [];

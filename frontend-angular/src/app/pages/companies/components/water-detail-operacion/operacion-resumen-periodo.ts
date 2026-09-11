@@ -737,9 +737,11 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   // Agregados (max, promedio) de caudal/nivel/nivel_freatico para el rango.
   // Lo fetch un endpoint dedicado que lee equipo_5min cagg sobre el rango
   // completo (no limitado a 25h como historyRows). Sin esto, los KPIs de
-  // peak solo cubrirían la ventana realtime, no el periodo seleccionado.
+  // peak y promedio solo cubrirían la ventana realtime (~1500 filas), no el
+  // periodo seleccionado.
   private readonly periodAggregates = signal<{
     caudal: { max: number | null; avg: number | null; n: number; unidad: string | null };
+    nivel: { max: number | null; avg: number | null; n: number; unidad: string | null };
     nivel_freatico: { max: number | null; avg: number | null; n: number; unidad: string | null };
   } | null>(null);
   readonly periodAggregatesLoading = signal(false);
@@ -922,16 +924,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return this.state.dailyCountersData().filter((p) => p.dia >= desde && p.dia <= hasta);
   });
 
-  private readonly historyInRange = computed(() => {
-    const desdeMs = new Date(`${this.fechaDesde()}T00:00:00-04:00`).getTime();
-    const hastaMs = new Date(`${this.fechaHasta()}T23:59:59-04:00`).getTime();
-    return this.state
-      .historyRows()
-      .filter(
-        (r) => r.timestampMs !== null && r.timestampMs >= desdeMs && r.timestampMs <= hastaMs,
-      );
-  });
-
   /**
    * Días esperados en el rango actualmente aplicado. Sirve como denominador
    * de "uptime" y "días con operación". Calculado a partir de fechaDesde y
@@ -946,7 +938,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
 
   private readonly computedKpis = computed<KpiPeriodo[]>(() => {
     const daily = this.dailyInRange();
-    const hist = this.historyInRange();
     const diasEsperados = this.diasEsperados();
     const periodoLabel = this.periodoLabel();
 
@@ -955,17 +946,22 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     const diasSinOp = Math.max(0, diasEsperados - diasOperacion);
     const unidad = daily[0]?.unidad ?? 'm³';
 
-    const caudales = hist.map((r) => r.caudal).filter((v): v is number => v !== null);
-    const caudalProm = caudales.length
-      ? caudales.reduce((a, b) => a + b, 0) / caudales.length
-      : null;
+    // Peaks y promedios del periodo desde period-aggregates (equipo_5min sobre
+    // el rango completo). Antes los promedios salían de historyRows, que es la
+    // ventana realtime (~1500 filas, ~1 día): en un rango de 30 días mostraba
+    // "0,0 L/s sobre 1500 mediciones" junto a decenas de miles de m³
+    // acumulados. Si el endpoint aún no respondió: null.
+    const agg = this.periodAggregates();
+    const caudalProm = agg?.caudal.avg ?? null;
+    const caudalPromN = agg?.caudal.n ?? 0;
+    const caudalPromUnidad = agg?.caudal.unidad || 'L/s';
 
-    const nivelesFreaticos = hist
-      .map((r) => r.nivelFreatico ?? r.nivel)
-      .filter((v): v is number => v !== null);
-    const nivelProm = nivelesFreaticos.length
-      ? nivelesFreaticos.reduce((a, b) => a + b, 0) / nivelesFreaticos.length
-      : null;
+    // Nivel freático proyectado si el sitio tiene pozo_config; si no, cae al
+    // nivel crudo del sensor (mismo fallback que usa la tabla diaria).
+    const nivelAgg = agg && agg.nivel_freatico.n > 0 ? agg.nivel_freatico : agg?.nivel;
+    const nivelProm = nivelAgg?.avg ?? null;
+    const nivelPromN = nivelAgg?.n ?? 0;
+    const nivelPromUnidad = nivelAgg?.unidad || 'm';
 
     // Alertas reales: cuenta total de eventos del periodo + breakdown críticas
     // vs advertencias. `eventosReales` viene del endpoint alertas que ya se
@@ -983,9 +979,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     const uptimeTono: KpiPeriodo['tono'] =
       uptimePct >= 95 ? 'ok' : uptimePct >= 80 ? 'neutral' : 'warn';
 
-    // Peaks del periodo desde period-aggregates (cubre rango completo, no
-    // limitado a 25h como historyRows). Si endpoint aún no respondió: null.
-    const agg = this.periodAggregates();
     const caudalMax = agg?.caudal.max ?? null;
     const caudalMaxUnidad = agg?.caudal.unidad || 'L/s';
     const freaticoMax = agg?.nivel_freatico.max ?? null;
@@ -1001,15 +994,27 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       },
       {
         label: 'Caudal promedio',
-        valor: caudalProm !== null ? `${this.fmt(caudalProm, 1)} L/s` : '— L/s',
-        subtext: caudales.length ? `${caudales.length} mediciones` : 'Sin datos',
+        valor:
+          caudalProm !== null
+            ? `${this.fmt(caudalProm, 1)} ${caudalPromUnidad}`
+            : `— ${caudalPromUnidad}`,
+        subtext:
+          caudalPromN > 0
+            ? `Sobre ${this.fmtThousands(caudalPromN)} mediciones`
+            : 'Sin datos en el rango',
         icon: 'speed',
         tono: caudalProm !== null ? 'ok' : 'neutral',
       },
       {
         label: 'Nivel freático prom.',
-        valor: nivelProm !== null ? `${this.fmt(nivelProm, 1)} m` : '— m',
-        subtext: nivelesFreaticos.length ? `${nivelesFreaticos.length} mediciones` : 'Sin datos',
+        valor:
+          nivelProm !== null
+            ? `${this.fmt(nivelProm, 1)} ${nivelPromUnidad}`
+            : `— ${nivelPromUnidad}`,
+        subtext:
+          nivelPromN > 0
+            ? `Sobre ${this.fmtThousands(nivelPromN)} mediciones`
+            : 'Sin datos en el rango',
         icon: 'vertical_align_bottom',
         tono: 'neutral',
       },
@@ -1333,6 +1338,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
         }
         this.periodAggregates.set({
           caudal: res.data.caudal,
+          nivel: res.data.nivel,
           nivel_freatico: res.data.nivel_freatico,
         });
       });

@@ -136,6 +136,11 @@ export interface DgaValidationWarning {
   [k: string]: unknown;
 }
 
+/** ApiResponse + el meta que agrega el handler de la cola de revisión. */
+interface ReviewQueueEnvelope extends ApiResponse<DgaReviewSlot[]> {
+  meta?: { total?: number; sitios?: DgaReviewSite[] };
+}
+
 export interface DgaReviewSlot {
   site_id: string;
   ts: string;
@@ -149,6 +154,32 @@ export interface DgaReviewSlot {
   referencia_informante: string | null;
 }
 
+/** Sitio del catálogo del filtro. Viene en el meta de la respuesta. */
+export interface DgaReviewSite {
+  site_id: string;
+  codigo_obra: string | null;
+  referencia_informante: string | null;
+}
+
+export interface DgaReviewFilters {
+  siteId?: string | undefined;
+  /** ISO 8601 con offset. */
+  desde?: string | undefined;
+  /** ISO 8601 con offset. */
+  hasta?: string | undefined;
+  limit?: number | undefined;
+}
+
+/**
+ * `total` es el conteo SIN el tope, así la página puede distinguir "hay 40"
+ * de "hay 340 y estás viendo los primeros 100".
+ */
+export interface DgaReviewQueuePage {
+  slots: DgaReviewSlot[];
+  total: number;
+  sitios: DgaReviewSite[];
+}
+
 export interface DgaReviewActionPayload {
   site_id: string;
   ts: string;
@@ -159,6 +190,46 @@ export interface DgaReviewActionPayload {
     nivel_freatico?: number | null;
   };
   admin_note: string;
+}
+
+/** Motivo tipificado de una baja. Va a fail_reason como baja_<tipo>. */
+export type DgaMotivoBaja =
+  | 'recambio_instrumento'
+  | 'sin_dato_crudo'
+  | 'dato_no_confiable'
+  | 'otro';
+
+/** Una fila del desglose. `baja_manual` separa el fallido cerrado a mano. */
+export interface DgaSlotEstadoCount {
+  estatus: string;
+  baja_manual: boolean;
+  total: number;
+}
+
+/** Conteo por estado de los slots de un rango, previo a una acción en bloque. */
+export interface DgaSlotsResumen {
+  estados: DgaSlotEstadoCount[];
+  total: number;
+  /** Tope de filas que la acción puede tocar en un solo request. */
+  limite: number;
+}
+
+export interface DgaBulkSlotActionPayload {
+  action: 'recalcular' | 'dar_de_baja';
+  desde: string;
+  hasta: string;
+  /** Solo aplica a `dar_de_baja`. */
+  motivo_tipo: DgaMotivoBaja;
+  nota: string;
+}
+
+export interface DgaBulkSlotActionResult {
+  action: 'recalcular' | 'dar_de_baja';
+  /** Slots efectivamente modificados. */
+  afectados: number;
+  limite: number;
+  /** Conteo por estado ANTES de la acción: explica por qué afectados ≠ total. */
+  antes: DgaSlotEstadoCount[];
 }
 
 // ============================================================================
@@ -301,12 +372,20 @@ export class DgaService {
 
   // -------- Review queue --------
 
-  listReviewQueue(siteId?: string, limit = 100): Observable<DgaReviewSlot[]> {
-    let params = new HttpParams().set('limit', limit);
-    if (siteId) params = params.set('site_id', siteId);
-    return this.http
-      .get<ApiResponse<DgaReviewSlot[]>>('/api/v2/dga/review-queue', { params })
-      .pipe(map((r) => (r.ok ? r.data : [])));
+  listReviewQueue(filters: DgaReviewFilters = {}): Observable<DgaReviewQueuePage> {
+    let params = new HttpParams().set('limit', filters.limit ?? 100);
+    if (filters.siteId) params = params.set('site_id', filters.siteId);
+    if (filters.desde) params = params.set('desde', filters.desde);
+    if (filters.hasta) params = params.set('hasta', filters.hasta);
+    return this.http.get<ReviewQueueEnvelope>('/api/v2/dga/review-queue', { params }).pipe(
+      map((r) => ({
+        slots: r.ok ? r.data : [],
+        // Sin meta (respuesta vieja en caché o backend previo) el largo de la
+        // página es el mejor total disponible: nunca sub-reporta lo visible.
+        total: r.meta?.total ?? (r.ok ? r.data.length : 0),
+        sitios: r.meta?.sitios ?? [],
+      })),
+    );
   }
 
   applyReviewDecision(payload: DgaReviewActionPayload): Observable<{ ok: true }> {
@@ -329,6 +408,36 @@ export class DgaService {
       .post<
         ApiResponse<{ incidencia_id: number; slots_aceptados: number }>
       >(`/api/v2/dga/sites/${siteId}/reconocer-sensor-defectuoso`, { nota })
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  /**
+   * Conteo por estado de los slots del rango. Precede a una acción en bloque
+   * para que no se aplique a ciegas: es lectura, no pide 2FA.
+   */
+  slotsResumen(siteId: string, desdeIso: string, hastaIso: string): Observable<DgaSlotsResumen> {
+    const qs = new URLSearchParams({ desde: desdeIso, hasta: hastaIso }).toString();
+    return this.http
+      .get<ApiResponse<DgaSlotsResumen>>(`/api/v2/dga/sites/${siteId}/slots/resumen?${qs}`)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  /**
+   * Acción en bloque sobre un rango de slots.
+   *
+   * `recalcular` los devuelve a `vacio` para que el fill los recompute con la
+   * config actual del reg_map; `dar_de_baja` los cierra como fallido con la
+   * nota. Nunca toca `enviado` ni `enviando`.
+   *
+   * Exige 2FA en el backend: el interceptor global orquesta el step-up solo,
+   * así que acá no hay nada que manejar.
+   */
+  bulkSlotAction(
+    siteId: string,
+    payload: DgaBulkSlotActionPayload,
+  ): Observable<DgaBulkSlotActionResult> {
+    return this.http
+      .post<ApiResponse<DgaBulkSlotActionResult>>(`/api/v2/dga/sites/${siteId}/slots/bulk`, payload)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 }

@@ -37,22 +37,27 @@ npm start
 Abre:
 
 ```text
-http://127.0.0.1:4300
+http://localhost:4200
 ```
 
-Por defecto, Angular usa `proxy.production.conf.json` con `127.0.0.1:4300`. Si quieres usar el proxy local de APIs, ejecuta:
+### Configuraciones de proxy
 
-```bash
-npm run start -- --configuration development
-```
+`npm start` usa la configuracion `development`, que aplica `proxy.conf.json`:
+`/api/auth` va a `localhost:3001` (auth-api local) y el resto de `/api` a
+produccion. Es el modo recomendado para trabajar el login sin tocar la API real.
 
-Si prefieres invocar Angular CLI directamente dentro del proyecto, usa:
+| Script                         | Proxy                        | Destino de `/api`                           |
+| ------------------------------ | ---------------------------- | ------------------------------------------- |
+| `npm start`                    | `proxy.conf.json`            | auth local (3001), resto produccion         |
+| `npm run start:local`          | `proxy.conf.local.json`      | todo local (3000 main, 3001 auth, 3002 dga) |
+| `npm run start:production-api` | `proxy.production.conf.json` | **todo produccion**, en `127.0.0.1:4300`    |
 
-```bash
-npx ng serve
-```
+> `start:production-api` pega contra `nuevacloud.emeltec.cl`: cada request queda
+> en el `audit_log` de produccion y avanzar un flujo de login puede disparar
+> correos OTP reales. Era el default y por eso dejo de serlo.
 
-Durante desarrollo local, Angular puede usar `proxy.conf.json` para redirigir las llamadas `/api/...` hacia los servicios configurados. Para probar login, empresas, usuarios o datos reales del sistema, las APIs deben estar ejecutandose y accesibles.
+Para probar login, empresas, usuarios o datos reales del sistema, las APIs
+correspondientes deben estar ejecutandose y accesibles.
 
 ## Build
 

@@ -11,10 +11,16 @@ import { cache } from '../../config/redis';
 import { encryptClave } from './crypto';
 import {
   acceptReviewSlotWithValues,
+  bulkDiscardSlots,
+  BULK_SLOT_LIMIT,
+  countSlotsByEstado,
   deleteInformante,
   findInformanteByRut,
   getUltimoEnvioBySite,
   listInformantes,
+  resetSlotsToVacio,
+  countSlotsRequiresReview,
+  listReviewQueueSites,
   listSlotsRequiresReview,
   markReviewSlotFailedManual,
   patchPozoDgaConfig,
@@ -24,10 +30,17 @@ import {
   type DgaInformanteRow,
   type DgaTransport,
   type PozoDgaConfigRow,
+  type ReviewQueueFiltros,
+  type ReviewQueueSitio,
   type ReviewSlotRow,
   type UltimoEnvioRow,
 } from './repo';
-import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
+import {
+  getLatestEquipoForSerial,
+  getMappingsBySiteId,
+  getPozoConfigBySiteId,
+  getSiteById,
+} from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
 import { query as dbQuery } from '../../config/dbHelpers';
 import { formatRutForDga } from '../../utils/rut';
@@ -183,11 +196,26 @@ export async function patchPozoDgaConfigService(
 // Review queue
 // ============================================================================
 
-export async function listReviewQueue(input: {
-  site_id?: string | undefined;
-  limit?: number | undefined;
-}): Promise<ReviewSlotRow[]> {
-  return listSlotsRequiresReview(input);
+/**
+ * El listado va topado (LIMIT) pero `total` no: la UI necesita poder decir
+ * "mostrando 100 de 340" en vez de dejar que el tope se lea como el total.
+ * `sitios` es el catálogo para el selector de filtro — ver listReviewQueueSites.
+ */
+export interface ReviewQueueResult {
+  slots: ReviewSlotRow[];
+  total: number;
+  sitios: ReviewQueueSitio[];
+}
+
+export async function listReviewQueue(
+  input: ReviewQueueFiltros & { limit?: number | undefined },
+): Promise<ReviewQueueResult> {
+  const [slots, total, sitios] = await Promise.all([
+    listSlotsRequiresReview(input),
+    countSlotsRequiresReview(input),
+    listReviewQueueSites(),
+  ]);
+  return { slots, total, sitios };
 }
 
 export async function applyReviewDecision(input: {
@@ -212,7 +240,11 @@ export async function applyReviewDecision(input: {
       admin_note: input.admin_note,
       admin_email: input.admin_email,
     });
-    if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
+    // El descarte acepta `pendiente` además de `requires_review`: un slot que
+    // pasó la validación pero cuyo dato NO es declarable (un totalizador que
+    // retrocede durante una ventana conocida) nunca entra a la cola de revisión
+    // y antes solo se podía cerrar por SQL.
+    if (!ok) throw new NotFoundError('Slot no está en requires_review ni pendiente, o no existe');
     return { ok: true };
   }
 
@@ -231,6 +263,53 @@ export async function applyReviewDecision(input: {
   });
   if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
   return { ok: true };
+}
+
+/**
+ * Acción en bloque sobre un rango de slots de un pozo.
+ *
+ * Devuelve el conteo por estado ANTES de tocar nada junto con cuántos slots se
+ * afectaron. Ese "antes" es lo que le permite al operador entender el resultado:
+ * "afecté 11 de 12, el que quedó es el `enviado`" es una respuesta; "afecté 11"
+ * a secas obliga a ir a la base a ver qué pasó con el otro.
+ */
+export async function applyBulkSlotAction(input: {
+  site_id: string;
+  action: 'recalcular' | 'dar_de_baja';
+  desde: string;
+  hasta: string;
+  motivo_tipo: string;
+  nota: string;
+  admin_email: string;
+}): Promise<{
+  action: 'recalcular' | 'dar_de_baja';
+  afectados: number;
+  limite: number;
+  antes: { estatus: string; baja_manual: boolean; total: number }[];
+}> {
+  const antes = await countSlotsByEstado({
+    site_id: input.site_id,
+    desde: input.desde,
+    hasta: input.hasta,
+  });
+
+  const afectados =
+    input.action === 'recalcular'
+      ? await resetSlotsToVacio({
+          site_id: input.site_id,
+          desde: input.desde,
+          hasta: input.hasta,
+        })
+      : await bulkDiscardSlots({
+          site_id: input.site_id,
+          desde: input.desde,
+          hasta: input.hasta,
+          motivo_tipo: input.motivo_tipo,
+          admin_note: input.nota,
+          admin_email: input.admin_email,
+        });
+
+  return { action: input.action, afectados, limite: BULK_SLOT_LIMIT, antes };
 }
 
 // ============================================================================
@@ -582,21 +661,15 @@ export async function getDgaLivePreview(siteId: string): Promise<DgaLivePreview>
     };
   }
 
-  const [pozoConfig, mappings, latestRes] = await Promise.all([
+  const [pozoConfig, mappings, latest] = await Promise.all([
     getPozoConfigBySiteId(siteId),
     getMappingsBySiteId(siteId),
-    dbQuery<HistoryEquipoRow>(
-      `SELECT time, received_at, id_serial, data
-         FROM equipo
-        WHERE id_serial = $1
-        ORDER BY time DESC
-        LIMIT 1`,
-      [site.id_serial],
-      { name: 'dga__latest_equipo' },
-    ),
+    // El query propio (`ORDER BY time DESC LIMIT 1` sin cota temporal) abria
+    // todos los chunks del hypertable y se comia el statement_timeout: 500 en
+    // cada poll del modal. El helper de sites ya resuelve esto acotado.
+    getLatestEquipoForSerial(site.id_serial),
   ]);
 
-  const latest = latestRes.rows[0];
   if (!latest) {
     return {
       ts: null,

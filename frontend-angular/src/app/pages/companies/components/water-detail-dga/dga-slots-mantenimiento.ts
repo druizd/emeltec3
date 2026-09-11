@@ -1,0 +1,480 @@
+import { A11yModule } from '@angular/cdk/a11y';
+import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Output, computed, inject, input, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import {
+  DgaService,
+  type DgaBulkSlotActionResult,
+  type DgaMotivoBaja,
+  type DgaSlotEstadoCount,
+  type DgaSlotsResumen,
+} from '../../../../services/dga.service';
+
+type BulkAction = 'recalcular' | 'dar_de_baja';
+
+/** Estados que la acción en bloque puede tocar. Debe calzar con el backend. */
+const TOCABLES = new Set(['pendiente', 'requires_review', 'fallido']);
+
+const ETIQUETA_ESTADO: Record<string, string> = {
+  vacio: 'Vacío',
+  pendiente: 'Pendiente',
+  requires_review: 'Requiere revisión',
+  enviando: 'Enviando',
+  enviado: 'Enviado',
+  rechazado: 'Rechazado',
+  fallido: 'Fallido',
+};
+
+/**
+ * Qué le pasa a cada estado si el pozo se pone en `rest`.
+ *
+ * Es la pregunta que uno trae al abrir el panel —"¿qué sale a la DGA?"— y que
+ * el desglose por estado a secas no responde: en S128 el conteo decía 14
+ * afectables cuando el único enviable era 1.
+ */
+const DESTINO_ENVIO: Record<string, string> = {
+  pendiente: 'se enviará a la DGA',
+  enviado: 'ya declarado',
+  enviando: 'envío en curso',
+  rechazado: 'rechazado por SNIA',
+  requires_review: 'retenido, no se envía',
+  fallido: 'cerrado, no se envía',
+  vacio: 'sin llenar todavía',
+};
+
+/** Estados que el worker de envío toma cuando el pozo está en `rest`. */
+const ENVIABLES = new Set(['pendiente']);
+
+const MOTIVOS: { id: DgaMotivoBaja; label: string }[] = [
+  { id: 'recambio_instrumento', label: 'Recambio de instrumento' },
+  { id: 'sin_dato_crudo', label: 'Sin dato crudo del equipo' },
+  { id: 'dato_no_confiable', label: 'Dato existe pero no es declarable' },
+  { id: 'otro', label: 'Otro (ver el motivo escrito)' },
+];
+
+/**
+ * Mantenimiento de slots DGA de un pozo: recalcular o dar de baja un rango.
+ *
+ * Existe porque hasta ahora estas dos cosas solo se podían hacer entrando a la
+ * base. La pantalla de Revisión DGA actúa de a un slot y solo sobre los que
+ * están en `requires_review`, así que quedaban dos huecos:
+ *
+ *   - Corregiste un mapeo (una unidad, un factor, un cut-off) y los slots ya
+ *     materializados siguen con el valor viejo. No se recalculan solos.
+ *   - Un slot pasó la validación pero su dato NO es declarable, así que nunca
+ *     entró a la cola de revisión y no había forma de cerrarlo.
+ *
+ * El flujo es de dos pasos a propósito: primero "Revisar", que solo lee y
+ * muestra qué hay en el rango, y recién con eso a la vista se habilitan las
+ * acciones. Una acción de rango aplicada a ciegas sobre declaraciones DGA es
+ * exactamente lo que no queremos.
+ */
+@Component({
+  selector: 'app-dga-slots-mantenimiento',
+  standalone: true,
+  imports: [CommonModule, FormsModule, A11yModule],
+  template: `
+    <div
+      class="anim-backdrop fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-slate-950/55 px-4 py-8 backdrop-blur-sm"
+      animate.leave="anim-overlay-out"
+      (click)="cerrar.emit()"
+    >
+      <section
+        class="anim-panel w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+        role="dialog"
+        cdkTrapFocus
+        cdkTrapFocusAutoCapture
+        aria-modal="true"
+        aria-labelledby="mantenimiento-slots-titulo"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="cerrar.emit()"
+      >
+        <div class="flex items-start gap-4 border-b border-slate-100 px-5 py-5">
+          <span
+            aria-hidden="true"
+            class="material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-tint-08 text-[24px] text-primary-container"
+            >build</span
+          >
+          <div class="min-w-0 flex-1">
+            <h3 id="mantenimiento-slots-titulo" class="text-h6 font-semibold text-slate-900">
+              Mantenimiento de slots
+            </h3>
+            <p class="mt-1 text-caption leading-5 text-slate-500">
+              Recalcular vuelve a armar los slots con la configuración actual del mapeo — es lo que
+              hay que hacer después de corregir una unidad o un factor. Dar de baja los cierra con
+              una nota, para el dato que existe pero no es declarable.
+              <strong>Nunca toca lo ya enviado a la DGA.</strong>
+            </p>
+          </div>
+          <button
+            type="button"
+            (click)="cerrar.emit()"
+            class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
+            aria-label="Cerrar mantenimiento de slots"
+          >
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
+          </button>
+        </div>
+
+        <div class="px-5 py-5">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                class="mb-1 block text-caption font-bold text-slate-500"
+                [attr.for]="'slots-desde'"
+                >Desde (hora Chile, UTC−4)</label
+              >
+              <input
+                id="slots-desde"
+                type="datetime-local"
+                [ngModel]="desde()"
+                (ngModelChange)="onRangoChange('desde', $event)"
+                name="slots-desde"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
+              />
+            </div>
+            <div>
+              <label
+                class="mb-1 block text-caption font-bold text-slate-500"
+                [attr.for]="'slots-hasta'"
+                >Hasta (exclusivo)</label
+              >
+              <input
+                id="slots-hasta"
+                type="datetime-local"
+                [ngModel]="hasta()"
+                (ngModelChange)="onRangoChange('hasta', $event)"
+                name="slots-hasta"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
+              />
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label
+              class="mb-1 block text-caption font-bold text-slate-500"
+              [attr.for]="'slots-nota'"
+              >Motivo (queda en la auditoría)</label
+            >
+            <input
+              id="slots-nota"
+              [ngModel]="nota()"
+              (ngModelChange)="nota.set($event)"
+              name="slots-nota"
+              maxlength="500"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
+              placeholder="Ej: corregida la unidad del caudal, m3/h declarado como L/s"
+            />
+            <p class="mt-1 text-caption-xs text-slate-500">
+              Mínimo 5 caracteres. Es la única constancia de por qué este tramo se recalculó o no se
+              declaró.
+            </p>
+          </div>
+
+          <div class="mt-3">
+            <label
+              class="mb-1 block text-caption font-bold text-slate-500"
+              [attr.for]="'slots-motivo-tipo'"
+              >Tipo de baja</label
+            >
+            <select
+              id="slots-motivo-tipo"
+              [ngModel]="motivoTipo()"
+              (ngModelChange)="motivoTipo.set($event)"
+              name="slots-motivo-tipo"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-body-sm text-slate-900 outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,175,189,0.18)]"
+            >
+              @for (m of motivos; track m.id) {
+                <option [value]="m.id">{{ m.label }}</option>
+              }
+            </select>
+            <p class="mt-1 text-caption-xs text-slate-500">
+              Queda consultable en el slot. Un recambio de instrumento es un evento esperado, no un
+              fallo del sistema, y así se puede distinguir después.
+            </p>
+          </div>
+
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              (click)="revisar()"
+              [disabled]="!rangoValido() || busy() !== ''"
+              [attr.aria-busy]="busy() === 'revisar'"
+              class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-body-sm font-bold text-slate-600 transition hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              {{ busy() === 'revisar' ? 'Revisando…' : 'Revisar' }}
+            </button>
+          </div>
+
+          @if (error()) {
+            <p class="mt-3 text-caption font-semibold text-red-700" role="alert">{{ error() }}</p>
+          }
+
+          @if (resumen(); as r) {
+            <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p class="text-caption font-bold uppercase tracking-[0.1em] text-slate-500">
+                En el rango: {{ r.total }} {{ r.total === 1 ? 'slot' : 'slots' }}
+              </p>
+              @if (r.total === 0) {
+                <p class="mt-2 text-caption text-slate-600">
+                  No hay slots en ese rango. Revisá las fechas.
+                </p>
+              } @else {
+                <ul class="mt-2 space-y-1">
+                  @for (e of r.estados; track etiquetaFila(e)) {
+                    <li class="flex items-start justify-between gap-3 text-caption">
+                      <span class="min-w-0 text-slate-700">
+                        {{ etiquetaFila(e) }}
+                        <span class="text-slate-500">— {{ destinoEnvio(e.estatus) }}</span>
+                        @if (!esTocable(e.estatus)) {
+                          <span class="font-semibold text-slate-500">· no se toca</span>
+                        }
+                      </span>
+                      <span class="shrink-0 font-mono text-slate-900">{{ e.total }}</span>
+                    </li>
+                  }
+                </ul>
+                <div class="mt-3 space-y-1 border-t border-slate-200 pt-2">
+                  <p class="text-caption font-semibold text-slate-800">
+                    Saldrían a la DGA al poner en envío: {{ enviables() }}
+                    {{ enviables() === 1 ? 'slot' : 'slots' }}
+                  </p>
+                  <p class="text-caption text-slate-600">
+                    La acción afectaría {{ tocables() }} {{ tocables() === 1 ? 'slot' : 'slots' }}
+                    @if (yaDeBaja() > 0) {
+                      , de los cuales <strong>{{ yaDeBaja() }}</strong> ya están dados de baja
+                    }
+                    .
+                  </p>
+                </div>
+                @if (r.total > r.limite) {
+                  <p class="mt-1 text-caption text-amber-700">
+                    El rango supera el tope de {{ r.limite }} por operación: se procesan los más
+                    antiguos primero y hay que repetir.
+                  </p>
+                }
+              }
+            </div>
+
+            @if (tocables() > 0) {
+              <div class="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  (click)="ejecutar('recalcular')"
+                  [disabled]="!puedeEjecutar()"
+                  [attr.aria-busy]="busy() === 'recalcular'"
+                  [attr.aria-label]="
+                    'Recalcular ' + tocables() + ' slots con la configuración actual del mapeo'
+                  "
+                  class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-body-sm font-bold text-slate-600 transition hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {{ busy() === 'recalcular' ? 'Recalculando…' : 'Recalcular' }}
+                </button>
+                <button
+                  type="button"
+                  (click)="ejecutar('dar_de_baja')"
+                  [disabled]="!puedeEjecutar()"
+                  [attr.aria-busy]="busy() === 'dar_de_baja'"
+                  [attr.aria-label]="
+                    'Dar de baja ' + tocables() + ' slots: quedan cerrados y no se declaran'
+                  "
+                  class="rounded-md bg-red-600 px-3 py-2 text-caption font-semibold text-white transition-colors hover:bg-red-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {{ busy() === 'dar_de_baja' ? 'Dando de baja…' : 'Dar de baja' }}
+                </button>
+              </div>
+              @if (!notaValida()) {
+                <p class="mt-2 text-caption text-slate-500">
+                  Escribí el motivo para habilitar las acciones.
+                </p>
+              }
+            }
+          }
+
+          @if (resultado(); as res) {
+            <div
+              class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3"
+              role="alert"
+              aria-labelledby="resultado-slots-titulo"
+            >
+              <p id="resultado-slots-titulo" class="text-caption font-bold text-emerald-800">
+                {{ res.action === 'recalcular' ? 'Recalculados' : 'Dados de baja' }}:
+                {{ res.afectados }} {{ res.afectados === 1 ? 'slot' : 'slots' }}
+              </p>
+              @if (res.action === 'recalcular') {
+                <p class="mt-1 text-caption text-emerald-700">
+                  Quedaron en vacío. El worker los vuelve a llenar de a 24 por minuto, así que en
+                  unos minutos deberían estar todos con el valor nuevo.
+                </p>
+              }
+              @if (noTocados(res) > 0) {
+                <p class="mt-1 text-caption text-emerald-700">
+                  {{ noTocados(res) }} quedaron sin tocar por estar enviados o en envío.
+                </p>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+  `,
+})
+export class DgaSlotsMantenimientoComponent {
+  siteId = input.required<string>();
+
+  /** Avisa al padre para que refresque los KPI y la tabla del tab. */
+  @Output() slotsChanged = new EventEmitter<void>();
+
+  /** Cierra el modal. El padre decide si sigue montado. */
+  @Output() cerrar = new EventEmitter<void>();
+
+  private dgaService = inject(DgaService);
+
+  desde = signal('');
+  hasta = signal('');
+  nota = signal('');
+  motivoTipo = signal<DgaMotivoBaja>('recambio_instrumento');
+  busy = signal('');
+  error = signal('');
+  resumen = signal<DgaSlotsResumen | null>(null);
+  resultado = signal<DgaBulkSlotActionResult | null>(null);
+
+  /** Slots del rango que la acción sí puede tocar. */
+  tocables = computed(() =>
+    (this.resumen()?.estados ?? [])
+      .filter((e) => TOCABLES.has(e.estatus))
+      .reduce((acc, e) => acc + e.total, 0),
+  );
+
+  /**
+   * Los que el worker de envío realmente tomaría. Es la pregunta que uno trae
+   * al abrir el panel, y no coincide con los afectables: en S128 eran 1 de 829
+   * mientras el conteo de afectables decía 14.
+   */
+  enviables = computed(() =>
+    (this.resumen()?.estados ?? [])
+      .filter((e) => ENVIABLES.has(e.estatus))
+      .reduce((acc, e) => acc + e.total, 0),
+  );
+
+  /** Afectables que ya están cerrados: volver a darlos de baja no aporta. */
+  yaDeBaja = computed(() =>
+    (this.resumen()?.estados ?? [])
+      .filter((e) => e.estatus === 'fallido' && e.baja_manual)
+      .reduce((acc, e) => acc + e.total, 0),
+  );
+
+  notaValida = computed(() => this.nota().trim().length >= 5);
+  rangoValido = computed(() => {
+    const d = this.desde();
+    const h = this.hasta();
+    return Boolean(d && h && new Date(d) < new Date(h));
+  });
+  puedeEjecutar = computed(
+    () => this.rangoValido() && this.notaValida() && this.busy() === '' && this.tocables() > 0,
+  );
+
+  readonly motivos = MOTIVOS;
+
+  etiquetaEstado(estatus: string): string {
+    return ETIQUETA_ESTADO[estatus] ?? estatus;
+  }
+
+  /**
+   * Etiqueta de la fila del desglose. Un `fallido` cerrado a mano se muestra
+   * como "Dado de baja": llamarlo "Fallido" hace que un recambio de instrumento
+   * —un evento esperado y documentado— se lea como una falla del sistema.
+   */
+  etiquetaFila(e: DgaSlotEstadoCount): string {
+    if (e.estatus === 'fallido' && e.baja_manual) return 'Dado de baja';
+    return this.etiquetaEstado(e.estatus);
+  }
+
+  /** Qué le pasa a ese estado si el pozo se pone en envío. */
+  destinoEnvio(estatus: string): string {
+    return DESTINO_ENVIO[estatus] ?? 'sin clasificar';
+  }
+
+  esTocable(estatus: string): boolean {
+    return TOCABLES.has(estatus);
+  }
+
+  /** Total del rango menos los efectivamente afectados. */
+  noTocados(res: DgaBulkSlotActionResult): number {
+    return res.antes.reduce((acc, e) => acc + e.total, 0) - res.afectados;
+  }
+
+  /**
+   * Cambiar el rango invalida el resumen: dejarlo en pantalla habilitaría las
+   * acciones con un conteo que ya no corresponde a las fechas de los inputs.
+   */
+  onRangoChange(campo: 'desde' | 'hasta', valor: string): void {
+    if (campo === 'desde') this.desde.set(valor);
+    else this.hasta.set(valor);
+    this.resumen.set(null);
+    this.resultado.set(null);
+  }
+
+  revisar(): void {
+    if (!this.rangoValido()) return;
+    this.busy.set('revisar');
+    this.error.set('');
+    this.resultado.set(null);
+    this.dgaService.slotsResumen(this.siteId(), this.desdeIso(), this.hastaIso()).subscribe({
+      next: (r) => {
+        this.busy.set('');
+        this.resumen.set(r);
+      },
+      error: (err: unknown) => {
+        this.busy.set('');
+        this.resumen.set(null);
+        this.error.set(this.mensajeError(err, 'No fue posible leer el rango.'));
+      },
+    });
+  }
+
+  ejecutar(action: BulkAction): void {
+    if (!this.puedeEjecutar()) return;
+    this.busy.set(action);
+    this.error.set('');
+    this.dgaService
+      .bulkSlotAction(this.siteId(), {
+        action,
+        desde: this.desdeIso(),
+        hasta: this.hastaIso(),
+        motivo_tipo: this.motivoTipo(),
+        nota: this.nota().trim(),
+      })
+      .subscribe({
+        next: (res) => {
+          this.busy.set('');
+          this.resultado.set(res);
+          // El conteo anterior ya no vale: los slots cambiaron de estado.
+          this.resumen.set(null);
+          this.slotsChanged.emit();
+        },
+        error: (err: unknown) => {
+          this.busy.set('');
+          this.error.set(this.mensajeError(err, 'No fue posible aplicar la acción.'));
+        },
+      });
+  }
+
+  /**
+   * `datetime-local` entrega hora de pared sin zona. La convención del proyecto
+   * es UTC−4 fijo, así que se ancla explícitamente en vez de dejar que el
+   * navegador use la zona del sistema — que en verano chileno es UTC−3 y
+   * correría el rango una hora.
+   */
+  private desdeIso(): string {
+    return `${this.desde()}:00-04:00`;
+  }
+  private hastaIso(): string {
+    return `${this.hasta()}:00-04:00`;
+  }
+
+  private mensajeError(err: unknown, fallback: string): string {
+    const e = err as { error?: { message?: string; error?: string }; message?: string };
+    return e?.error?.message || e?.error?.error || e?.message || fallback;
+  }
+}

@@ -91,9 +91,13 @@
             },
             "development": {
               "buildTarget": "frontend-angular:build:development"
+            },
+            "local": {
+              "buildTarget": "frontend-angular:build:development",
+              "proxyConfig": "proxy.conf.local.json"
             }
           },
-          "defaultConfiguration": "production-api",
+          "defaultConfiguration": "development",
           "options": {
             "proxyConfig": "proxy.conf.json",
             "allowedHosts": ["nuevacloud.emeltec.cl", "104.46.7.78"]
@@ -103,7 +107,8 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "tsconfig.spec.json",
-            "runner": "vitest"
+            "runner": "vitest",
+            "setupFiles": ["src/test-polyfills.ts"]
           }
         }
       }

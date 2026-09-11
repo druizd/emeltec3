@@ -1,11 +1,8 @@
-const { m3hALs } = require('../utils/caudal');
-const {
-  parseIEEE754,
-  registrosModbusAFloat32,
-  registrosModbusAUInt32,
-} = require('../utils/ieee754');
 const { calcularNivelFreatico } = require('../utils/nivelFreatico');
 const { VARIABLE_TRANSFORM_IDS } = require('../config/siteTypeCatalog');
+// Fuente única de la matemática de transformación (CommonJS, resuelve en dev
+// src/, dist/ y vitest sin ambigüedad de extensión).
+const { applyMappingTransform, parseMappingParams } = require('../utils/mappingTransform.js');
 
 const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
 
@@ -16,18 +13,6 @@ function cleanString(value) {
 
 function isPlainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value);
-}
-
-function parseMappingParams(value) {
-  if (isPlainObject(value)) return value;
-  if (typeof value !== 'string' || !value.trim()) return {};
-
-  try {
-    const parsed = JSON.parse(value);
-    return isPlainObject(parsed) ? parsed : {};
-  } catch (_err) {
-    return {};
-  }
 }
 
 function numberOrNull(value) {
@@ -60,12 +45,6 @@ function readRawValue(rawData, key) {
   return rawData[key];
 }
 
-function parseBooleanParam(value, fallback = false) {
-  if (value === undefined || value === null || value === '') return fallback;
-  if (typeof value === 'boolean') return value;
-  return ['true', '1', 'si', 'yes'].includes(String(value).trim().toLowerCase());
-}
-
 function normalizeVariableTransform(value) {
   const normalized = cleanString(value).toLowerCase();
   const allowedValue = normalized || 'directo';
@@ -78,94 +57,6 @@ function normalizeVariableTransform(value) {
 
 function normalizeTransform(value) {
   return normalizeVariableTransform(value) || cleanString(value).toLowerCase();
-}
-
-function applyLinearTransform(value, params = {}) {
-  const base = requireFiniteNumber(value, 'valor');
-  const factor = numberOrNull(params.factor) ?? 1;
-  const offset = numberOrNull(params.offset) ?? 0;
-  return base * factor + offset;
-}
-
-function applyUInt32RegistersTransform({ rawData, mapping, params }) {
-  const rawD1 = readRawValue(rawData, mapping.d1);
-  const rawD2 = readRawValue(rawData, mapping.d2);
-  const wordAlta = requireFiniteNumber(rawD1, mapping.d1);
-  const wordBaja = requireFiniteNumber(rawD2, mapping.d2 || 'd2');
-  const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-  const combinado = registrosModbusAUInt32(wordAlta, wordBaja, wordSwap).valor;
-  // Aplica factor + offset al uint32 combinado para permitir decimales
-  // (ej. factor=0.01 corre 2 decimales). factor defaultea a 1 → retrocompatible
-  // con configs que solo guardaban offset.
-  return applyLinearTransform(combinado, params);
-}
-
-function applyIeeeTransform({ rawData, mapping, params }) {
-  const rawD1 = readRawValue(rawData, mapping.d1);
-  const rawD2 = readRawValue(rawData, mapping.d2);
-
-  if (mapping.d2) {
-    const wordAlta = requireFiniteNumber(rawD1, mapping.d1);
-    const wordBaja = requireFiniteNumber(rawD2, mapping.d2);
-    const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-    return registrosModbusAFloat32(wordAlta, wordBaja, wordSwap).valor;
-  }
-
-  if (rawD1 === undefined || rawD1 === null) {
-    throw new Error(`No existe dato crudo ${mapping.d1}`);
-  }
-
-  return parseIEEE754(rawD1, {
-    formato: params.formato || 'float32',
-    byteOrder: params.byteOrder || params.word_order || 'BE',
-  });
-}
-
-function applyMappingTransform({ rawData, mapping, pozoConfig }) {
-  const params = parseMappingParams(mapping.parametros);
-  const transformacion = normalizeTransform(mapping.transformacion);
-  const rawD1 = readRawValue(rawData, mapping.d1);
-
-  switch (transformacion) {
-    case 'directo':
-      return rawD1;
-
-    case 'lineal':
-      return applyLinearTransform(rawD1, params);
-
-    case 'lineal_int16': {
-      const raw = requireFiniteNumber(rawD1, mapping.d1);
-      const signed = raw > 32767 ? raw - 65536 : raw;
-      return applyLinearTransform(signed, params);
-    }
-
-    case 'ieee754_32':
-      return applyIeeeTransform({ rawData, mapping, params });
-
-    case 'uint32_registros':
-    case 'uint32':
-      return applyUInt32RegistersTransform({ rawData, mapping, params });
-
-    case 'nivel_freatico': {
-      const lecturaPozo = applyLinearTransform(rawD1, params);
-      return calcularNivelFreatico({
-        lecturaPozo,
-        profundidadSensor: numberOrNull(pozoConfig?.profundidad_sensor_m),
-        profundidadTotal: requireFiniteNumber(pozoConfig?.profundidad_pozo_m, 'profundidad_pozo_m'),
-      });
-    }
-
-    case 'caudal_m3h_lps': {
-      const caudalM3h = applyLinearTransform(rawD1, params);
-      return m3hALs(caudalM3h);
-    }
-
-    case 'formula':
-      throw new Error('transformacion formula aun no esta habilitada en dashboard-data');
-
-    default:
-      throw new Error(`transformacion no soportada: ${mapping.transformacion}`);
-  }
 }
 
 function responseKeyForMapping(mapping) {
@@ -364,6 +255,9 @@ function buildResumen(variables) {
   for (const variable of variables) {
     const role = dashboardRoleForVariable(variable);
     if (role === 'generico') continue;
+    // Mismo criterio que findHistoricalVariable: un mapeo roto no pisa al que
+    // ya calculó para ese rol. Sin esto el resumen dependía del ORDER BY alias.
+    if (resumen[role]?.ok && variable.ok === false) continue;
 
     resumen[role] = {
       ok: variable.ok,
@@ -463,7 +357,22 @@ function findHistoricalVariable(variables, role) {
       }
     }
 
-    if (score > bestScore) {
+    if (score === 0) continue;
+
+    // Entre candidatos al rol, la variable que sí calculó le gana a la rota
+    // aunque puntúe menos. Dos mapeos con el mismo rol son el resto típico de
+    // un recambio de equipo (el registro viejo ya no llega) y el bono del
+    // totalizador uint32 (110 vs 90 del rol) no puede premiar a un mapeo que
+    // está fallando: eso dejó a S128 declarando acumulado null a DGA el
+    // 04-09-2026. A igual salud manda el puntaje y, a igual puntaje, el orden.
+    const bestRoto = best !== null && best.ok === false;
+    const variableRota = variable.ok === false;
+    const gana =
+      best === null ||
+      (bestRoto && !variableRota) ||
+      (bestRoto === variableRota && score > bestScore);
+
+    if (gana) {
       best = variable;
       bestScore = score;
     }
@@ -491,6 +400,61 @@ function serializeHistoricalVariable(variable) {
   };
 }
 
+/**
+ * Los mapeos de bits del sitio, ordenados por dato original y número de bit.
+ *
+ * Las señales digitales NO pasan por `findHistoricalVariable`: esa función
+ * asigna UN mapping por rol con búsqueda difusa de tokens, y acá son N señales
+ * sin rol (una palabra de entradas digitales las tiene todas en `generico`).
+ * Se resuelven por transformación, que es exacta.
+ */
+function digitalMappings(mappings) {
+  return (mappings || [])
+    .filter((mapping) => normalizeTransform(mapping.transformacion) === 'bit')
+    .map((mapping) => ({
+      mapping,
+      key: responseKeyForMapping(mapping),
+      alias: mapping.alias || mapping.d1,
+      bit: numberOrNull(parseMappingParams(mapping.parametros).bit) ?? 0,
+    }))
+    .sort((a, b) => a.mapping.d1.localeCompare(b.mapping.d1, 'es-CL') || a.bit - b.bit);
+}
+
+/**
+ * Serializa las señales digitales de UNA fila cruda.
+ *
+ * Se calculan aparte de los roles históricos porque son por sitio y variables
+ * en número: un objeto `{ clave: {ok, valor, alias, bit} }` deja el shape de la
+ * fila estable aunque el sitio tenga 0 o 32 señales. `valor` es 1/0, nunca
+ * booleano — lo mismo que devuelve el dashboard en vivo.
+ */
+function serializeDigitalRow(digitales, rawData, telemetryError = null) {
+  const out = {};
+
+  for (const entry of digitales) {
+    try {
+      if (telemetryError) throw new Error(telemetryError);
+      out[entry.key] = {
+        ok: true,
+        valor: applyMappingTransform({ rawData, mapping: entry.mapping }),
+        alias: entry.alias,
+        bit: entry.bit,
+        error: null,
+      };
+    } catch (err) {
+      out[entry.key] = {
+        ok: false,
+        valor: null,
+        alias: entry.alias,
+        bit: entry.bit,
+        error: err.message,
+      };
+    }
+  }
+
+  return out;
+}
+
 function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
   const rawData = row?.data || {};
   const variables = buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData });
@@ -505,6 +469,7 @@ function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
     nivel_freatico: serializeHistoricalVariable(
       findHistoricalVariable(variables, 'nivel_freatico'),
     ),
+    digitales: serializeDigitalRow(digitalMappings(mappings), rawData),
   };
 }
 
@@ -533,6 +498,10 @@ function createHistoricalRowMapper({ site, mappings, pozoConfig, sampleRawData =
     pozoConfig,
     rawData: sampleRawData,
   });
+
+  // Las señales digitales se resuelven una sola vez, igual que los roles: por
+  // fila queda solo la aritmética del bit dentro de applyMappingTransform.
+  const digitales = digitalMappings(mappings);
 
   const mappingById = new Map(mappings.map((mapping) => [mapping.id, mapping]));
   const mappingByKey = new Map(
@@ -582,6 +551,8 @@ function createHistoricalRowMapper({ site, mappings, pozoConfig, sampleRawData =
       fecha: toUtcIsoString(row.time),
       received_at: toUtcIsoString(row.received_at),
     };
+
+    out.digitales = serializeDigitalRow(digitales, rawData);
 
     for (const role of HISTORICAL_ROLES) {
       const r = resolved[role];
@@ -634,4 +605,6 @@ module.exports = {
   buildSiteDashboardData,
   mapHistoricalDashboardRow,
   createHistoricalRowMapper,
+  digitalMappings,
+  serializeDigitalRow,
 };
