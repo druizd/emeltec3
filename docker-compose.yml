@@ -54,8 +54,8 @@ services:
     volumes:
       - timescale_data:/var/lib/postgresql/data
       - ./infra-db/init-db:/docker-entrypoint-initdb.d
-    mem_limit: 700m
-    mem_reservation: 400m
+    mem_limit: 1024m
+    mem_reservation: 512m
     pids_limit: 150
     logging:
       driver: json-file
@@ -108,8 +108,8 @@ services:
       redis:
         condition: service_healthy
     healthcheck: *healthcheck-main-api
-    mem_limit: 300m
-    mem_reservation: 150m
+    mem_limit: 512m
+    mem_reservation: 256m
     pids_limit: 80
     logging:
       driver: json-file
@@ -200,8 +200,8 @@ services:
       main-api:
         condition: service_healthy
     healthcheck: *healthcheck-auth-api
-    mem_limit: 150m
-    mem_reservation: 80m
+    mem_limit: 256m
+    mem_reservation: 128m
     pids_limit: 80
     logging:
       driver: json-file
