@@ -1,4 +1,11 @@
+---
+aliases: [incidente csvconsumer, reconexion postgresql]
+tags: [vault/infrastructure, vault/telemetry]
+---
+
 # Incidente: csvconsumer pierde conexión a PostgreSQL — 2026-07-13
+
+← [[HOME]] | Ver también: [[../grpc-pipeline/csvconsumer]] · [[../grpc-pipeline/csvprocessor]]
 
 **Estado:** ✅ Resuelto — fix inmediato aplicado | ⏳ Fix permanente pendiente de deploy
 

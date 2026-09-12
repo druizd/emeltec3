@@ -1,4 +1,11 @@
+---
+aliases: [incidente vm caida, vm linux caida]
+tags: [vault/infrastructure]
+---
+
 # Incidente: VM Linux caída — 2026-07-10
+
+← [[HOME]] | Ver también: [[arquitectura-general]] · [[watchdog-windows]] · [[monitor-alertas]]
 
 **Estado:** ✅ Resuelto — 19:10 UTC aprox.
 
