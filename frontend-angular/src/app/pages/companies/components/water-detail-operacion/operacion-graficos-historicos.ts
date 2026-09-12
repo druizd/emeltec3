@@ -90,6 +90,10 @@ function lunesDeSemana(dia: string): Date | null {
 
 type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
 
+/** Umbral desde el cual `rowsInRange` deja de usar el buffer realtime (48h)
+ * y pasa a `trendRows` (fetch de rango amplio). Ver `maybeLoadTrendRange`. */
+const REALTIME_WINDOW_MS = 47 * 3_600_000;
+
 @Component({
   selector: 'app-operacion-graficos-historicos',
   standalone: true,
@@ -1194,7 +1198,12 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
   private rowsInRange(field: 'caudal' | 'nivelFreatico'): { t: number; v: number }[] {
     const start = this.chartStart().getTime();
     const end = this.chartEnd().getTime();
-    return this.historyRows()
+    // El bundle realtime (`historyRows`) solo trae 48h. Para rangos mas largos
+    // (7d / custom > 48h) se usa `trendRows`, poblado aparte via dashboard-history
+    // con from/to explicitos (sin ese limite) — ver `maybeLoadTrendRange`.
+    const needsWideRange = end - start > REALTIME_WINDOW_MS;
+    const source = needsWideRange ? this.state.trendRows : this.historyRows;
+    return source()
       .filter(
         (r): r is HistoricalRow & { timestampMs: number } =>
           r.timestampMs !== null &&
@@ -1901,6 +1910,7 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     this.editStart.set(this.toDatetimeLocal(start));
     this.editEnd.set(this.toDatetimeLocal(end));
     this.chartRangeOpen.set(false);
+    this.maybeLoadTrendRange(start, end);
   }
 
   onEditStart(value: string): void {
@@ -1920,6 +1930,23 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     this.chartStart.set(start);
     this.chartEnd.set(end);
     this.chartRangeOpen.set(false);
+    this.maybeLoadTrendRange(start, end);
+  }
+
+  /** Trae historia amplia (fuera del buffer realtime de 48h) solo cuando el
+   * rango elegido la necesita — evita pedidos de mas de 3500 buckets inutiles
+   * para 6h/12h/24h/48h, que ya sirve `historyRows` del poll realtime. */
+  private maybeLoadTrendRange(start: Date, end: Date): void {
+    if (end.getTime() - start.getTime() <= REALTIME_WINDOW_MS) return;
+    const siteId = this.resolveSiteId();
+    if (!siteId) return;
+    const spanDays = (end.getTime() - start.getTime()) / 86_400_000;
+    const granularity = spanDays > 30 ? '1d' : '1h';
+    this.state.loadTrendRange(siteId, this.toDateOnly(start), this.toDateOnly(end), granularity);
+  }
+
+  private toDateOnly(date: Date): string {
+    return date.toISOString().slice(0, 10);
   }
 
   // ── Chart builders ────────────────────────────────────────
