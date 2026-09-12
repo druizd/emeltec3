@@ -59,6 +59,12 @@ const RANGE_MS: Record<'24h' | '7d', number> = {
   '7d': 7 * 24 * 60 * 60 * 1000,
 };
 
+/** Colores fijos por métrica (no por pozo): Caudal y Nivel deben leerse como
+ * series distintas de un vistazo, incluso con un solo pozo visible. El color
+ * del chip de cada pozo (PALETTE) solo identifica el pozo a mostrar/ocultar. */
+const CAUDAL_COLOR = '#0dafbd';
+const NIVEL_COLOR = '#6366f1';
+
 /** Rellena el fondo en blanco antes de dibujar → los PNG exportados no salen
  * con fondo transparente (que se ve negro en visores). */
 const WHITE_BG: Plugin = {
@@ -182,12 +188,12 @@ const WHITE_BG: Plugin = {
               </span>
             </button>
           }
-          <span class="ml-1 inline-flex items-center gap-3 text-caption-xs text-slate-400">
-            <span class="inline-flex items-center gap-1">
-              <span class="inline-block h-0.5 w-5 rounded bg-slate-400"></span> Caudal
+          <span class="ml-1 inline-flex items-center gap-3 text-caption-xs font-semibold">
+            <span class="inline-flex items-center gap-1" style="color: #0dafbd">
+              <span class="inline-block h-0.5 w-5 rounded bg-current"></span> Caudal
             </span>
-            <span class="inline-flex items-center gap-1">
-              <span class="inline-block h-0 w-5 border-t-2 border-dashed border-slate-400"></span>
+            <span class="inline-flex items-center gap-1" style="color: #6366f1">
+              <span class="inline-block h-0 w-5 border-t-2 border-dashed border-current"></span>
               Nivel
             </span>
           </span>
@@ -507,14 +513,23 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
 
   /** Config de Chart.js compartida entre el gráfico combinado y los PNG por pozo. */
   private buildConfig(sites: SiteSeries[], forExport: boolean): ChartConfiguration<'line'> {
-    const datasets = sites.flatMap((s) => [
+    // Con varios pozos, cada serie extra de la misma métrica baja de opacidad
+    // (mismo color base, distinto peso) para no perder el contraste caudal/nivel.
+    const opacityStep = (i: number) => Math.max(1 - i * 0.3, 0.4);
+    const withAlpha = (hex: string, a: number) =>
+      `${hex}${Math.round(a * 255)
+        .toString(16)
+        .padStart(2, '0')}`;
+
+    const datasets = sites.flatMap((s, i) => [
       {
         label: `${s.nombre} · Caudal`,
         data: s.caudal,
         yAxisID: 'yCaudal',
-        borderColor: s.color,
-        backgroundColor: s.color,
-        borderWidth: 2,
+        borderColor: withAlpha(CAUDAL_COLOR, opacityStep(i)),
+        backgroundColor: withAlpha(CAUDAL_COLOR, opacityStep(i) * 0.15),
+        fill: true,
+        borderWidth: 2.5,
         pointRadius: 0,
         pointHoverRadius: 4,
         tension: 0.3,
@@ -524,10 +539,11 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
         label: `${s.nombre} · Nivel`,
         data: s.nivel,
         yAxisID: 'yNivel',
-        borderColor: s.color,
-        backgroundColor: s.color,
-        borderDash: [5, 4],
+        borderColor: withAlpha(NIVEL_COLOR, opacityStep(i)),
+        backgroundColor: withAlpha(NIVEL_COLOR, opacityStep(i)),
+        borderDash: [6, 3],
         borderWidth: 2,
+        fill: false,
         pointRadius: 0,
         pointHoverRadius: 4,
         tension: 0.3,
@@ -593,7 +609,7 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
             title: {
               display: true,
               text: 'Nivel freático (m)',
-              color: '#64748b',
+              color: NIVEL_COLOR,
               font: { family: 'DM Sans', size: 11, weight: 600 },
             },
             grid: { color: '#f1f5f9' },
@@ -606,7 +622,7 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
             title: {
               display: true,
               text: 'Caudal (l/s)',
-              color: '#64748b',
+              color: CAUDAL_COLOR,
               font: { family: 'DM Sans', size: 11, weight: 600 },
             },
             grid: { drawOnChartArea: false },

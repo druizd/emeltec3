@@ -16,6 +16,7 @@ import {
   type ContadorDiarioPoint,
   type ContadorJornadaPoint,
   type ContadorMensualPoint,
+  type HistoryGranularity,
   type SiteOperacionTurno,
 } from '../../../../services/company.service';
 
@@ -97,6 +98,54 @@ export class WaterOperacionStateService {
   // Graficos historicos). El parent fetches; los hijos consumen.
   readonly historyRows = signal<HistoricalRow[]>([]);
   readonly historyLoading = signal(false);
+
+  // `historyRows` viene del poll de operacion-bundle, que solo trae las
+  // ultimas 48h (limite del backend para la vista realtime). El selector de
+  // rango de "Graficos de Tendencia" (7d / rango custom) necesita historia
+  // mas larga: se trae aparte via dashboard-history?from&to (sin el cap de
+  // 48h) y se guarda aca para que el subcomponente no dependa de historyRows.
+  readonly trendRows = signal<HistoricalRow[]>([]);
+  readonly trendLoading = signal(false);
+
+  loadTrendRange(
+    siteId: string,
+    from: string,
+    to: string,
+    granularity: HistoryGranularity,
+    limit = 3500,
+  ): void {
+    this.trendLoading.set(true);
+    this.companyService
+      .getSiteDashboardHistory(siteId, limit, { from, to, granularity })
+      .pipe(
+        catchError(() => of(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((res) => {
+        this.trendLoading.set(false);
+        const rows = res && (res as { data?: { rows?: unknown[] } }).data?.rows;
+        this.trendRows.set(Array.isArray(rows) ? rows.map((row) => this.toHistoricalRow(row)) : []);
+      });
+  }
+
+  private toHistoricalRow(row: unknown): HistoricalRow {
+    const r = (row ?? {}) as Record<string, { ok?: boolean; valor?: unknown } | string | undefined>;
+    const timestamp = String(r['timestamp'] ?? r['fecha'] ?? '');
+    const parsed = timestamp ? new Date(timestamp) : null;
+    const num = (value: unknown): number | null => {
+      const v = value as { ok?: boolean; valor?: unknown } | undefined;
+      if (!v || v.ok === false || v.valor === null || v.valor === undefined) return null;
+      const n = typeof v.valor === 'number' ? v.valor : parseFloat(String(v.valor));
+      return Number.isFinite(n) ? n : null;
+    };
+    return {
+      timestampMs: parsed && !isNaN(parsed.getTime()) ? parsed.getTime() : null,
+      caudal: num(r['caudal']),
+      nivel: num(r['nivel']),
+      totalizador: num(r['totalizador']),
+      nivelFreatico: num(r['nivel_freatico']),
+    };
+  }
 
   // Contadores (mensual / diario / jornada) compartidos entre tabs: la
   // poll-suscription vive con el parent componente, asi que switching tabs
