@@ -1,0 +1,10 @@
+node_modules/
+.env
+.git
+.gitignore
+README.md
+docker-compose.yml
+dist/
+coverage/
+.tsbuildinfo
+test/

@@ -40,8 +40,8 @@ services:
     command: >
       postgres
       -c max_locks_per_transaction=128
-      -c shared_buffers=768MB
-      -c effective_cache_size=2GB
+      -c shared_buffers=256MB
+      -c effective_cache_size=768MB
       -c work_mem=4MB
     ports:
       # EMT-H03: la BD NO debe quedar expuesta a 0.0.0.0. Solo loopback
@@ -54,6 +54,14 @@ services:
     volumes:
       - timescale_data:/var/lib/postgresql/data
       - ./infra-db/init-db:/docker-entrypoint-initdb.d
+    mem_limit: 700m
+    mem_reservation: 400m
+    pids_limit: 150
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
@@ -100,6 +108,14 @@ services:
       redis:
         condition: service_healthy
     healthcheck: *healthcheck-main-api
+    mem_limit: 300m
+    mem_reservation: 150m
+    pids_limit: 80
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
 
   linux-db-api:
@@ -131,6 +147,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    mem_limit: 128m
+    mem_reservation: 64m
+    pids_limit: 30
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
 
   redis:
@@ -144,6 +168,14 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    mem_limit: 64m
+    mem_reservation: 32m
+    pids_limit: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
 
   auth-api:
@@ -168,6 +200,14 @@ services:
       main-api:
         condition: service_healthy
     healthcheck: *healthcheck-auth-api
+    mem_limit: 150m
+    mem_reservation: 80m
+    pids_limit: 80
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
 
   frontend-angular:
@@ -184,7 +224,21 @@ services:
         condition: service_healthy
       auth-api:
         condition: service_healthy
+    mem_limit: 32m
+    mem_reservation: 16m
+    pids_limit: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:80/ >/dev/null 2>&1 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   metrics-page:
     build: ./metrics-page
@@ -197,7 +251,21 @@ services:
         condition: service_healthy
       auth-api:
         condition: service_healthy
+    mem_limit: 32m
+    mem_reservation: 16m
+    pids_limit: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:80/ >/dev/null 2>&1 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   landing-emeltec:
     build: ./landing-emeltec
@@ -205,7 +273,21 @@ services:
     container_name: emeltec-landing
     ports:
       - '127.0.0.1:${LANDING_HOST_PORT:-8082}:80'
+    mem_limit: 32m
+    mem_reservation: 16m
+    pids_limit: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:80/ >/dev/null 2>&1 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   csvconsumer:
     build:
@@ -229,7 +311,21 @@ services:
     depends_on:
       timescaledb:
         condition: service_healthy
+    mem_limit: 64m
+    mem_reservation: 32m
+    pids_limit: 30
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'bash -c "exec 3<>/dev/tcp/localhost/50051" || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   ftpconsumer:
     build:
@@ -249,7 +345,21 @@ services:
     depends_on:
       timescaledb:
         condition: service_healthy
+    mem_limit: 64m
+    mem_reservation: 32m
+    pids_limit: 30
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'bash -c "exec 3<>/dev/tcp/localhost/50061" || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 volumes:
   timescale_data:
