@@ -116,7 +116,10 @@ describe('rearme cuando la condición se normaliza', () => {
     expect(hizoInsert(c)).toBe(false);
   });
 
-  it('un evento SIN reconocer no se auto-resuelve: alguien tiene que verlo', async () => {
+  it('un evento SIN reconocer también se rearma: si no, la regla queda muda', async () => {
+    // Dejarlo abierto para siempre significaba que la próxima vez que la
+    // condición ocurriera de verdad ya no habría aviso. Se cierra marcado como
+    // rearme automático, con las repeticiones que alcanzó a acumular.
     const c = makeClient({
       eventoAbierto: { id: 'EV1', reconocida_at: null },
       valorCrudo: 100,
@@ -124,13 +127,28 @@ describe('rearme cuando la condición se normaliza', () => {
 
     await evaluarAlerta(c, alerta);
 
-    expect(hizoUpdate(c, 'resuelta = TRUE')).toBe(false);
+    expect(hizoUpdate(c, 'resuelta = TRUE')).toBe(true);
+    expect(hizoUpdate(c, "resuelta_motivo = 'rearme_automatico'")).toBe(true);
     expect(hizoInsert(c)).toBe(false);
   });
 });
 
-describe('sin reconocer — sigue rigiendo el cooldown', () => {
-  it('dentro del cooldown no crea evento', async () => {
+describe('sin reconocer — un aviso por episodio', () => {
+  it('agrupa la repetición aunque nadie haya reconocido el evento', async () => {
+    // Antes el cooldown volvía a disparar acá: con el default de 60 minutos de
+    // las reglas por defecto, un correo por hora hasta que alguien reconociera.
+    const c = makeClient({
+      eventoAbierto: { id: 'EV1', reconocida_at: null },
+      dentroDeCooldown: false,
+    });
+
+    await evaluarAlerta(c, alerta);
+
+    expect(hizoInsert(c)).toBe(false);
+    expect(hizoUpdate(c, 'repeticiones')).toBe(true);
+  });
+
+  it('dentro del cooldown tampoco crea evento', async () => {
     const c = makeClient({
       eventoAbierto: { id: 'EV1', reconocida_at: null },
       dentroDeCooldown: true,
@@ -139,18 +157,6 @@ describe('sin reconocer — sigue rigiendo el cooldown', () => {
     await evaluarAlerta(c, alerta);
 
     expect(hizoInsert(c)).toBe(false);
-    expect(hizoUpdate(c, 'repeticiones')).toBe(false);
-  });
-
-  it('fuera del cooldown crea el evento y notifica', async () => {
-    const c = makeClient({
-      eventoAbierto: { id: 'EV1', reconocida_at: null },
-      dentroDeCooldown: false,
-    });
-
-    await evaluarAlerta(c, alerta);
-
-    expect(hizoInsert(c)).toBe(true);
   });
 
   it('sin ningún evento abierto, dispara normalmente', async () => {
@@ -159,5 +165,13 @@ describe('sin reconocer — sigue rigiendo el cooldown', () => {
     await evaluarAlerta(c, alerta);
 
     expect(hizoInsert(c)).toBe(true);
+  });
+
+  it('sin evento abierto pero dentro del cooldown no reabre: es el anti-flapping', async () => {
+    const c = makeClient({ eventoAbierto: null, dentroDeCooldown: true });
+
+    await evaluarAlerta(c, alerta);
+
+    expect(hizoInsert(c)).toBe(false);
   });
 });

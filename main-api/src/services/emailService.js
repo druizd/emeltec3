@@ -682,6 +682,148 @@ ${securityNoteHtml('Esta es una notificación automática del sistema de monitor
   }
 };
 
+/** Fila del consolidado: una tarjeta compacta, no una tabla de seis columnas. */
+function digestFilaHtml(fila) {
+  const color = SEVERIDAD_COLOR[fila.severidad] || '#64748b';
+  const valor = fila.valor
+    ? `<span style="font-family:'SF Mono','JetBrains Mono',Consolas,monospace;color:${color};font-weight:600;">${escapeHtml(fila.valor)}</span> &middot; `
+    : '';
+  const repes =
+    fila.repeticiones > 0
+      ? ` &middot; se repitió ${fila.repeticiones} ${fila.repeticiones === 1 ? 'vez' : 'veces'}`
+      : '';
+  const reconocida = fila.reconocida ? ' &middot; reconocida' : '';
+  const normalizada = fila.normalizada ? ' &middot; ya normalizada' : '';
+  return `
+                <tr>
+                  <td style="padding:14px 16px;border-bottom:1px solid #E2E8F0;">
+                    <p style="margin:0 0 6px;">
+                      <span style="display:inline-block;padding:3px 9px;background-color:${color};color:#FFFFFF;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;border-radius:9999px;">${escapeHtml(labelSeveridad(fila.severidad))}</span>
+                      <span style="font-size:14px;color:#1E293B;font-weight:600;padding-left:8px;">${escapeHtml(fila.sitio)}</span>
+                    </p>
+                    <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:#475569;">${escapeHtml(fila.mensaje)}</p>
+                    <p style="margin:0;font-size:11px;color:#94A3B8;">${valor}desde ${escapeHtml(fila.desde)}${repes}${reconocida}${normalizada} &middot; <a href="${fila.url}" style="color:#0899A5;text-decoration:none;">Ver el sitio</a></p>
+                  </td>
+                </tr>`;
+}
+
+function digestSeccionHtml(titulo, filas, omitidas, accentColor) {
+  if (filas.length === 0) return '';
+  const extra =
+    omitidas > 0
+      ? `
+                <tr>
+                  <td style="padding:12px 16px;font-size:12px;color:#64748B;">y ${omitidas} más en la plataforma.</td>
+                </tr>`
+      : '';
+  return `          <tr>
+            <td style="padding:20px 40px 0;">
+              <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(titulo)} (${filas.length + omitidas})</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;border-left:3px solid ${accentColor};overflow:hidden;">
+                ${filas.map(digestFilaHtml).join('')}${extra}
+              </table>
+            </td>
+          </tr>`;
+}
+
+function digestFilaTexto(fila) {
+  const partes = [
+    `[${labelSeveridad(fila.severidad)}] ${fila.sitio}`,
+    `  ${fila.mensaje}`,
+    `  desde ${fila.desde}${fila.repeticiones > 0 ? ` · se repitió ${fila.repeticiones} veces` : ''}${fila.reconocida ? ' · reconocida' : ''}${fila.normalizada ? ' · ya normalizada' : ''}`,
+    `  ${fila.url}`,
+  ];
+  return partes.join('\n');
+}
+
+/**
+ * Consolidado de alertas: un correo por destinatario con todo lo acumulado
+ * desde el envío anterior, en vez de un correo por evento cada cooldown.
+ *
+ * `nuevas` son alertas que aparecieron desde el último consolidado; `reaviso`
+ * son las que siguen abiertas y ya se avisaron antes (el recordatorio diario).
+ * Las críticas no pasan por acá: se mandan al instante con `sendAlertEmail`.
+ */
+exports.sendAlertDigestEmail = async ({
+  to,
+  nombre,
+  slotLabel,
+  nuevas = [],
+  reaviso = [],
+  omitidasNuevas = 0,
+  omitidasReaviso = 0,
+}) => {
+  try {
+    if (!to) {
+      console.warn('[emailService] sendAlertDigestEmail: "to" vacío, email omitido');
+      return;
+    }
+    const saludo = (nombre || '').trim() || 'usuario';
+    const totalNuevas = nuevas.length + omitidasNuevas;
+    const totalReaviso = reaviso.length + omitidasReaviso;
+    if (totalNuevas === 0 && totalReaviso === 0) return;
+
+    // El acento del correo lo pone la peor severidad que trae dentro.
+    const rank = { critica: 4, alta: 3, media: 2, baja: 1 };
+    const peor = [...nuevas, ...reaviso].reduce(
+      (acc, f) => ((rank[f.severidad] || 0) > (rank[acc] || 0) ? f.severidad : acc),
+      'baja',
+    );
+    const accentColor = SEVERIDAD_COLOR[peor] || '#0DAFBD';
+    const accentGradient = SEVERIDAD_GRADIENT[peor] || TEAL_GRADIENT;
+
+    const resumen = [
+      totalNuevas > 0
+        ? `${totalNuevas} ${totalNuevas === 1 ? 'alerta nueva' : 'alertas nuevas'}`
+        : '',
+      totalReaviso > 0
+        ? `${totalReaviso} que ${totalReaviso === 1 ? 'sigue abierta' : 'siguen abiertas'}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' y ');
+
+    const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">Resumen de alertas</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">Hola <strong style="color:#1E293B;">${escapeHtml(saludo)}</strong>, al ${escapeHtml(slotLabel)} hay ${escapeHtml(resumen)}.</p>
+            </td>
+          </tr>
+${digestSeccionHtml('Nuevas', nuevas, omitidasNuevas, accentColor)}
+${digestSeccionHtml('Siguen abiertas', reaviso, omitidasReaviso, '#94A3B8')}
+${ctaButtonHtml(ACCESS_URL, 'Ver todas en la plataforma', accentColor)}
+${securityNoteHtml('Este resumen se envía dos veces al día. Una alerta se avisa una sola vez: si la condición sigue activa vuelve a aparecer acá una vez al día, y si se normaliza la alerta se cierra sola. Las alertas críticas llegan al instante, en su propio correo.')}`;
+
+    const html = renderShell({
+      title: `Resumen de alertas · Emeltec`,
+      preheader: resumen,
+      accentColor,
+      accentGradient,
+      contentHtml,
+    });
+
+    const texto = [`Hola ${saludo},`, '', `Resumen de alertas al ${slotLabel}: ${resumen}.`];
+    if (nuevas.length > 0) {
+      texto.push('', `NUEVAS (${totalNuevas})`, '', ...nuevas.map(digestFilaTexto));
+      if (omitidasNuevas > 0) texto.push(`y ${omitidasNuevas} más en la plataforma.`);
+    }
+    if (reaviso.length > 0) {
+      texto.push('', `SIGUEN ABIERTAS (${totalReaviso})`, '', ...reaviso.map(digestFilaTexto));
+      if (omitidasReaviso > 0) texto.push(`y ${omitidasReaviso} más en la plataforma.`);
+    }
+    texto.push('', `Ver todas en la plataforma: ${ACCESS_URL}`);
+
+    await enviar({
+      to,
+      subject: `Resumen de alertas · ${totalNuevas} ${totalNuevas === 1 ? 'nueva' : 'nuevas'} · ${slotLabel}`,
+      text: texto.join('\n'),
+      html,
+    });
+  } catch (error) {
+    console.error('[emailService] Error enviando consolidado a', to, ':', error.message);
+  }
+};
+
 const TIER_META = {
   t12: {
     color: '#dc2626',
