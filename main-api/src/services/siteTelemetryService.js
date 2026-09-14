@@ -59,8 +59,11 @@ function normalizeTransform(value) {
   return normalizeVariableTransform(value) || cleanString(value).toLowerCase();
 }
 
-function responseKeyForMapping(mapping) {
-  if (mapping.rol_dashboard && mapping.rol_dashboard !== 'generico') return mapping.rol_dashboard;
+/**
+ * La clave derivada del alias. Es la identidad estable de una variable dentro
+ * del sitio: no cambia si le mueven el rol.
+ */
+function aliasKeyForMapping(mapping) {
   return (
     cleanString(mapping.alias)
       .normalize('NFD')
@@ -69,6 +72,11 @@ function responseKeyForMapping(mapping) {
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '') || mapping.d1
   );
+}
+
+function responseKeyForMapping(mapping) {
+  if (mapping.rol_dashboard && mapping.rol_dashboard !== 'generico') return mapping.rol_dashboard;
+  return aliasKeyForMapping(mapping);
 }
 
 function dashboardRoleForVariable(variable) {
@@ -421,6 +429,88 @@ function digitalMappings(mappings) {
 }
 
 /**
+ * Los mapeos analógicos del sitio, ordenados por alias.
+ *
+ * Espejo de `digitalMappings` para los sitios de proceso, donde las variables
+ * NO son caudal/nivel/totalizador: son las 4-20 mA y los float del equipo, y
+ * viven todas en `generico` porque el rol solo existe para la forma agua. Un
+ * sitio de agua igual las expone — la analógica de caudal aparece en `caudal`
+ * (por rol) y acá (por variable), que es lo que permite graficar cualquier
+ * serie sin inventarle un rol.
+ *
+ * Los bits quedan fuera: esos son `digitalMappings`.
+ *
+ * **La clave sale del alias, nunca del rol.** Un rol como `frio_temperatura` se
+ * repite entre variables (las cuatro temperaturas de los circuitos de frío de
+ * una sala de servicios), y usarlo de clave las haría colapsar entre sí: la
+ * desduplicación las separaría por orden alfabético, así que agregar una quinta
+ * variable movería de sensor a la columna `frio_temperatura_2` sin que nadie se
+ * entere — y esa clave es la que guardan el histórico, el CSV y las reglas de
+ * alerta. El rol viaja aparte, en el campo `rol`.
+ *
+ * Aun asi se desduplica: dos alias que normalizan igual ("Presión 1" y
+ * "presion_1") colapsarían, y una de las dos variables desaparecería sin aviso.
+ */
+function analogMappings(mappings) {
+  const usadas = new Set();
+
+  return (mappings || [])
+    .filter((mapping) => normalizeTransform(mapping.transformacion) !== 'bit')
+    .sort((a, b) =>
+      cleanString(a.alias || a.d1).localeCompare(cleanString(b.alias || b.d1), 'es-CL'),
+    )
+    .map((mapping) => {
+      const base = aliasKeyForMapping(mapping);
+      let key = base;
+      let n = 2;
+      while (usadas.has(key)) key = `${base}_${n++}`;
+      usadas.add(key);
+
+      return {
+        mapping,
+        key,
+        alias: mapping.alias || mapping.d1,
+        unidad: mapping.unidad || null,
+        rol: mapping.rol_dashboard || 'generico',
+      };
+    });
+}
+
+/**
+ * Serializa las variables analógicas de UNA fila cruda. Mismo contrato que
+ * `serializeDigitalRow`: `ok: false` con `error` es un instante ilegible, que
+ * no es lo mismo que un 0.
+ */
+function serializeAnalogRow(analogicas, rawData, pozoConfig = null, telemetryError = null) {
+  const out = {};
+
+  for (const entry of analogicas) {
+    try {
+      if (telemetryError) throw new Error(telemetryError);
+      out[entry.key] = {
+        ok: true,
+        valor: applyMappingTransform({ rawData, mapping: entry.mapping, pozoConfig }),
+        alias: entry.alias,
+        unidad: entry.unidad,
+        rol: entry.rol,
+        error: null,
+      };
+    } catch (err) {
+      out[entry.key] = {
+        ok: false,
+        valor: null,
+        alias: entry.alias,
+        unidad: entry.unidad,
+        rol: entry.rol,
+        error: err.message,
+      };
+    }
+  }
+
+  return out;
+}
+
+/**
  * Serializa las señales digitales de UNA fila cruda.
  *
  * Se calculan aparte de los roles históricos porque son por sitio y variables
@@ -455,11 +545,17 @@ function serializeDigitalRow(digitales, rawData, telemetryError = null) {
   return out;
 }
 
-function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
+function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig, includeAnalogicas = false }) {
   const rawData = row?.data || {};
   const variables = buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData });
 
   return {
+    // Opt-in: en un sitio de agua estas columnas repiten lo que ya viene por
+    // rol, y `dashboard-history` es endpoint caliente (lo precalienta el cache
+    // warmer). Solo las pide quien las va a usar.
+    ...(includeAnalogicas
+      ? { analogicas: serializeAnalogRow(analogMappings(mappings), rawData, pozoConfig) }
+      : {}),
     timestamp: toUtcIsoString(row.time),
     fecha: toUtcIsoString(row.time),
     received_at: toUtcIsoString(row.received_at),
@@ -491,7 +587,13 @@ const HISTORICAL_ROLES = ['caudal', 'nivel', 'totalizador', 'nivel_freatico'];
  *
  * Equivalencia funcional con llamar `mapHistoricalDashboardRow` por fila.
  */
-function createHistoricalRowMapper({ site, mappings, pozoConfig, sampleRawData = {} }) {
+function createHistoricalRowMapper({
+  site,
+  mappings,
+  pozoConfig,
+  sampleRawData = {},
+  includeAnalogicas = false,
+}) {
   const skeleton = buildDashboardVariablesForRaw({
     site,
     mappings,
@@ -502,6 +604,9 @@ function createHistoricalRowMapper({ site, mappings, pozoConfig, sampleRawData =
   // Las señales digitales se resuelven una sola vez, igual que los roles: por
   // fila queda solo la aritmética del bit dentro de applyMappingTransform.
   const digitales = digitalMappings(mappings);
+  // Igual que los digitales: se resuelven una vez y por fila queda solo el
+  // applyMappingTransform. Vacío cuando no se piden, así el bucle no corre.
+  const analogicas = includeAnalogicas ? analogMappings(mappings) : [];
 
   const mappingById = new Map(mappings.map((mapping) => [mapping.id, mapping]));
   const mappingByKey = new Map(
@@ -553,6 +658,9 @@ function createHistoricalRowMapper({ site, mappings, pozoConfig, sampleRawData =
     };
 
     out.digitales = serializeDigitalRow(digitales, rawData);
+    if (analogicas.length) {
+      out.analogicas = serializeAnalogRow(analogicas, rawData, pozoConfig);
+    }
 
     for (const role of HISTORICAL_ROLES) {
       const r = resolved[role];
@@ -607,4 +715,6 @@ module.exports = {
   createHistoricalRowMapper,
   digitalMappings,
   serializeDigitalRow,
+  analogMappings,
+  serializeAnalogRow,
 };

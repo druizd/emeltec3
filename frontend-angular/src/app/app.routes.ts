@@ -84,8 +84,18 @@ export const routes: Routes = [
         path: 'companies/:siteId/process',
         data: { siteType: 'proceso' },
         loadComponent: () =>
-          import('./pages/companies/company-site-coming-soon-detail').then(
-            (m) => m.CompanySiteComingSoonDetailComponent,
+          import('./pages/companies/company-site-process-detail').then(
+            (m) => m.CompanySiteProcessDetailComponent,
+          ),
+      },
+      {
+        // Misma vista que 'process': las dos se arman solas desde el reg_map.
+        // Lo que cambia es el encabezado y los roles que ofrece el catalogo.
+        path: 'companies/:siteId/sala-servicios',
+        data: { siteType: 'sala_servicios' },
+        loadComponent: () =>
+          import('./pages/companies/company-site-process-detail').then(
+            (m) => m.CompanySiteProcessDetailComponent,
           ),
       },
       {

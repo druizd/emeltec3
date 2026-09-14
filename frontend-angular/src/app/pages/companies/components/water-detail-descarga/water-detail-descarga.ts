@@ -1,8 +1,39 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { CompanyService, type HistoryGranularity } from '../../../../services/company.service';
+
+/** Un campo ofrecido en "Datos a incluir". `id` es lo que viaja como `fields`. */
+export interface DownloadDataType {
+  id: string;
+  label: string;
+  unit: string;
+}
+
+/**
+ * Los campos exportables por defecto: los de un sitio de agua. Un sitio de
+ * proceso pasa los suyos por el input `dataTypeOptions` — el modal no sabe nada
+ * del tipo de sitio, solo lista lo que le den.
+ */
+export const CAMPOS_DESCARGA_AGUA: DownloadDataType[] = [
+  { id: 'caudal', label: 'Caudal', unit: 'L/s' },
+  { id: 'nivel', label: 'Nivel', unit: 'm' },
+  { id: 'totalizador', label: 'Totalizador', unit: 'm³' },
+  { id: 'nivel_freatico', label: 'Nivel Freático', unit: 'm' },
+  // Pseudo-campo: exporta una columna por señal digital del sitio, con su
+  // alias como encabezado. En un sitio sin señales no agrega ninguna.
+  { id: 'digitales', label: 'Señales digitales', unit: '0/1' },
+];
 
 @Component({
   selector: 'app-water-detail-descarga',
@@ -170,7 +201,7 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
               Datos a incluir
             </p>
             <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-              @for (dtype of downloadDataTypeOptions; track dtype.id) {
+              @for (dtype of dataTypeOptions(); track dtype.id) {
                 <button
                   type="button"
                   (click)="toggleDownloadDataType(dtype.id)"
@@ -298,6 +329,8 @@ export class WaterDetailDescargaComponent {
 
   readonly siteId = input.required<string>();
   readonly siteName = input<string>('');
+  /** Campos ofrecidos en "Datos a incluir". Por defecto, los de agua. */
+  readonly dataTypeOptions = input<DownloadDataType[]>(CAMPOS_DESCARGA_AGUA);
   readonly monthlyFlowMonths = input<
     { label: string; value: number; proyeccion?: number | null }[]
   >([]);
@@ -374,16 +407,6 @@ export class WaterDetailDescargaComponent {
     'Dic',
   ];
 
-  readonly downloadDataTypeOptions = [
-    { id: 'caudal', label: 'Caudal', unit: 'L/s' },
-    { id: 'nivel', label: 'Nivel', unit: 'm' },
-    { id: 'totalizador', label: 'Totalizador', unit: 'm³' },
-    { id: 'nivel_freatico', label: 'Nivel Freático', unit: 'm' },
-    // Pseudo-campo: exporta una columna por señal digital del sitio, con su
-    // alias como encabezado. En un sitio sin señales no agrega ninguna.
-    { id: 'digitales', label: 'Señales digitales', unit: '0/1' },
-  ];
-
   readonly downloadGranularityOptions: {
     id: HistoryGranularity;
     label: string;
@@ -396,6 +419,16 @@ export class WaterDetailDescargaComponent {
 
   constructor() {
     this.applyDownloadPreset('last30');
+
+    // Si la selección actual no tiene ni un campo de la lista vigente (el caso
+    // de un sitio de proceso, donde no existe 'caudal'), se marcan todos. No
+    // pisa una selección válida del usuario.
+    effect(() => {
+      const ids = this.dataTypeOptions().map((option) => option.id);
+      const actual = untracked(() => this.downloadSelectedTypes());
+      if (actual.some((id) => ids.includes(id))) return;
+      this.downloadSelectedTypes.set(ids);
+    });
   }
 
   applyDownloadPreset(presetId: string): void {
