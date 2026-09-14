@@ -84,18 +84,19 @@ export const routes: Routes = [
         path: 'companies/:siteId/process',
         data: { siteType: 'proceso' },
         loadComponent: () =>
-          import('./pages/companies/company-site-process-detail').then(
-            (m) => m.CompanySiteProcessDetailComponent,
+          import('./pages/companies/company-site-coming-soon-detail').then(
+            (m) => m.CompanySiteComingSoonDetailComponent,
           ),
       },
+      // [sala-servicios] Piloto Kross. Para darlo de baja, borrar esta ruta
+      // entera y la carpeta pages/companies/sala-servicios/.
+      // Ver docs/sala-servicios-piloto-kross.md.
       {
-        // Misma vista que 'process': las dos se arman solas desde el reg_map.
-        // Lo que cambia es el encabezado y los roles que ofrece el catalogo.
         path: 'companies/:siteId/sala-servicios',
         data: { siteType: 'sala_servicios' },
         loadComponent: () =>
-          import('./pages/companies/company-site-process-detail').then(
-            (m) => m.CompanySiteProcessDetailComponent,
+          import('./pages/companies/sala-servicios/sala-servicios-detail').then(
+            (m) => m.SalaServiciosDetailComponent,
           ),
       },
       {

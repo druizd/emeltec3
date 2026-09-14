@@ -238,6 +238,7 @@ export const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       },
     ],
   },
+  // [sala-servicios] piloto Kross: borrar esta entrada completa.
   sala_servicios: {
     id: 'sala_servicios',
     label: 'Sala de servicios',
