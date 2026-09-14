@@ -11,6 +11,11 @@ import type {
   CompanyNode,
   CreateOperationalContactPayload,
   OperationalContact,
+  CreateRilesFuentePayload,
+  RilesBalancePayload,
+  RilesConfig,
+  RilesFuente,
+  RilesGranularidad,
   SiteRecord,
   SiteDashboardData,
   SiteDashboardHistoryEntry,
@@ -505,6 +510,68 @@ export class CompanyService {
     params.set('dias', String(options.dias ?? 30));
     return this.http.get<ApiResponse<ContadorDiarioPoint[]>>(
       `/api/companies/sites/${encodeURIComponent(siteId)}/contadores-diarios?${params.toString()}`,
+    );
+  }
+
+  // ── RILes ──────────────────────────────────────────────────────────────────
+
+  getRilesConfig(siteId: string): Observable<ApiResponse<RilesConfig>> {
+    return this.http.get<ApiResponse<RilesConfig>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/config`,
+    );
+  }
+
+  updateRilesConfig(
+    siteId: string,
+    payload: Omit<RilesConfig, 'sitio_id' | 'updated_at'>,
+  ): Observable<ApiResponse<RilesConfig>> {
+    return this.http.put<ApiResponse<RilesConfig>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/config`,
+      payload,
+    );
+  }
+
+  getRilesFuentes(siteId: string): Observable<ApiResponse<RilesFuente[]>> {
+    return this.http.get<ApiResponse<RilesFuente[]>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/fuentes`,
+    );
+  }
+
+  createRilesFuente(
+    siteId: string,
+    payload: CreateRilesFuentePayload,
+  ): Observable<ApiResponse<RilesFuente>> {
+    return this.http.post<ApiResponse<RilesFuente>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/fuentes`,
+      payload,
+    );
+  }
+
+  /**
+   * Da de baja una fuente: cierra su ventana de vigencia, no borra la fila.
+   * El balance histórico que el cliente ya vio no puede cambiar.
+   */
+  cerrarRilesFuente(
+    siteId: string,
+    fuenteId: string,
+    hasta?: string,
+  ): Observable<ApiResponse<RilesFuente>> {
+    const params = hasta ? `?hasta=${encodeURIComponent(hasta)}` : '';
+    return this.http.delete<ApiResponse<RilesFuente>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/fuentes/${encodeURIComponent(fuenteId)}${params}`,
+    );
+  }
+
+  getRilesBalance(
+    siteId: string,
+    options: { granularidad?: RilesGranularidad; desde?: string; hasta?: string } = {},
+  ): Observable<ApiResponse<RilesBalancePayload>> {
+    const params = new URLSearchParams();
+    params.set('granularidad', options.granularidad ?? 'mes');
+    if (options.desde) params.set('desde', options.desde);
+    if (options.hasta) params.set('hasta', options.hasta);
+    return this.http.get<ApiResponse<RilesBalancePayload>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/balance?${params.toString()}`,
     );
   }
 
