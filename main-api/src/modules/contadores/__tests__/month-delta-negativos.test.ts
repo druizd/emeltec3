@@ -2,16 +2,19 @@
  * `computeMonthDeltaForVariable` con muestras corruptas en el crudo.
  *
  * El caso que motiva el archivo: S130 Pozo 4 mostraba el Flujo Mensual en
- * notación científica (5e16 m³) el 14-09-2026. Tres muestras del día del
- * recambio traían `REG3000 = 53716` — bit de signo en 1 y exponente 163 — que
- * el ieee754 decodifica a ~-7e10.
+ * notación científica (5e16 m³) el 14-09-2026. Tres muestras del minuto del
+ * recambio traían basura en el registro alto del float:
  *
- * El algoritmo de segmentos leía ese valor como una cuenta que retrocedió, lo
- * confirmaba como reset y abría el segmento siguiente desde ahí; al cerrar el
- * mes sumaba `valorFin - segmentBase` con una base negativa astronómica.
+ *   REG3000=53716 -> 0xD1D4434E -> -9,1e10
+ *   REG3000=24453 -> 0x5F85434E -> +1,9e16
+ *   REG3000=42755 -> 0xA7034BD8 -> negativo
  *
- * Un contador acumulado nunca es negativo, así que la muestra se descarta. El
- * seed cross-month ya tenía ese guard; al loop le faltaba.
+ * El algoritmo de segmentos las tomaba como saltos o retrocesos reales y
+ * contaminaba el mes completo: al cerrar el período suma
+ * `valorFin - segmentBase` y con esas bases el delta se va a 1e16.
+ *
+ * El guard necesita las DOS mitades. Un primer arreglo que sólo miraba el signo
+ * dejó pasar la muestra positiva y el gráfico siguió roto.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -109,7 +112,7 @@ function computar() {
   });
 }
 
-describe('computeMonthDeltaForVariable — muestras negativas', () => {
+describe('computeMonthDeltaForVariable — muestras corruptas', () => {
   beforeEach(() => {
     vi.mocked(query).mockReset();
   });
@@ -136,14 +139,38 @@ describe('computeMonthDeltaForVariable — muestras negativas', () => {
   });
 
   it('varias muestras corruptas seguidas tampoco pasan', async () => {
-    // En S130 fueron tres, todas el mismo día.
+    // En S130 fueron tres, todas el mismo minuto.
     mockMuestras([28_395, -69_000_000_000, -70_000_000_000, -68_000_000_000, 44_652]);
     const r = await computar();
     expect(r.delta).toBeCloseTo(16_257, 0);
     expect(r.muestras).toBe(2);
   });
 
-  it('una cuenta POSITIVA pequeña sí entra: el filtro es sólo para negativos', async () => {
+  it('una muestra POSITIVA astronómica tampoco pasa', async () => {
+    // El caso que se escapó del primer intento de arreglo: en S130 el registro
+    // alto corrupto (REG3000=24453 -> 0x5F85434E) daba +1,9e16 con el bit de
+    // signo en 0, así que un guard que sólo mirara el signo lo dejaba pasar.
+    mockMuestras([28_395, 1.9e16, 44_652]);
+    const r = await computar();
+
+    expect(r.delta).toBeCloseTo(16_257, 0);
+    expect(r.valor_fin).toBe(44_652);
+    expect(r.muestras).toBe(2);
+    expect(r.resets_detectados).toBe(0);
+  });
+
+  it('las dos mitades del guard actúan sobre la misma serie', async () => {
+    // Reproduce el trío exacto de S130: negativo, positivo astronómico,
+    // negativo — los tres en el minuto del recambio.
+    mockMuestras([28_395, -9.1e10, 1.9e16, -8.0e10, 44_652]);
+    const r = await computar();
+
+    expect(r.delta).toBeCloseTo(16_257, 0);
+    expect(r.muestras).toBe(2);
+    expect(r.resets_detectados).toBe(0);
+  });
+
+  it('una cuenta POSITIVA pequeña sí entra: el filtro es sólo para lo imposible', async () => {
     // La diferencia que importa. Un contador recién re-baseado marca valores
     // chicos y eso es dato; un -7e10 no es una cuenta chica, es basura.
     mockMuestras([1, 2, 3]);

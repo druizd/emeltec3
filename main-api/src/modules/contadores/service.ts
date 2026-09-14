@@ -272,6 +272,12 @@ const RESET_CONFIRM_SAMPLES = 10;
  * cero y aplica la transformacion del mapping. Centraliza el preprocessing
  * que comparten todas las funciones de calculo de delta.
  */
+/**
+ * Techo de plausibilidad de una lectura de contador acumulado, en unidades de
+ * ingeniería. Por encima de esto la muestra es corrupción del crudo, no dato.
+ */
+const MAX_CONTADOR_PLAUSIBLE = 1e12;
+
 function extractCounterSamples(
   rows: { time: string; data: Record<string, unknown> }[],
   mapping: RegMap,
@@ -288,19 +294,32 @@ function extractCounterSamples(
     } catch {
       v = null;
     }
-    // Un contador acumulado NUNCA es negativo: si la muestra lo es, el crudo
-    // está corrupto y no hay lectura que rescatar.
+    // Descarta la muestra si no puede ser la lectura de un contador acumulado.
+    // Dejarla pasar es peor que perderla: el algoritmo de segmentos la toma como
+    // un salto o un retroceso real y contamina el período COMPLETO.
     //
-    // Dejarla pasar es peor que perderla. El algoritmo de segmentos la lee como
-    // una cuenta que retrocedió, la confirma como reset y abre el segmento
-    // siguiente desde ese valor; al cerrar el período suma
-    // `valorFin - segmentBase` y con una base de -7e10 el mes entero se va a
-    // 1e16. Pasó en S130 el 08-09-2026: tres muestras del recambio traían
-    // `REG3000 = 53716` (bit de signo en 1, exponente 163) y el gráfico mensual
-    // quedó en notación científica.
+    // Pasó en S130 el 08-09-2026. Tres muestras del minuto del recambio traían
+    // basura en el registro alto del float y el Flujo Mensual quedó en notación
+    // científica:
     //
-    // El seed cross-month ya tenía este guard (`seed > 0`); acá faltaba.
-    if (v === null || v < 0) continue;
+    //   REG3000=53716 -> 0xD1D4434E -> -9,1e10   (signo 1, exponente 163)
+    //   REG3000=24453 -> 0x5F85434E -> +1,9e16   (signo 0, exponente 191)
+    //   REG3000=42755 -> 0xA7034BD8 -> negativo
+    //
+    // En operación normal ese registro vale 19.497 (`0x4C29`, exponente 2^25) y
+    // el acumulado ronda los 44.000 m3. Cualquier corrupción del registro alto
+    // dispara el exponente y el valor se va a órdenes imposibles — hacia
+    // cualquiera de los dos lados, que es por qué el guard necesita las dos
+    // mitades:
+    //
+    //   - `v < 0`   : un acumulado nunca retrocede bajo cero. El seed
+    //                 cross-month ya tenía este chequeo (`seed > 0`).
+    //   - `v > MAX` : ningún totalizador físico llega a 1e12. El corte está
+    //                 sobre 2^40, que es el orden a partir del cual un ieee754
+    //                 mal decodificado empieza a producir estos valores, y
+    //                 varios órdenes de magnitud por encima de cualquier
+    //                 lectura real (el mayor de la flota ronda 1e7).
+    if (v === null || v < 0 || v > MAX_CONTADOR_PLAUSIBLE) continue;
     out.push({ time: row.time, v });
   }
   return out;
