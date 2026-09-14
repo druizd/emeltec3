@@ -64,6 +64,14 @@ export interface RegMap {
   transformacion: TransformId | string;
   parametros: Record<string, unknown>;
   sitio_id: string;
+  /**
+   * Ventana de vigencia SEMIABIERTA `[vigente_desde, vigente_hasta)`. Ambos en
+   * null = siempre vigente, que es como quedaron todos los mapeos anteriores a
+   * la migración 2026-09-14. Varias filas de la misma variable física con
+   * ventanas disjuntas es como se expresa un cambio de escala a mitad de serie.
+   */
+  vigente_desde?: string | Date | null;
+  vigente_hasta?: string | Date | null;
   created_at?: string | null;
   updated_at?: string | null;
 }

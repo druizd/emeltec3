@@ -192,7 +192,7 @@ export async function getSiteById(siteId: string): Promise<Site | null> {
 
 export async function getMappingsBySiteId(siteId: string): Promise<RegMap[]> {
   const result = await query<RegMap>(
-    `SELECT id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at
+    `SELECT id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, vigente_desde, vigente_hasta, created_at, updated_at
      FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`,
     [siteId],
     { name: 'contadores__mappings_by_site' },

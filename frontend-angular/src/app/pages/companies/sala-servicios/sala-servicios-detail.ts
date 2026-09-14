@@ -202,7 +202,11 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
                     </h2>
                     <div class="tiles">
                       @for (tile of grupo.tiles; track tile.key) {
-                        <article class="tile" [class.tile--sin-dato]="tile.valor === null">
+                        <article
+                          class="tile"
+                          [class.tile--sin-dato]="tile.valor === null"
+                          [class.tile--fuera]="tile.fueraDeRango"
+                        >
                           <p class="tile__label">{{ tile.label }}</p>
                           <p class="tile__valor">
                             {{ tile.valor === null ? '—' : tile.valor }}
@@ -378,7 +382,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         background:
           radial-gradient(circle at 92% 0%, rgba(99, 102, 241, 0.08), transparent 24rem),
           linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
-        color: #1e293b;
+        color: var(--color-on-surface);
       }
 
       .dashboard-shell {
@@ -393,10 +397,10 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--color-outline-variant);
         border-bottom: 0;
         border-radius: 14px 14px 0 0;
-        background: #ffffff;
+        background: var(--color-surface);
         padding: 18px 22px;
         box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
       }
@@ -425,20 +429,21 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #94a3b8;
+        color: var(--color-on-surface-muted);
       }
 
       .site-head__title {
-        font-size: 20px;
+        font-family: var(--font-josefin);
+        font-size: var(--text-h4);
         font-weight: 700;
         line-height: 1.2;
-        color: #1e293b;
+        color: var(--color-on-surface);
       }
 
       .site-head__meta {
         font-size: 12px;
-        color: #64748b;
-        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        color: var(--color-on-surface-variant);
+        font-family: var(--font-mono);
       }
 
       .site-head__actions {
@@ -501,8 +506,8 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         align-items: center;
         gap: 7px;
         border-radius: 6px;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
         padding: 8px 14px;
         font-size: 13px;
         font-weight: 700;
@@ -525,7 +530,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         margin-bottom: 14px;
         font-size: 13px;
         font-weight: 700;
-        color: #64748b;
+        color: var(--color-on-surface-variant);
       }
 
       .volver:hover {
@@ -539,9 +544,9 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         gap: 22px;
         overflow-x: auto;
         scrollbar-width: none;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--color-outline-variant);
         border-radius: 0 0 14px 14px;
-        background: #ffffff;
+        background: var(--color-surface);
         padding: 0 22px;
         box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
       }
@@ -557,7 +562,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         align-items: center;
         gap: 8px;
         flex-shrink: 0;
-        color: #64748b;
+        color: var(--color-on-surface-variant);
         font-size: 14px;
         font-weight: 800;
         white-space: nowrap;
@@ -587,15 +592,16 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
 
       .panel {
         margin-top: 16px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--color-outline-variant);
         border-radius: 12px;
-        background: #ffffff;
+        background: var(--color-surface);
         padding: 20px 22px;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
       }
 
       .panel__titulo {
         display: flex;
+        font-family: var(--font-josefin);
         align-items: center;
         gap: 7px;
         margin: 22px 0 10px;
@@ -603,7 +609,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #94a3b8;
+        color: var(--color-on-surface-muted);
       }
 
       .panel__titulo:first-child {
@@ -617,7 +623,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
 
       .panel__hint {
         font-size: 13px;
-        color: #64748b;
+        color: var(--color-on-surface-variant);
       }
 
       .panel__error {
@@ -633,9 +639,9 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
       }
 
       .tile {
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--color-outline-variant);
         border-radius: 10px;
-        background: #f8fafc;
+        background: var(--color-surface-subtle);
         padding: 14px 16px;
       }
 
@@ -643,12 +649,23 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         opacity: 0.62;
       }
 
+      /* Lazo fuera de escala: el numero es creible pero no es una medicion. */
+      .tile--fuera {
+        border-color: rgba(251, 191, 36, 0.25);
+        background: rgba(251, 191, 36, 0.06);
+      }
+
+      .tile--fuera .tile__valor,
+      .tile--fuera .tile__pie {
+        color: #d97706;
+      }
+
       .tile__label {
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #94a3b8;
+        color: var(--color-on-surface-muted);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -656,23 +673,23 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
 
       .tile__valor {
         margin-top: 6px;
-        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-family: var(--font-mono);
         font-size: 26px;
         font-weight: 600;
         line-height: 1.1;
-        color: #6366f1;
+        color: var(--color-on-surface);
       }
 
       .tile__unidad {
         margin-left: 4px;
         font-size: 12px;
-        color: #64748b;
+        color: var(--color-on-surface-variant);
       }
 
       .tile__pie {
         margin-top: 6px;
         font-size: 11px;
-        color: #94a3b8;
+        color: var(--color-on-surface-muted);
       }
 
       .bits {
@@ -686,12 +703,12 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         align-items: center;
         gap: 6px;
         border-radius: 9999px;
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface-subtle);
         padding: 3px 10px;
         font-size: 11px;
         font-weight: 700;
-        color: #64748b;
+        color: var(--color-on-surface-variant);
       }
 
       .bit--on {
@@ -730,7 +747,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #94a3b8;
+        color: var(--color-on-surface-muted);
       }
 
       .selector__chips {
@@ -741,12 +758,12 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
 
       .selector__chips button {
         border-radius: 9999px;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
         padding: 5px 12px;
         font-size: 12px;
         font-weight: 700;
-        color: #64748b;
+        color: var(--color-on-surface-variant);
         transition:
           border-color 160ms ease,
           color 160ms ease;
@@ -765,12 +782,12 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
       .selector__hint {
         margin-top: 8px;
         font-size: 11px;
-        color: #94a3b8;
+        color: var(--color-on-surface-muted);
       }
 
       .tabla-wrap {
         overflow-x: auto;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--color-outline-variant);
         border-radius: 10px;
       }
 
@@ -783,32 +800,32 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
       .tabla th {
         position: sticky;
         top: 0;
-        background: #f8fafc;
+        background: var(--color-surface-subtle);
         padding: 10px 12px;
         text-align: left;
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.06em;
-        color: #64748b;
+        color: var(--color-on-surface-variant);
         white-space: nowrap;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid var(--color-outline-variant);
       }
 
       .tabla__unidad {
         margin-left: 3px;
-        color: #94a3b8;
+        color: var(--color-on-surface-muted);
       }
 
       .tabla td {
         padding: 8px 12px;
         border-bottom: 1px solid #f1f5f9;
-        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-family: var(--font-mono);
         color: #334155;
         white-space: nowrap;
       }
 
       .tabla__fecha {
-        color: #64748b;
+        color: var(--color-on-surface-variant);
       }
 
       .tabla__valor {
@@ -822,13 +839,13 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         gap: 12px;
         margin-top: 12px;
         font-size: 12px;
-        color: #64748b;
+        color: var(--color-on-surface-variant);
       }
 
       .paginador button {
         border-radius: 6px;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
         padding: 6px 14px;
         font-weight: 700;
         color: #475569;
@@ -844,7 +861,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         gap: 6px;
         padding: 40px 16px;
         text-align: center;
-        color: #64748b;
+        color: var(--color-on-surface-variant);
       }
 
       .vacio strong {
@@ -946,18 +963,20 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
       .map(({ variable, key }) => {
         const valor = variable.ok === false ? null : this.aNumero(variable.valor);
         const rol = variable.rol_dashboard || 'generico';
+        const rango = variable.rango || null;
+        // Un lazo por debajo de 4 mA no da cero: la escala extrapola y da un
+        // numero menor que el minimo del instrumento. Sin esto, el operador ve
+        // -50 grados C como si fuera una temperatura.
+        const fueraDeRango =
+          valor !== null && rango ? valor < rango.min || valor > rango.max : false;
         return {
           key,
           label: (variable.alias || variable.key || '—').toUpperCase(),
           valor: valor === null ? null : this.formatearValor(valor),
           unidad: variable.unidad || null,
           servicio: SERVICIOS.find((s) => rol.startsWith(`${s.id}_`))?.id ?? GRUPO_OTRAS.id,
-          pie:
-            valor === null
-              ? 'Sin lectura válida'
-              : rol === 'generico'
-                ? 'Sin rol asignado'
-                : `Rol ${rol}`,
+          fueraDeRango,
+          pie: this.pieDelTile({ valor, rol, rango, fueraDeRango }),
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label, 'es-CL')),
@@ -1296,6 +1315,23 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
       usadas.add(key);
       return { variable, key };
     });
+  }
+
+  private pieDelTile(t: {
+    valor: number | null;
+    rol: string;
+    rango: { min: number; max: number } | null;
+    fueraDeRango: boolean;
+  }): string {
+    if (t.valor === null) return 'Sin lectura válida';
+    if (t.fueraDeRango && t.rango) {
+      const fuera = t.valor < t.rango.min ? 'bajo el mínimo' : 'sobre el máximo';
+      return `Fuera de rango (${fuera} de ${this.formatearValor(t.rango.min)} a ${this.formatearValor(t.rango.max)})`;
+    }
+    if (t.rango) {
+      return `Rango ${this.formatearValor(t.rango.min)} a ${this.formatearValor(t.rango.max)}`;
+    }
+    return t.rol === 'generico' ? 'Sin rol asignado' : `Rol ${t.rol}`;
   }
 
   private aNumero(valor: unknown): number | null {

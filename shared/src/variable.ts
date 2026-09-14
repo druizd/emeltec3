@@ -78,6 +78,19 @@ export interface VariableMapping {
   contador_meses?: number;
   contador_desde?: string | null;
   contador_hasta?: string | null;
+  /**
+   * Ventana de vigencia SEMIABIERTA `[vigente_desde, vigente_hasta)`. Ambos en
+   * null = siempre vigente, que es como quedaron todos los mapeos anteriores a
+   * la migración 2026-09-14.
+   *
+   * Un instrumento que cambia de escala a mitad de la serie — un recambio, o una
+   * rectificación en terreno — se expresa con DOS mapeos de ventanas disjuntas
+   * sobre el mismo registro, cada uno con sus propios `parametros`. Antes había
+   * un solo factor para toda la historia y corregirlo arreglaba un tramo
+   * rompiendo el otro.
+   */
+  vigente_desde?: string | null;
+  vigente_hasta?: string | null;
 }
 
 export interface SiteVariable {
@@ -103,4 +116,10 @@ export interface CreateVariableMapPayload {
   rol_dashboard?: string | null;
   transformacion?: string | null;
   parametros?: VariableParameters | null;
+  /**
+   * Extremos de la ventana de vigencia, en ISO. `null` limpia el extremo (lo
+   * deja abierto); omitir la clave en un PATCH lo deja como está.
+   */
+  vigente_desde?: string | null;
+  vigente_hasta?: string | null;
 }

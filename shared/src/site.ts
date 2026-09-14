@@ -88,6 +88,8 @@ export interface DashboardVariable {
   rol_dashboard?: string | null;
   transformacion?: string | null;
   unidad?: string | null;
+  /** Rango de ingenieria declarado, cuando la escala se configuro por rango. */
+  rango?: { min: number; max: number } | null;
   ok?: boolean;
   valor?: string | number | null;
 }
@@ -153,6 +155,8 @@ export interface SiteDashboardHistoryAnalog {
   unidad: string | null;
   /** `rol_dashboard` del reg_map; 'generico' en los sitios de proceso. */
   rol: string;
+  /** Rango declarado del instrumento; null si la escala no se hizo por rango. */
+  rango?: { min: number; max: number } | null;
   error: string | null;
 }
 

@@ -93,6 +93,14 @@ interface VariableForm {
   bitInvertido: string;
   etiquetaOn: string;
   etiquetaOff: string;
+  /**
+   * Extremos de la ventana de vigencia, como los escribe un
+   * `<input type="datetime-local">`: hora LOCAL sin zona. Se convierten a ISO
+   * UTC recién al guardar, porque el backend parsea con la zona del servidor y
+   * un "2026-07-12T14:30" pelado significaría otra hora allá.
+   */
+  vigenteDesde: string;
+  vigenteHasta: string;
 }
 
 interface PozoConfigForm {
@@ -128,6 +136,8 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   bitInvertido: 'false',
   etiquetaOn: '',
   etiquetaOff: '',
+  vigenteDesde: '',
+  vigenteHasta: '',
 };
 
 const DEFAULT_POZO_CONFIG_FORM: PozoConfigForm = {
@@ -748,6 +758,52 @@ function emptyVariables(): SiteVariablesPayload {
                       placeholder="kWh, %, V"
                     />
                   </div>
+                </div>
+
+                <div class="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div>
+                    <p class="text-caption font-bold text-slate-700">Vigencia del mapeo</p>
+                    <p class="text-caption font-semibold text-slate-500">
+                      Déjala vacía si el instrumento siempre midió en la misma escala. Si cambió —un
+                      recambio, o una rectificación en terreno— cierra este mapeo con "Vigente
+                      hasta" y crea uno nuevo con "Vigente desde" en el mismo instante: cada tramo
+                      conserva su propio factor y el histórico deja de recalcularse con la escala
+                      equivocada.
+                    </p>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Vigente desde</label
+                      >
+                      <input
+                        type="datetime-local"
+                        name="settings-variable-vigente-desde"
+                        [ngModel]="variableForm().vigenteDesde"
+                        (ngModelChange)="updateVariableForm('vigenteDesde', $event)"
+                        class="field-control bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Vigente hasta</label
+                      >
+                      <input
+                        type="datetime-local"
+                        name="settings-variable-vigente-hasta"
+                        [ngModel]="variableForm().vigenteHasta"
+                        (ngModelChange)="updateVariableForm('vigenteHasta', $event)"
+                        class="field-control bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  @if (vigenciaError()) {
+                    <p class="text-caption font-semibold text-red-700">{{ vigenciaError() }}</p>
+                  } @else if (vigenciaResumen()) {
+                    <p class="text-caption font-semibold text-slate-500">{{ vigenciaResumen() }}</p>
+                  }
                 </div>
 
                 @if (isBitTransform()) {
@@ -1516,6 +1572,13 @@ function emptyVariables(): SiteVariablesPayload {
                               class="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-caption-xs font-semibold text-red-700"
                             >
                               Rol en conflicto
+                            </span>
+                          }
+                          @if (vigenciaBadge(m)) {
+                            <span
+                              class="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-caption-xs font-semibold text-slate-600"
+                            >
+                              {{ vigenciaBadge(m) }}
                             </span>
                           }
                         </p>
@@ -2352,12 +2415,71 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     );
   }
 
+  // ─── Vigencia del mapeo ───────────────────────────────────────────────
+
+  /**
+   * ISO → valor de `<input type="datetime-local">`, en hora local del navegador.
+   * `toISOString().slice(0,16)` daría UTC y le correría las horas al técnico.
+   */
+  private isoToLocalInput(value?: string | null): string {
+    if (!value) return '';
+    const fecha = new Date(value);
+    if (Number.isNaN(fecha.getTime())) return '';
+    const dosDigitos = (n: number) => String(n).padStart(2, '0');
+    return (
+      `${fecha.getFullYear()}-${dosDigitos(fecha.getMonth() + 1)}-${dosDigitos(fecha.getDate())}` +
+      `T${dosDigitos(fecha.getHours())}:${dosDigitos(fecha.getMinutes())}`
+    );
+  }
+
+  /**
+   * Valor del `datetime-local` (hora local, sin zona) → ISO UTC. La conversión
+   * va acá y no en el backend: allá `Date.parse` de una fecha sin zona usa la
+   * del servidor, que no tiene por qué ser la del técnico.
+   */
+  private localInputToIso(value: string): string | null {
+    const limpio = value.trim();
+    if (!limpio) return null;
+    const fecha = new Date(limpio);
+    return Number.isNaN(fecha.getTime()) ? null : fecha.toISOString();
+  }
+
+  vigenciaError(): string {
+    const form = this.variableForm();
+    const desde = this.localInputToIso(form.vigenteDesde);
+    const hasta = this.localInputToIso(form.vigenteHasta);
+    if (form.vigenteDesde.trim() && !desde) return 'La fecha "vigente desde" no es válida.';
+    if (form.vigenteHasta.trim() && !hasta) return 'La fecha "vigente hasta" no es válida.';
+    if (desde && hasta && new Date(desde) >= new Date(hasta)) {
+      return 'El inicio de vigencia debe ser anterior al término.';
+    }
+    return '';
+  }
+
+  vigenciaResumen(): string {
+    const form = this.variableForm();
+    const desde = form.vigenteDesde.trim();
+    const hasta = form.vigenteHasta.trim();
+    if (!desde && !hasta) return '';
+
+    const fmt = (valor: string) => new Date(valor).toLocaleString('es-CL');
+    if (desde && hasta) return `Este mapeo aplica entre ${fmt(desde)} y ${fmt(hasta)}.`;
+    if (desde) return `Este mapeo aplica desde ${fmt(desde)} en adelante.`;
+    return `Este mapeo aplica hasta ${fmt(hasta)}. Las muestras posteriores necesitan otro mapeo.`;
+  }
+
   saveVariableMap(event: Event): void {
     event.preventDefault();
     if (!this.siteId) return;
 
     if (this.useRangeScale() && !this.rangeScaleParams()) {
       this.setError(this.rangeScaleSummary());
+      return;
+    }
+
+    const vigenciaInvalida = this.vigenciaError();
+    if (vigenciaInvalida) {
+      this.setError(vigenciaInvalida);
       return;
     }
 
@@ -2376,6 +2498,10 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       rol_dashboard: this.isBitTransform() ? 'generico' : this.normalizeRole(form.rol_dashboard),
       transformacion: this.normalizeTransform(form.transformacion),
       parametros: this.buildVariableParameters(),
+      // Siempre van los dos, incluso en null: es como se limpia un extremo de la
+      // ventana. Omitirlos dejaría el valor anterior en el PATCH.
+      vigente_desde: this.localInputToIso(form.vigenteDesde),
+      vigente_hasta: this.localInputToIso(form.vigenteHasta),
     };
 
     this.busy.set('variable');
@@ -2436,7 +2562,35 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       bitInvertido: params?.invertido === true ? 'true' : 'false',
       etiquetaOn: params?.etiqueta_on || '',
       etiquetaOff: params?.etiqueta_off || '',
+      vigenteDesde: this.isoToLocalInput(variable.mapping?.vigente_desde),
+      vigenteHasta: this.isoToLocalInput(variable.mapping?.vigente_hasta),
     });
+  }
+
+  /**
+   * Etiqueta corta de la ventana para la lista de mapeos. Vacía cuando el mapeo
+   * no tiene vigencia, que es el caso de casi todos: así el badge aparece solo
+   * donde hay algo que mirar.
+   *
+   * Un mapeo cerrado ya no alimenta el dashboard ni los contadores de hoy, pero
+   * sigue siendo el que explica su tramo del histórico — por eso se muestra en
+   * vez de esconderlo.
+   */
+  vigenciaBadge(mapping: VariableMapping): string {
+    const desde = mapping.vigente_desde;
+    const hasta = mapping.vigente_hasta;
+    if (!desde && !hasta) return '';
+
+    const fecha = (valor: string) =>
+      new Date(valor).toLocaleDateString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+
+    if (desde && hasta) return `${fecha(desde)} – ${fecha(hasta)}`;
+    if (desde) return `Desde ${fecha(desde)}`;
+    return `Hasta ${fecha(hasta!)}`;
   }
 
   /** true si el mapeo no recibe dato del equipo en la última muestra. */
