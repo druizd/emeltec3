@@ -24,6 +24,7 @@ import { type ContadorMensualPoint, CompanyService } from '../../../../services/
 import { AuthService } from '../../../../services/auth.service';
 import { DatoDgaRow, DgaService } from '../../../../services/dga.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
+import { esBajaManual, motivoBajaLabel } from './baja-manual';
 
 /**
  * Devuelve "YYYY-MM-DD" para hoy en zona Chile (UTC-4, fijo sin DST).
@@ -221,7 +222,9 @@ interface SiteDashboardData {
                     <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
                     <p class="mb-3 text-slate-500">
                       enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan slots
-                      dentro del rango filtrado.
+                      dentro del rango filtrado. Las mediciones
+                      <strong class="font-semibold text-slate-600">dadas de baja</strong> quedan
+                      fuera del cálculo: son períodos sin dato declarable, no envíos que fallaron.
                     </p>
                     <p class="mb-2 font-semibold text-slate-700">Umbrales</p>
                     <ul class="space-y-1.5 text-slate-600">
@@ -1155,6 +1158,7 @@ interface SiteDashboardData {
                           @if (
                             report.estado === 'Rechazado' ||
                             report.estado === 'Fallido' ||
+                            report.estado === 'Dado de baja' ||
                             report.estado === 'Revisar'
                           ) {
                             <p
@@ -2054,6 +2058,28 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
       rechazado: 'Rechazado por MIA-DGA — reintentará en 24h',
       fallido: 'Reintentos agotados — requiere intervención manual',
     };
+
+    // Una baja manual NO es una falla del sistema: es un período que un
+    // operador cerró con un motivo documentado, y mostrarla como "Fallido —
+    // reintentos agotados" describe algo que no ocurrió. Se separa en su propio
+    // estado para que el cliente entienda qué pasó sin tener que preguntar.
+    if (esBajaManual(r.estatus, r.fail_reason)) {
+      return {
+        id: `dga-${idx}-${r.ts}`,
+        recordId: `${r.fecha}-${r.hora.replace(/:/g, '')}`,
+        fecha: `${r.fecha} ${r.hora}`,
+        dateIso: r.ts,
+        timestampMs: new Date(r.ts).getTime(),
+        nivelFreatico: r.nivel_freatico == null ? null : Number(r.nivel_freatico),
+        caudal: r.caudal_instantaneo == null ? null : Number(r.caudal_instantaneo),
+        totalizador: r.flujo_acumulado == null ? null : Number(r.flujo_acumulado),
+        estado: 'Dado de baja',
+        enviadoDga: '',
+        respuesta: motivoBajaLabel(r.fail_reason),
+        comprobante: '',
+      };
+    }
+
     return {
       id: `dga-${idx}-${r.ts}`,
       recordId: `${r.fecha}-${r.hora.replace(/:/g, '')}`,
@@ -2179,10 +2205,14 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
     this.selectedDgaReport.set(null);
   }
 
+  // 'Dado de baja' va en gris y no en rojo: es un período que se cerró a
+  // propósito, con su motivo, no una falla del sistema. Pintarlo de rojo hace
+  // que un recambio programado se lea como un problema.
   getDgaStatusBg(estado: string): string {
     if (estado === 'Enviado') return '#F0FDF4';
     if (estado === 'Pendiente' || estado === 'Enviando') return '#FFFBEB';
     if (estado === 'Revisar') return '#FEF3C7';
+    if (estado === 'Dado de baja') return '#F8FAFC';
     return '#FEF2F2';
   }
 
@@ -2190,6 +2220,7 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
     if (estado === 'Enviado') return '#BBF7D0';
     if (estado === 'Pendiente' || estado === 'Enviando') return '#FDE68A';
     if (estado === 'Revisar') return '#FCD34D';
+    if (estado === 'Dado de baja') return '#E2E8F0';
     return '#FECACA';
   }
 
@@ -2197,6 +2228,7 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
     if (estado === 'Enviado') return '#16A34A';
     if (estado === 'Pendiente' || estado === 'Enviando') return '#D97706';
     if (estado === 'Revisar') return '#B45309';
+    if (estado === 'Dado de baja') return '#64748B';
     return '#DC2626';
   }
 

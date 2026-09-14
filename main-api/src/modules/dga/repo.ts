@@ -254,6 +254,13 @@ export interface DatoDgaRow {
   flujo_acumulado: string | null;
   nivel_freatico: string | null;
   estatus: string;
+  /**
+   * Distingue un `fallido` que agotó reintentos contra SNIA de uno que un
+   * operador cerró a propósito (prefijo `baja_`). Sin esto la vista del cliente
+   * muestra los dos como "Fallido — reintentos agotados", que para una baja
+   * documentada es sencillamente falso.
+   */
+  fail_reason: string | null;
   comprobante: string | null;
 }
 
@@ -1661,7 +1668,7 @@ export async function queryDatoDgaBySite(
             to_char(fecha, 'YYYY-MM-DD')      AS fecha,
             to_char(hora,  'HH24:MI:SS')      AS hora,
             caudal_instantaneo, flujo_acumulado, nivel_freatico,
-            estatus, comprobante
+            estatus, fail_reason, comprobante
        FROM dato_dga
       WHERE site_id = $1
         AND ts >= $2 AND ts < $3

@@ -614,6 +614,7 @@ export async function getDatoDgaDirectoFromEquipo(
       nivel_freatico: stringifyNumeric(numericOrNull(mapped.nivel_freatico.valor)),
       // Filas sintetizadas desde equipo (sin pipeline DGA): no tienen estado real.
       estatus: 'vacio',
+      fail_reason: null,
       comprobante: null,
     } satisfies DatoDgaRow;
   });
