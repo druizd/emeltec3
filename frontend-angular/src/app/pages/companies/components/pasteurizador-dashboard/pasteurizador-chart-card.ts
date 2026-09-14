@@ -19,6 +19,7 @@ import {
   registerables,
 } from 'chart.js';
 import type { PasteurChart, PasteurReferenceLine } from './pasteurizador-dashboard.models';
+import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 
 Chart.register(...registerables);
 
@@ -512,7 +513,7 @@ export class PasteurizadorChartCardComponent implements AfterViewInit, OnChanges
   private formatChileTimeShort(timestampMs: number): string {
     if (!Number.isFinite(timestampMs)) return '';
     return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23',
@@ -523,7 +524,7 @@ export class PasteurizadorChartCardComponent implements AfterViewInit, OnChanges
   private formatTooltipTimestamp(timestampMs: number): string {
     if (!Number.isFinite(timestampMs)) return this.chart.tooltipDateLabel || '';
     return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       day: '2-digit',
       month: 'short',
       year: 'numeric',

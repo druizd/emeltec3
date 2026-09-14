@@ -1,6 +1,7 @@
 const { Resend } = require('resend');
 const fs = require('fs');
 const path = require('path');
+const { CHILE_TIME_ZONE } = require('../utils/timezone');
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_ADDRESS = process.env.RESEND_FROM || 'Emeltec - Panel Industrial <noreply@emeltec.cl>';
@@ -412,7 +413,7 @@ function buildPasswordChangedEmail(nombreCompleto, { origen, ip, ts } = {}) {
   {
     const nombre = (nombreCompleto || '').trim() || 'usuario';
     const cuando = ts ? new Date(ts) : new Date();
-    const fecha = cuando.toLocaleString('es-CL', { timeZone: 'America/Santiago' });
+    const fecha = cuando.toLocaleString('es-CL', { timeZone: CHILE_TIME_ZONE });
     const origenLabel =
       { recuperacion: 'recuperación desde el login', perfil: 'cambio desde tu perfil' }[origen] ||
       'cambio de contraseña';
@@ -722,7 +723,7 @@ function formatChile(iso) {
   if (!iso) return '—';
   try {
     return new Date(iso).toLocaleString('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

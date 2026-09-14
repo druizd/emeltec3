@@ -1,6 +1,7 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import { DgaSlotsMantenimientoComponent } from './dga-slots-mantenimiento';
+import { TimezoneLegendComponent } from '../../../../components/ui/timezone-legend';
 import {
   Component,
   OnDestroy,
@@ -100,6 +101,7 @@ interface SiteDashboardData {
     WellDiagramSkeletonComponent,
     ChartSkeletonComponent,
     TableSkeletonComponent,
+    TimezoneLegendComponent,
     WellStatCardComponent,
     DgaSlotsMantenimientoComponent,
   ],
@@ -1067,6 +1069,10 @@ interface SiteDashboardData {
               }
               <span class="text-slate-500">{{ dgaTotalRecordsLabel() }}</span>
             </div>
+          </div>
+
+          <div class="border-b border-slate-100 px-4 py-2">
+            <app-timezone-legend />
           </div>
 
           <div class="overflow-x-auto">

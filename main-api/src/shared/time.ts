@@ -1,5 +1,5 @@
 /**
- * Helpers de tiempo con zona horaria Chile (America/Santiago).
+ * Helpers de tiempo con zona horaria Chile (UTC-4 fijo, sin horario de verano).
  * Re-export tipado del módulo JS legacy `utils/timezone.js`.
  */
 // eslint-disable-next-line @typescript-eslint/no-require-imports

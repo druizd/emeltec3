@@ -18,6 +18,7 @@ import {
 } from '../../../services/cold-room.service';
 import type { SalaAggregate } from '../ventisqueros';
 import type { SiteRecord } from '@emeltec/shared';
+import { CHILE_TIME_ZONE } from '../../../shared/timezone';
 
 @Component({
   selector: 'app-ventisqueros-history-export',
@@ -686,7 +687,7 @@ export class VentisquerosHistoryExportComponent {
   private formatChileParts(ts: string): { date: string; time: string } {
     const d = new Date(ts);
     const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

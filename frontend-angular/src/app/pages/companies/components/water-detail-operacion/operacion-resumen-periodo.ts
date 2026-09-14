@@ -15,6 +15,7 @@ import {
   type OperacionPreset as Preset,
 } from './water-operacion-state';
 import { FlujoDiarioChartComponent } from './flujo-diario-chart';
+import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 
 interface KpiPeriodo {
   label: string;
@@ -903,7 +904,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
    */
   private chileDayKey(d: Date): string {
     const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -1132,7 +1133,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
     const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       day: '2-digit',
       month: '2-digit',
       year: '2-digit',

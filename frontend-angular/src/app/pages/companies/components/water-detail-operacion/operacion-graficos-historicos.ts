@@ -7,6 +7,7 @@ import { ActivatedRoute } from '@angular/router';
 import type * as XlsxNamespace from 'xlsx';
 import { type HistoricalRow, WaterOperacionStateService } from './water-operacion-state';
 import { ChartSkeletonComponent } from '../../../../components/ui/chart-skeleton';
+import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 
 interface LineChart {
   polyline: string;
@@ -1684,7 +1685,7 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
 
   private formatChileShort(timestampMs: number): string {
     const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

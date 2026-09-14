@@ -29,6 +29,7 @@
 import { query } from '../../config/dbHelpers';
 import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
+import { CHILE_TIME_ZONE } from '../../shared/time';
 
 type SendAlertaFn = (to: string, tipo: string, detalles: Record<string, unknown>) => Promise<void>;
 type DbQuery = (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>;
@@ -92,7 +93,7 @@ function formatearFechaChile(ts: unknown): string {
   const d = ts instanceof Date ? ts : new Date(String(ts));
   if (Number.isNaN(d.getTime())) return String(ts);
   const partes = new Intl.DateTimeFormat('es-CL', {
-    timeZone: 'America/Santiago',
+    timeZone: CHILE_TIME_ZONE,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

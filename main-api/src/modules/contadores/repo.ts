@@ -5,6 +5,7 @@
 import { query } from '../../config/dbHelpers';
 import { COUNTER_ROLES, type ContadorMensualRow } from './types';
 import type { RegMap, Site } from '../sites/types';
+import { CHILE_TIME_ZONE } from '../../shared/time';
 
 const ROW_COLUMNS =
   'sitio_id, variable_id, rol, mes, valor_inicio, valor_fin, delta, unidad, muestras, resets_detectados, ultimo_dato, actualizado_at';
@@ -151,7 +152,7 @@ export async function listContadoresBySiteAndRol(
     SELECT ${ROW_COLUMNS}
     FROM site_contador_mensual
     WHERE sitio_id = $1 AND rol = $2
-      AND mes >= (date_trunc('month', NOW() AT TIME ZONE 'America/Santiago')::date - ($3::int - 1) * INTERVAL '1 month')
+      AND mes >= (date_trunc('month', NOW() AT TIME ZONE '${CHILE_TIME_ZONE}')::date - ($3::int - 1) * INTERVAL '1 month')
     ORDER BY mes ASC
     `,
     [sitioId, rol, meses],
@@ -170,7 +171,7 @@ export async function listContadoresByVariable(
     SELECT ${ROW_COLUMNS}
     FROM site_contador_mensual
     WHERE sitio_id = $1 AND variable_id = $2
-      AND mes >= (date_trunc('month', NOW() AT TIME ZONE 'America/Santiago')::date - ($3::int - 1) * INTERVAL '1 month')
+      AND mes >= (date_trunc('month', NOW() AT TIME ZONE '${CHILE_TIME_ZONE}')::date - ($3::int - 1) * INTERVAL '1 month')
     ORDER BY mes ASC
     `,
     [sitioId, variableId, meses],

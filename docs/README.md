@@ -25,6 +25,7 @@
 | Doc                                                                            | Tema                                                                                   |
 | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | [deployment.md](./deployment.md)                                               | Runbook de despliegue (VM Azure, docker-compose, secrets)                              |
+| [nginx-502-tras-reinicio-docker.md](./nginx-502-tras-reinicio-docker.md)       | 502 en `/api` tras reiniciar Docker: causa, parche inmediato y arreglo de fondo        |
 | [testing.md](./testing.md)                                                     | Guía de testing y conteo de suites                                                     |
 | [ftp-pipeline.md](./ftp-pipeline.md)                                           | Pipeline FTP de ingesta: servidores, dispositivos, scripts, datos cargados             |
 | [import-historico-telemetria.md](./import-historico-telemetria.md)             | Runbook para cargar el histórico de telemetría cruda de un sitio nuevo                 |

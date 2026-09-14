@@ -27,6 +27,7 @@ import {
 import type { NoDataStaleRow } from './repo';
 import { renderAdminShell, sendDgaAdminAlert } from './notifier';
 import { siteUrl } from '../../utils/siteUrl';
+import { CHILE_TIME_ZONE } from '../../shared/time';
 
 // Base del frontend y ruta por tipo de sitio viven en utils/siteUrl (las
 // comparte el correo de alertas). No navega si no hay sesión, pero deja el
@@ -286,11 +287,14 @@ async function reportDoubleSubmission(): Promise<AlertPart> {
   };
 }
 
-// Cadencia del digest: se envía en horarios fijos (hora Chile), por defecto
-// 3 veces al día (08, 14, 20). El reconciler igual corre cada 1h para los
-// auto-fixes; solo el CORREO se agenda. Dedup por slot (fecha+hora) para no
-// repetir dentro de la misma hora objetivo. Resetea al reiniciar el proceso.
-const DIGEST_HOURS = String(process.env.DGA_DIGEST_HOURS ?? '8,14,20')
+// Cadencia del digest: se envía en horarios fijos (hora Chile UTC-4), por
+// defecto 3 veces al día (07, 13, 19) — una hora antes que el horario viejo,
+// para que el de la mañana llegue antes de las 08:00 también en verano.
+//
+// El reconciler igual corre cada 1h para los auto-fixes; solo el CORREO se
+// agenda. Dedup por slot (fecha+hora) para no repetir dentro de la misma hora
+// objetivo. Resetea al reiniciar el proceso.
+const DIGEST_HOURS = String(process.env.DGA_DIGEST_HOURS ?? '7,13,19')
   .split(',')
   .map((h) => parseInt(h.trim(), 10))
   .filter((h) => Number.isFinite(h) && h >= 0 && h <= 23);
@@ -299,7 +303,7 @@ let lastDigestSlot = '';
 /** Fecha (YYYY-MM-DD) y hora (0-23) actuales en zona horaria de Chile. */
 function chileSlot(): { hour: number; slot: string } {
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Santiago',
+    timeZone: CHILE_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

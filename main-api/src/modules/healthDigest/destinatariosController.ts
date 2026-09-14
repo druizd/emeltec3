@@ -26,6 +26,7 @@ import {
   buildSnapshot,
   sendDigestTo,
 } from './worker';
+import { CHILE_TIME_ZONE } from '../../shared/time';
 
 /** Tope defensivo: la lista es de equipo interno, no una lista de difusión. */
 const MAX_DESTINATARIOS = 25;
@@ -99,7 +100,7 @@ export async function listDigestDestinatariosHandler(
         // La UI muestra estos datos como contexto: horarios del resumen, buzón
         // de respaldo si la lista queda vacía, y si el worker está encendido.
         horarios_resumen: DIGEST_HOURS,
-        zona_horaria: 'America/Santiago',
+        zona_horaria: CHILE_TIME_ZONE,
         fallback_email: MONITOR_PRIMARY,
         worker_activo: WORKER_ENABLED,
         // Las alertas de seguridad las manda `auditAlerts`, que corre bajo el

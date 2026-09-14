@@ -24,6 +24,8 @@ import {
   DgaService,
 } from '../../services/dga.service';
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
+import { TimezoneLegendComponent } from '../../components/ui/timezone-legend';
+import { CHILE_TIME_ZONE } from '../../shared/timezone';
 
 interface RowEdit {
   caudal: string;
@@ -54,7 +56,7 @@ const WARNING_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-dga-review',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableSkeletonComponent],
+  imports: [CommonModule, FormsModule, TableSkeletonComponent, TimezoneLegendComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="mx-auto max-w-6xl p-6 space-y-4">
@@ -75,6 +77,8 @@ const WARNING_LABELS: Record<string, string> = {
           Recargar
         </button>
       </header>
+
+      <app-timezone-legend />
 
       <!-- Mensajes informativos (resultado de acciones) -->
       @if (codeMessage()) {
@@ -404,7 +408,7 @@ export class DgaReviewComponent {
 
   /** Formatea el ts UTC del slot como DD/MM/YYYY HH:MM hora de Chile. */
   private static readonly TS_FORMAT = new Intl.DateTimeFormat('es-CL', {
-    timeZone: 'America/Santiago',
+    timeZone: CHILE_TIME_ZONE,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -522,19 +526,11 @@ export class DgaReviewComponent {
     // rara es una excepción que aborta el reload y deja la lista vieja en
     // pantalla, así que preferimos devolver "sin filtro" antes que tirar.
     if (!day || !this.fechaUsable(day)) return undefined;
-    const hora = edge === 'start' ? '00:00:00' : '23:59:59';
-    const ms = edge === 'start' ? 0 : 999;
-    // Los milisegundos se suman DESPUÉS: 'sv-SE' formatea hasta el segundo, y
-    // medir el offset contra un instante con .999 lo contamina con esos 999ms.
-    const base = new Date(`${day}T${hora}Z`);
-    // Offset real de Chile en esa fecha, sin pasar por la zona del navegador:
-    // 'sv-SE' da 'YYYY-MM-DD HH:mm:ss' y releerlo como UTC vuelve la
-    // diferencia el offset. Reparsear con toLocaleString a secas no sirve —
-    // con el navegador ya en Chile da 0 y el rango queda corrido 4 horas, que
-    // es justamente el caso normal de esta app.
-    const muroChile = base.toLocaleString('sv-SE', { timeZone: 'America/Santiago' });
-    const offsetMs = new Date(`${muroChile.replace(' ', 'T')}Z`).getTime() - base.getTime();
-    return new Date(base.getTime() + ms - offsetMs).toISOString();
+    // Offset fijo -04:00, igual que las columnas generadas de `dato_dga`: el
+    // rango del filtro tiene que recortar exactamente los mismos días que
+    // muestra la tabla. Con DST el corte quedaba 1 h adentro del día vecino.
+    const hora = edge === 'start' ? '00:00:00.000' : '23:59:59.999';
+    return new Date(`${day}T${hora}-04:00`).toISOString();
   }
 
   reload(): void {

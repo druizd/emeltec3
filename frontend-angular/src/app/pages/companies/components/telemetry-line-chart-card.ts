@@ -18,6 +18,7 @@ import {
   TooltipItem,
   registerables,
 } from 'chart.js';
+import { CHILE_TIME_ZONE } from '../../../shared/timezone';
 
 Chart.register(...registerables);
 
@@ -860,7 +861,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
   private formatTickTimestamp(timestampMs: number): string {
     if (!Number.isFinite(timestampMs)) return '';
     const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
@@ -877,7 +878,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
   private formatTooltipTimestamp(timestampMs: number): string {
     if (!Number.isFinite(timestampMs)) return '';
     return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -893,7 +894,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
 
   private localDateKey(timestampMs: number): string {
     const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -906,7 +907,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
 
   private localTimeParts(timestampMs: number): { hour: string; minute: string } {
     const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23',
