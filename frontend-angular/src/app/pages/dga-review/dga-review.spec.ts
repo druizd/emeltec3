@@ -6,14 +6,23 @@
  * día no se expande al rango correcto en hora de Chile, un "hasta el 17" deja
  * fuera las últimas horas del 17 y el usuario ve menos de lo que hay.
  *
- * El truco ingenuo (toLocaleString + reparse) devuelve offset 0 cuando el
- * navegador ya está en Chile — que es el caso normal de esta app — así que la
- * regresión pasaría desapercibida sin estos casos.
+ * La zona es UTC-4 FIJA (`Etc/GMT+4`), no el reloj de pared: `dato_dga` genera
+ * `fecha`/`hora` en esa zona y es lo que se declara a SNIA, así que el filtro
+ * tiene que recortar los mismos días que muestra la tabla. Seguir el reloj de
+ * pared dejaba el corte 1 h adentro del día vecino durante el horario de
+ * verano, y en invierno los dos criterios coinciden — por eso el caso de enero
+ * de más abajo es el único que detecta la regresión.
  */
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { DgaReviewComponent } from './dga-review';
-import { DgaReviewQueuePage, DgaReviewFilters, DgaService } from '../../services/dga.service';
+import {
+  DgaReviewActionPayload,
+  DgaReviewFilters,
+  DgaReviewQueuePage,
+  DgaReviewSlot,
+  DgaService,
+} from '../../services/dga.service';
 
 const PAGINA_VACIA = { slots: [], total: 0, sitios: [] };
 
@@ -62,10 +71,14 @@ describe('DgaReviewComponent — filtros', () => {
     expect(capturado.at(-1)!.hasta).toBe('2026-07-18T03:59:59.999Z');
   });
 
-  it('respeta el horario de verano chileno (UTC-3 en enero)', () => {
+  it('mantiene UTC-4 fijo en pleno horario de verano, no sigue el reloj de pared', () => {
     const c = crear();
     c.onFilterChange(c.filterDesde, '2026-01-15');
-    expect(capturado.at(-1)!.desde).toBe('2026-01-15T03:00:00.000Z');
+    // El 15-ene el reloj chileno va en UTC-3, pero la tabla muestra los días
+    // tal como `dato_dga` los genera (Etc/GMT+4) y como salen a SNIA. Si esto
+    // volviera a dar '...T03:00:00.000Z', el filtro y la tabla discreparían en
+    // una hora justo en el período en que se está declarando.
+    expect(capturado.at(-1)!.desde).toBe('2026-01-15T04:00:00.000Z');
   });
 
   it('manda el site_id elegido', () => {
@@ -123,5 +136,153 @@ describe('DgaReviewComponent — filtros', () => {
     expect(c.truncado()).toBe(false);
     c.total.set(340);
     expect(c.truncado()).toBe(true);
+  });
+});
+
+/**
+ * Selección múltiple y acciones en bloque.
+ *
+ * El caso que lo motivó: 73 mediciones retenidas de un mismo pozo por exceder
+ * el derecho de caudal. Aceptarlas de a una no es viable, y aceptarlas por SQL
+ * salta la nota y el autor que exige la auditoría.
+ */
+describe('DgaReviewComponent — selección múltiple', () => {
+  let aplicadas: DgaReviewActionPayload[];
+  let fallarEn: string | null;
+
+  function slot(siteId: string, ts: string, code: string): DgaReviewSlot {
+    return {
+      site_id: siteId,
+      ts,
+      obra: 'OB-TEST',
+      codigo_obra: 'OB-TEST',
+      referencia_informante: siteId,
+      caudal_instantaneo: '77.90',
+      flujo_acumulado: '1234',
+      nivel_freatico: '32.20',
+      validation_warnings: [{ code }],
+    } as unknown as DgaReviewSlot;
+  }
+
+  const SLOTS = [
+    slot('S129', '2026-09-10T12:00:00.000Z', 'flow_exceeds_water_right'),
+    slot('S129', '2026-09-10T13:00:00.000Z', 'flow_exceeds_water_right'),
+    slot('S130', '2026-09-10T14:00:00.000Z', 'no_data_stale'),
+  ];
+
+  beforeEach(() => {
+    aplicadas = [];
+    fallarEn = null;
+    const dga: Partial<DgaService> = {
+      listReviewQueue: () =>
+        of({ slots: SLOTS, total: SLOTS.length, sitios: [] } as unknown as DgaReviewQueuePage),
+      applyReviewDecision: (payload: DgaReviewActionPayload) => {
+        aplicadas.push(payload);
+        if (fallarEn && payload.ts === fallarEn) {
+          return throwError(() => new Error('boom')) as never;
+        }
+        return of({ ok: true }) as never;
+      },
+    };
+    TestBed.configureTestingModule({
+      imports: [DgaReviewComponent],
+      providers: [{ provide: DgaService, useValue: dga }],
+    });
+  });
+
+  function crear(): DgaReviewComponent {
+    return TestBed.createComponent(DgaReviewComponent).componentInstance;
+  }
+
+  it('marca y desmarca un slot', () => {
+    const c = crear();
+    expect(c.seleccionados()).toBe(0);
+    c.alternarMarca(SLOTS[0]!);
+    expect(c.seleccionados()).toBe(1);
+    expect(c.estaMarcado(SLOTS[0]!)).toBe(true);
+    c.alternarMarca(SLOTS[0]!);
+    expect(c.seleccionados()).toBe(0);
+  });
+
+  it('el chip de anomalía acota la tabla sin perder las demás opciones', () => {
+    const c = crear();
+    expect(c.visibles().length).toBe(3);
+    c.setFilterCodigo('flow_exceeds_water_right');
+    expect(c.visibles().length).toBe(2);
+    // Los chips se calculan sobre la página completa: si se calcularan sobre
+    // lo visible, al elegir uno desaparecerían los otros y no habría vuelta.
+    expect(c.codigosPresentes().length).toBe(2);
+    c.setFilterCodigo('flow_exceeds_water_right');
+    expect(c.visibles().length).toBe(3);
+  });
+
+  it('marcar todo respeta el chip activo', () => {
+    const c = crear();
+    c.setFilterCodigo('flow_exceeds_water_right');
+    c.alternarTodosVisibles();
+    expect(c.seleccionados()).toBe(2);
+    expect(c.estaMarcado(SLOTS[2]!)).toBe(false);
+  });
+
+  it('la selección sobrevive al cambio de chip', () => {
+    const c = crear();
+    c.setFilterCodigo('flow_exceeds_water_right');
+    c.alternarTodosVisibles();
+    c.setFilterCodigo('no_data_stale');
+    c.alternarTodosVisibles();
+    expect(c.seleccionados()).toBe(3);
+  });
+
+  it('exige nota de al menos 5 caracteres antes de actuar', () => {
+    const c = crear();
+    c.alternarMarca(SLOTS[0]!);
+    c.bulkNote.set('ok');
+    c.aceptarSeleccionados();
+    expect(aplicadas.length).toBe(0);
+    expect(c.error()).toContain('nota admin');
+  });
+
+  it('aplica la misma nota a todos los marcados y los saca de la cola', () => {
+    const c = crear();
+    c.alternarMarca(SLOTS[0]!);
+    c.alternarMarca(SLOTS[1]!);
+    c.bulkNote.set('Caudal verificado contra el totalizador');
+    c.aceptarSeleccionados();
+
+    expect(aplicadas.length).toBe(2);
+    expect(aplicadas.every((p) => p.action === 'accept')).toBe(true);
+    expect(aplicadas.every((p) => p.admin_note === 'Caudal verificado contra el totalizador')).toBe(
+      true,
+    );
+    // Se declaran los valores tal como venían del sensor.
+    expect(aplicadas[0]!.values?.caudal_instantaneo).toBe(77.9);
+    expect(c.slots().length).toBe(1);
+    expect(c.seleccionados()).toBe(0);
+    expect(c.bulkProgress()).toBeNull();
+  });
+
+  it('descartar en bloque no manda valores', () => {
+    const c = crear();
+    c.alternarMarca(SLOTS[0]!);
+    c.bulkNote.set('Sin dato crudo declarable');
+    c.descartarSeleccionados();
+    expect(aplicadas[0]!.action).toBe('discard');
+    expect(aplicadas[0]!.values).toBeUndefined();
+  });
+
+  it('un slot que falla no aborta el lote y queda en la cola', () => {
+    const c = crear();
+    fallarEn = '2026-09-10T12:00:00.000Z';
+    c.alternarMarca(SLOTS[0]!);
+    c.alternarMarca(SLOTS[1]!);
+    c.bulkNote.set('Nota de prueba suficiente');
+    c.aceptarSeleccionados();
+
+    // Los dos se intentaron, aunque el primero reventó.
+    expect(aplicadas.length).toBe(2);
+    // El que falló sigue en la lista; el que pasó salió.
+    expect(c.slots().length).toBe(2);
+    expect(c.slots().some((s) => s.ts === fallarEn)).toBe(true);
+    expect(c.error()).toContain('1 medición(es) fallaron');
   });
 });

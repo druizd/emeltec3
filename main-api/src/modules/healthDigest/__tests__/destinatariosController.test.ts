@@ -108,8 +108,8 @@ describe('GET /health-digest/destinatarios', () => {
     expect(next).not.toHaveBeenCalled();
     const body = captured.body as { data: unknown[]; meta: Record<string, unknown> };
     expect(body.data).toHaveLength(1);
-    expect(body.meta.horarios_resumen).toEqual([7, 16]);
-    expect(body.meta.zona_horaria).toBe('America/Santiago');
+    expect(body.meta.horarios_resumen).toEqual([6, 15]);
+    expect(body.meta.zona_horaria).toBe('Etc/GMT+4');
     expect(body.meta.fallback_email).toBe(MONITOR_PRIMARY);
     // Los dos workers viajan por separado: healthDigest manda el resumen y las
     // escalaciones, auditAlerts las alertas de seguridad. Con uno apagado y el

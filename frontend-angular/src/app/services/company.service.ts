@@ -465,7 +465,18 @@ export class CompanyService {
   getSiteDashboardHistory(
     siteId: string,
     limit = 500,
-    options: { from?: string; to?: string; granularity?: HistoryGranularity; page?: number } = {},
+    options: {
+      from?: string;
+      to?: string;
+      granularity?: HistoryGranularity;
+      page?: number;
+      /**
+       * Suma una columna por variable analógica del reg_map. Lo necesitan los
+       * sitios de proceso, que no tienen caudal/nivel/totalizador; en un sitio
+       * de agua solo engorda la respuesta.
+       */
+      analogicas?: boolean;
+    } = {},
   ): Observable<ApiResponse<SiteDashboardHistoryPayload>> {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
@@ -473,6 +484,7 @@ export class CompanyService {
     if (options.from) params.set('from', options.from);
     if (options.to) params.set('to', options.to);
     if (options.granularity) params.set('granularity', options.granularity);
+    if (options.analogicas) params.set('analogicas', '1');
     params.set('t', String(Date.now()));
     return this.http.get<ApiResponse<SiteDashboardHistoryPayload>>(
       `/api/companies/sites/${siteId}/dashboard-history?${params.toString()}`,

@@ -88,6 +88,17 @@ export const routes: Routes = [
             (m) => m.CompanySiteComingSoonDetailComponent,
           ),
       },
+      // [sala-servicios] Piloto Kross. Para darlo de baja, borrar esta ruta
+      // entera y la carpeta pages/companies/sala-servicios/.
+      // Ver docs/sala-servicios-piloto-kross.md.
+      {
+        path: 'companies/:siteId/sala-servicios',
+        data: { siteType: 'sala_servicios' },
+        loadComponent: () =>
+          import('./pages/companies/sala-servicios/sala-servicios-detail').then(
+            (m) => m.SalaServiciosDetailComponent,
+          ),
+      },
       {
         path: 'companies/:siteId/pasteurizador',
         data: { siteType: 'pasteurizador' },

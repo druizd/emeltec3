@@ -1,0 +1,14 @@
+[Unit]
+Description=Emeltec infrastructure monitor (loop continuo, reemplaza cron)
+After=docker.service
+
+[Service]
+Type=simple
+User=azureuser
+Environment=LOOP_SLEEP_SEC=20
+ExecStart=/bin/bash -c 'while true; do /home/azureuser/emeltec3/scripts/monitor.sh >> /home/azureuser/emeltec3/logs/monitor.log 2>&1; sleep ${LOOP_SLEEP_SEC}; done'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

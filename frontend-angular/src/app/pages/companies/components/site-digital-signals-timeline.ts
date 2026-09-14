@@ -11,6 +11,7 @@ import {
 import type { SiteDashboardHistoryDigital, SiteDashboardHistoryEntry } from '@emeltec/shared';
 import { CompanyService, type HistoryGranularity } from '../../../services/company.service';
 import { SkeletonComponent } from '../../../components/ui/skeleton';
+import { CHILE_TIME_ZONE } from '../../../shared/timezone';
 
 /** Un tramo contiguo con el mismo estado dentro de la ventana consultada. */
 interface Tramo {
@@ -366,7 +367,7 @@ export class SiteDigitalSignalsTimelineComponent implements OnChanges {
       month: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
     }).format(new Date(t));
   }
 }

@@ -38,6 +38,7 @@ import {
   type DeviationCause,
 } from '../../services/cold-room-deviations.service';
 import { fmtHum, fmtTemp, humColor, tempColor } from './ventisqueros-data';
+import { CHILE_TIME_ZONE } from '../../shared/timezone';
 
 Chart.register(...registerables, annotationPlugin, zoomPlugin);
 
@@ -2461,7 +2462,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
 
   fmtDeviationTime(iso: string): string {
     return new Date(iso).toLocaleString('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
@@ -2584,7 +2585,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   // Tope del date picker: hoy en zona Chile (no permitir futuro).
   readonly todayChile = computed(() => {
     const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -3066,7 +3067,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
 
   private formatChileParts(ts: string): { date: string; time: string } {
     const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

@@ -1,11 +1,12 @@
 import type { AlertaDia } from '../../../../services/alerta.service';
+import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 
 /**
  * Zona horaria con la que el worker de alertas decide "qué día es hoy"
- * (`ALERT_TIMEZONE`, default America/Santiago). El tester tiene que usar la
+ * (`ALERT_TIMEZONE`, default UTC-4 fijo). El tester tiene que usar la
  * misma para que una lectura de las 23:30 del viernes no cuente como sábado.
  */
-export const ALERTA_TIMEZONE = 'America/Santiago';
+export const ALERTA_TIMEZONE = CHILE_TIME_ZONE;
 
 /** Índice de `Date#getDay()` → id de día, igual que DIAS_VALIDOS del worker. */
 const DIAS_POR_INDICE: readonly AlertaDia[] = [

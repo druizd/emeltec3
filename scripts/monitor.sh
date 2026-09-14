@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # scripts/monitor.sh — Emeltec infrastructure health monitor
-# Cron: */5 * * * * /home/azureuser/emeltec3/scripts/monitor.sh >> /var/log/emeltec-monitor.log 2>&1
-# Rotación: /etc/logrotate.d/emeltec-monitor -> /var/log/emeltec-monitor.log { daily rotate 7 compress delaycompress missingok notifempty }
+# Deploy: systemd service en loop continuo, NO cron (ver scripts/emeltec-monitor.service)
+#   Instala con: sudo cp scripts/emeltec-monitor.service /etc/systemd/system/
+#                sudo systemctl daemon-reload && sudo systemctl enable --now emeltec-monitor.service
+#   El servicio corre este script en un loop con sleep entre corridas (ver LOOP_SLEEP_SEC ahí) —
+#   antes corría por cron cada 5 min, ahora el delay de alerta baja a ~segundos.
+# Setup una vez: mkdir -p /home/azureuser/emeltec3/logs  (azureuser no tiene permiso de escritura en /var/log)
+# Rotación: /etc/logrotate.d/emeltec-monitor -> /home/azureuser/emeltec3/logs/monitor.log { daily rotate 7 compress delaycompress missingok notifempty su azureuser azureuser }
+# Requiere: jq (para armar el JSON del email — ya NO depende de node)
 
 set -Eeuo pipefail
 
@@ -15,8 +21,7 @@ STATE_DIR="/tmp/emeltec-monitor"
 YELLOW_MIN=5
 RED_MIN=10
 
-# TEST: solo mcid. Producción: agregar nlira y druiz
-TO_EMAILS=("mcid@emeltec.cl")
+TO_EMAILS=("mcid@emeltec.cl" "nlira@emeltec.cl" "druiz@emeltec.cl")
 
 CONTAINERS=(
   emeltec-db
@@ -49,14 +54,39 @@ RESEND_FROM="${RESEND_FROM:-Emeltec Cloud <noreply@emeltec.cl>}"
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_DB="${POSTGRES_DB:-telemetry_platform}"
 
+# ── Logo (mismo asset que usa main-api/src/services/emailService.js) ──────────
+LOGO_CID="emeltec-logo"
+LOGO_CANDIDATES=(
+  "${EMAIL_LOGO_PATH:-}"
+  "$(dirname "$SCRIPT_DIR")/main-api/assets/emeltec-logo.png"
+  "$(dirname "$SCRIPT_DIR")/frontend-angular/public/images/emeltec-logo.png"
+)
+LOGO_B64=""
+for candidate in "${LOGO_CANDIDATES[@]}"; do
+  [[ -z "$candidate" || ! -f "$candidate" ]] && continue
+  LOGO_B64=$(base64 -w0 "$candidate" 2>/dev/null) && { log "Logo cargado desde $candidate"; break; }
+done
+[[ -z "$LOGO_B64" ]] && log "WARN: logo no encontrado en candidatos (${LOGO_CANDIDATES[*]})"
+
 # ── State ─────────────────────────────────────────────────────────────────────
 # One file per alert key — contains: ok / yellow / red / down / missing
 get_state() { cat "${STATE_DIR}/${1}" 2>/dev/null || echo "ok"; }
 set_state()  { printf '%s' "$2" > "${STATE_DIR}/${1}"; }
 
-# ── HTML builders ──────────────────────────────────────────────────────────────
+# ── HTML builders (mismo sistema visual que main-api/src/services/emailService.js) ──
 escape_html() {
   printf '%s' "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'
+}
+
+# Gradientes de marca por color de acento (igual que SEVERIDAD_GRADIENT en emailService.js)
+gradient_for() {
+  case "$1" in
+    '#dc2626') echo 'linear-gradient(90deg,#dc2626 0%,#7f1d1d 100%)' ;;
+    '#d97706') echo 'linear-gradient(90deg,#d97706 0%,#92400e 100%)' ;;
+    '#22C55E'|'#16a34a') echo 'linear-gradient(90deg,#22C55E 0%,#15803D 100%)' ;;
+    '#0DAFBD') echo 'linear-gradient(90deg,#0DAFBD 0%,#04606A 100%)' ;;
+    *) echo "linear-gradient(90deg,$1 0%,$1 100%)" ;;
+  esac
 }
 
 make_rows() {
@@ -65,8 +95,8 @@ make_rows() {
     safe1=$(escape_html "$1")
     safe2=$(escape_html "$2")
     out+="<tr>"
-    out+="<td style='padding:7px 0;font-size:12px;color:#64748B;width:40%;vertical-align:top;'><strong>$safe1</strong></td>"
-    out+="<td style='padding:7px 0;font-size:13px;color:#1E293B;vertical-align:top;'>$safe2</td>"
+    out+="<td style='padding:11px 16px;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;width:38%;vertical-align:top;'>$safe1</td>"
+    out+="<td style='padding:11px 16px;border-bottom:1px solid #E2E8F0;font-size:14px;color:#1E293B;font-weight:500;vertical-align:top;'>$safe2</td>"
     out+="</tr>"
     shift 2
   done
@@ -74,35 +104,54 @@ make_rows() {
 }
 
 make_html() {
-  local bg="$1" icon="$2" title="$3" inner="$4"
-  local ts
+  local accent="$1" icon="$2" title="$3" inner="$4"
+  local ts gradient logo_row
   ts=$(date '+%d/%m/%Y %H:%M:%S')
+  gradient=$(gradient_for "$accent")
+  logo_row=""
+  if [[ -n "$LOGO_B64" ]]; then
+    logo_row="<tr><td style=\"background-color:#FFFFFF;padding:30px 32px 22px;text-align:center;border-bottom:1px solid #E2E8F0;\"><img src=\"cid:${LOGO_CID}\" alt=\"Emeltec\" width=\"220\" height=\"63\" style=\"display:block;margin:0 auto;border:0;outline:none;text-decoration:none;height:63px;width:220px;max-width:220px;\"></td></tr>"
+  fi
   cat <<HTML
 <!DOCTYPE html>
-<html>
-<body style="margin:0;padding:0;background:#F0F2F5;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
-<tr><td align="center">
-<table width="580" cellpadding="0" cellspacing="0"
-       style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;max-width:580px;">
-  <tr>
-    <td style="background:${bg};padding:20px 32px;">
-      <span style="font-size:20px;font-weight:700;color:#fff;">${icon} ${title}</span>
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:24px 32px;">
-      ${inner}
-    </td>
-  </tr>
-  <tr>
-    <td style="background:#F8FAFC;border-top:1px solid #E2E8F0;padding:12px 32px;
-               font-size:11px;color:#94A3B8;text-align:center;">
-      Emeltec Cloud &mdash; Monitor automático &mdash; ${ts}
-    </td>
-  </tr>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F0F2F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;color:#1E293B;-webkit-font-smoothing:antialiased;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F0F2F5;padding:32px 16px;">
+<tr>
+<td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+${logo_row}
+<tr>
+<td style="padding:0;line-height:0;font-size:0;height:3px;background-color:${accent};background-image:${gradient};">&nbsp;</td>
+</tr>
+<tr>
+<td style="padding:32px 40px 8px;">
+<p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Monitor de infraestructura</p>
+<h1 style="margin:0;font-size:22px;line-height:1.3;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">${icon} ${title}</h1>
+</td>
+</tr>
+<tr>
+<td style="padding:16px 40px 32px;">
+${inner}
+</td>
+</tr>
+<tr>
+<td style="background-color:#F8FAFC;border-top:1px solid #E2E8F0;padding:18px 40px;text-align:center;">
+<p style="margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Emeltec Cloud - Emeltec HUB</p>
+<p style="margin:6px 0 0;font-size:11px;color:#94A3B8;line-height:1.5;">Monitor automático &middot; ${ts}</p>
+</td>
+</tr>
 </table>
-</td></tr>
+<p style="margin:16px 0 0;font-size:11px;color:#94A3B8;text-align:center;">&copy; $(date '+%Y') Emeltec SpA &middot; Santiago, Chile</p>
+</td>
+</tr>
 </table>
 </body>
 </html>
@@ -110,17 +159,17 @@ HTML
 }
 
 info_block() {
-  local rows="$1"
-  echo "<table width='100%' cellpadding='0' cellspacing='0'
-             style='border-top:1px solid #E2E8F0;padding-top:12px;margin-bottom:8px;'>
+  local rows="$1" accent="${2:-#0DAFBD}"
+  echo "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0'
+             style='background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;border-left:3px solid ${accent};overflow:hidden;margin-bottom:8px;'>
     $rows
   </table>"
 }
 
 note_box() {
   local bg="$1" border="$2" color="$3" text="$4"
-  echo "<p style='margin:16px 0 0;padding:12px;background:${bg};border:1px solid ${border};
-                  border-radius:8px;font-size:12px;color:${color};'>$text</p>"
+  echo "<p style='margin:16px 0 0;padding:14px 16px;background-color:${bg};border:1px solid ${border};
+                  border-radius:10px;font-size:12px;line-height:1.55;color:${color};'>$text</p>"
 }
 
 # ── Email ─────────────────────────────────────────────────────────────────────
@@ -133,31 +182,25 @@ send_email() {
   fi
 
   for email in "${TO_EMAILS[@]}"; do
-    # Write content to temp files — avoids argv length limits and -- offset issues
+    # Write content to temp files — avoids argv length limits
     local ts tt th tp tr
     ts=$(mktemp); tt=$(mktemp); th=$(mktemp); tp=$(mktemp); tr=$(mktemp)
     printf '%s' "$subject"   > "$ts"
     printf '%s' "$text_body" > "$tt"
     printf '%s' "$html_body" > "$th"
 
-    # Access args from the END — avoids argv[0..1] offset differences across Node versions/OS
-    node -e "
-const fs = require('fs');
-const a = process.argv;
-const to_addr   = a[a.length - 1];
-const from_addr = a[a.length - 2];
-const h_file    = a[a.length - 3];
-const t_file    = a[a.length - 4];
-const s_file    = a[a.length - 5];
-const payload = {
-  from:    from_addr,
-  to:      to_addr,
-  subject: fs.readFileSync(s_file, 'utf8'),
-  text:    fs.readFileSync(t_file, 'utf8'),
-  html:    fs.readFileSync(h_file, 'utf8'),
-};
-process.stdout.write(JSON.stringify(payload));
-" "$ts" "$tt" "$th" "$RESEND_FROM" "$email" > "$tp"
+    jq -n \
+      --arg from "$RESEND_FROM" \
+      --arg to "$email" \
+      --rawfile subject "$ts" \
+      --rawfile text "$tt" \
+      --rawfile html "$th" \
+      --arg logo_b64 "$LOGO_B64" \
+      --arg logo_cid "$LOGO_CID" \
+      '{from: $from, to: $to, subject: $subject, text: $text, html: $html}
+       + (if ($logo_b64 | length) > 0
+          then {attachments: [{filename: "emeltec-logo.png", content: $logo_b64, content_type: "image/png", content_id: $logo_cid}]}
+          else {} end)' > "$tp"
 
     rm -f "$ts" "$tt" "$th"
 
@@ -195,7 +238,7 @@ check_container() {
     rows=$(make_rows "Container" "$name" "Estado" "No existe en Docker" \
                      "Acción" "Verificar docker-compose")
     local inner
-    inner=$(info_block "$rows")
+    inner=$(info_block "$rows" '#dc2626')
     inner+=$(note_box "#FEF2F2" "#FECACA" "#DC2626" \
       "El container no existe. Verificar que <code>docker-compose</code> esté levantado.")
     send_email "🔴 [CAÍDO] $name — no encontrado" \
@@ -220,7 +263,7 @@ check_container() {
     local rows
     rows=$(make_rows "Container" "$name" "Estado" "$status" "Exit code" "$exit_code")
     local inner
-    inner=$(info_block "$rows")
+    inner=$(info_block "$rows" '#dc2626')
     inner+="<p style='margin:16px 0 4px;font-size:12px;color:#64748B;'><strong>Últimas líneas de log:</strong></p>"
     inner+="<pre style='background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:10px;
                          font-size:11px;color:#334155;white-space:pre-wrap;overflow-x:auto;'>$safe_logs</pre>"
@@ -237,7 +280,7 @@ check_container() {
                        "Recuperado" "$(date '+%d/%m/%Y %H:%M:%S')")
       send_email "✅ [RECUPERADO] $name — running" \
         "Container $name está running nuevamente. $(date)" \
-        "$(make_html '#16a34a' '✅' "Container recuperado: $name" "$(info_block "$rows")")"
+        "$(make_html '#22C55E' '✅' "Container recuperado: $name" "$(info_block "$rows" '#22C55E')")"
     else
       set_state "$key" "ok"
       log "OK $name: running"
@@ -284,7 +327,7 @@ check_flow() {
     rows=$(make_rows "Consumer" "$label" "Sin datos hace" "${min} minutos" \
                      "Último dato" "$last_ts" "Container" "$container")
     local inner
-    inner=$(info_block "$rows")
+    inner=$(info_block "$rows" '#dc2626')
     inner+=$(note_box "#FEF2F2" "#FECACA" "#DC2626" \
       "Revisar el container <strong>$container</strong> y la conectividad de red.")
     send_email "🔴 [CRÍTICO] $label — sin datos ${min} min" \
@@ -298,7 +341,7 @@ check_flow() {
     rows=$(make_rows "Consumer" "$label" "Sin datos hace" "${min} minutos" \
                      "Último dato" "$last_ts" "Alerta crítica en" "${eta} minutos")
     local inner
-    inner=$(info_block "$rows")
+    inner=$(info_block "$rows" '#d97706')
     inner+=$(note_box "#FFFBEB" "#FDE68A" "#92400E" \
       "Si no se reanuda la transmisión en ${eta} minutos, se enviará alerta crítica.")
     send_email "⚠️ [ALERTA] $label — sin datos ${min} min" \
@@ -312,16 +355,16 @@ check_flow() {
                      "Último dato" "$last_ts" "Recuperado" "$(date '+%d/%m/%Y %H:%M:%S')")
     send_email "✅ [RECUPERADO] $label — datos fluyendo" \
       "$label recuperado. Datos fluyendo. Último dato: $last_ts" \
-      "$(make_html '#16a34a' '✅' "$label — datos fluyendo" "$(info_block "$rows")")"
+      "$(make_html '#22C55E' '✅' "$label — datos fluyendo" "$(info_block "$rows" '#22C55E')")"
   fi
 }
 
 # ── Detección de reinicio (VM caída y vuelta) ──────────────────────────────────
 # STATE_DIR vive en /tmp, que se limpia en cada boot de Ubuntu — la ausencia
 # del heartbeat de la corrida anterior, o un hueco grande entre corridas
-# (mucho más que los 5 min del cron), es la señal de que la VM se reinició.
+# (mucho más que el intervalo del loop systemd), es la señal de que la VM se reinició.
 MONITOR_HEARTBEAT="$STATE_DIR/monitor-last-run"
-RESTART_GAP_SECONDS=900  # 15 min — 3x el intervalo del cron, evita falsos positivos
+RESTART_GAP_SECONDS=180  # 3 min — margen amplio para el loop systemd (corre cada ~20s), evita falsos positivos
 NOW_EPOCH=$(date +%s)
 LAST_RUN_EPOCH=$(cat "$MONITOR_HEARTBEAT" 2>/dev/null || echo "")
 
@@ -379,8 +422,8 @@ check_flow "ftp" "ftpconsumer (FTP pipeline)" "emeltec-ftpconsumer" \
 # ── Email de reinicio: resumen inmediato con el estado de todo + la razón ─────
 if [[ "$RESTART_DETECTED" -eq 1 ]]; then
   rows=$(make_rows "${SUMMARY_ROWS[@]}")
-  inner=$(info_block "$rows")
-  inner+=$(note_box "#EFF6FF" "#BFDBFE" "#1D4ED8" "$RESTART_REASON")
+  inner=$(info_block "$rows" '#0DAFBD')
+  inner+=$(note_box "#F0FBFC" "rgba(13,175,189,0.35)" "#04606A" "$RESTART_REASON")
   send_email "🔵 [MONITOR] monitor.sh arrancó — resumen de estado" \
     "monitor.sh volvió a correr. $RESTART_REASON" \
     "$(make_html '#0DAFBD' '🔵' 'Monitor arrancó — resumen de estado' "$inner")"

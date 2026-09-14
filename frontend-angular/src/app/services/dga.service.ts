@@ -119,6 +119,17 @@ export interface DatoDgaRow {
   flujo_acumulado: string | null;
   nivel_freatico: string | null;
   estatus: DgaSlotEstatus;
+  /**
+   * Distingue un `fallido` que agotó reintentos contra SNIA de uno que un
+   * operador cerró a propósito. Las bajas manuales llevan el prefijo `baja_`
+   * seguido del motivo tipificado (`baja_recambio_instrumento`, …).
+   */
+  fail_reason: string | null;
+  /**
+   * Nota que escribió el operador al cerrar el período. Es lo único que explica
+   * POR QUÉ se dio de baja justo ahí. Null si no es una baja.
+   */
+  baja_nota: string | null;
   comprobante: string | null;
 }
 

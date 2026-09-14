@@ -13,18 +13,21 @@
 
 ## DGA (cumplimiento regulatorio)
 
-| Doc                                                                              | Tema                                                                                 |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [dga-reporte-proceso.md](./dga-reporte-proceso.md)                               | Diseño del proceso de reporte DGA (workers, estados, lifecycle)                      |
-| [dga-smoke-tests.md](./dga-smoke-tests.md)                                       | Checklist de smoke tests del pipeline DGA                                            |
-| [dga-mantenimiento-slots.md](./dga-mantenimiento-slots.md)                       | Recalcular y dar de baja slots por rango: endpoints, candados y auditoría            |
-| [s128-recambio-caudalimetro-2026-09.md](./s128-recambio-caudalimetro-2026-09.md) | Caso S128: recambio de caudalímetro, m³/h declarado como L/s y subdeclaración a SNIA |
+| Doc                                                                              | Tema                                                                                                 |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [dga-reporte-proceso.md](./dga-reporte-proceso.md)                               | Diseño del proceso de reporte DGA (workers, estados, lifecycle)                                      |
+| [dga-smoke-tests.md](./dga-smoke-tests.md)                                       | Checklist de smoke tests del pipeline DGA                                                            |
+| [dga-mantenimiento-slots.md](./dga-mantenimiento-slots.md)                       | Recalcular y dar de baja slots por rango: endpoints, candados y auditoría                            |
+| [s128-recambio-caudalimetro-2026-09.md](./s128-recambio-caudalimetro-2026-09.md) | Caso S128: recambio de caudalímetro, m³/h declarado como L/s y subdeclaración a SNIA                 |
+| [s127-recambio-caudalimetro-2026-08.md](./s127-recambio-caudalimetro-2026-08.md) | Caso S127: el factor ÷3,6 que no correspondía, el histórico borrado y el caudal que llega en cero    |
+| [s129-recambio-equipo-2026-09.md](./s129-recambio-equipo-2026-09.md)             | Caso S129: recambio de datalogger completo, nueve dias bombeando sin totalizador y el reloj atrasado |
 
 ## Operación
 
 | Doc                                                                            | Tema                                                                                   |
 | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | [deployment.md](./deployment.md)                                               | Runbook de despliegue (VM Azure, docker-compose, secrets)                              |
+| [nginx-502-tras-reinicio-docker.md](./nginx-502-tras-reinicio-docker.md)       | 502 en `/api` tras reiniciar Docker: causa, parche inmediato y arreglo de fondo        |
 | [testing.md](./testing.md)                                                     | Guía de testing y conteo de suites                                                     |
 | [ftp-pipeline.md](./ftp-pipeline.md)                                           | Pipeline FTP de ingesta: servidores, dispositivos, scripts, datos cargados             |
 | [import-historico-telemetria.md](./import-historico-telemetria.md)             | Runbook para cargar el histórico de telemetría cruda de un sitio nuevo                 |

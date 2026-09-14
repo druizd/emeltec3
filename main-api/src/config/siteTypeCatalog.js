@@ -378,6 +378,72 @@ const SITE_TYPE_CATALOG = {
     ],
     transforms: [...COMMON_TRANSFORMS],
   },
+  // [sala-servicios] piloto Kross: borrar esta entrada completa.
+  // Una sala de servicios no es una maquina: son los utilities de la planta
+  // (vapor, frio, aire comprimido) medidos con una sola maleta. Los roles
+  // llevan el servicio adentro porque es lo que agrupa la vista — sin eso
+  // habria que adivinar el servicio desde el alias que escribio quien instalo.
+  sala_servicios: {
+    id: 'sala_servicios',
+    label: 'Sala de servicios',
+    roles: [
+      {
+        id: 'vapor_presion',
+        label: 'Vapor - presion',
+        unitHint: 'bar',
+        description: 'Presion del manifold o de la linea de vapor.',
+      },
+      {
+        id: 'vapor_temperatura',
+        label: 'Vapor - temperatura',
+        unitHint: 'C',
+        description: 'Temperatura del manifold o de la linea de vapor.',
+      },
+      {
+        id: 'vapor_caudal',
+        label: 'Vapor - caudal',
+        unitHint: 'kg/h',
+        description: 'Caudal masico de vapor.',
+      },
+      {
+        id: 'frio_temperatura',
+        label: 'Frio - temperatura',
+        unitHint: 'C',
+        description: 'Temperatura de un circuito de frio (entrada o salida de chiller).',
+      },
+      {
+        id: 'frio_caudal',
+        label: 'Frio - caudal',
+        unitHint: 'm3/h',
+        description: 'Caudal de un circuito de frio.',
+      },
+      {
+        id: 'aire_presion',
+        label: 'Aire comprimido - presion',
+        unitHint: 'bar',
+        description: 'Presion de la linea de aire comprimido.',
+      },
+      {
+        id: 'aire_caudal',
+        label: 'Aire comprimido - caudal',
+        unitHint: 'm3/h',
+        description: 'Caudal de aire comprimido.',
+      },
+      {
+        id: 'estado',
+        label: 'Estado',
+        unitHint: '',
+        description: 'Estado operativo de un equipo de la sala.',
+      },
+      {
+        id: 'generico',
+        label: 'Generico',
+        unitHint: '',
+        description: 'Variable auxiliar sin uso especial en dashboard.',
+      },
+    ],
+    transforms: [...COMMON_TRANSFORMS],
+  },
   pasteurizador: {
     id: 'pasteurizador',
     label: 'Pasteurizador',

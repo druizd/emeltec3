@@ -20,6 +20,7 @@ import { logger } from '../../config/logger';
 import { beat } from '../../config/heartbeat';
 import { getDataTransmissionLag, getDgaUsersForMonitoring, type DgaUserRaw } from './repo';
 import { listDestinatariosActivos, type DigestDestinatario } from './destinatariosRepo';
+import { CHILE_TIME_ZONE } from '../../shared/time';
 
 export type IssueKind = 'data' | 'dga';
 export type Tier = 'ok' | 't3' | 't6' | 't12';
@@ -29,7 +30,14 @@ const POLL_INTERVAL_MS = Number(process.env.HEALTH_DIGEST_POLL_MS ?? 60_000);
 export const MONITOR_PRIMARY = process.env.MONITOR_PRIMARY_EMAIL || 'druiz@emeltec.cl';
 export const WORKER_ENABLED =
   String(process.env.ENABLE_HEALTH_DIGEST_WORKER ?? 'false').toLowerCase() === 'true';
-export const DIGEST_HOURS = [7, 16];
+/**
+ * Horas de envío del resumen, en UTC-4 fijo (la zona de toda la plataforma).
+ * Se corrieron una hora hacia atrás el 06-09-2026: con UTC-4 fijo, en horario
+ * de verano las 07:00 caían a las 08:00 de reloj de pared, justo cuando el
+ * cliente llega. A las 06:00 el correo está siempre en la bandeja antes de que
+ * se siente, tanto en invierno (06:00 de pared) como en verano (07:00).
+ */
+export const DIGEST_HOURS = [6, 15];
 
 const H_MS = 3_600_000;
 const TIER_ORDER: Record<Tier, number> = { ok: 0, t3: 1, t6: 2, t12: 3 };
@@ -243,7 +251,7 @@ async function detectAndEmitEvents(
 
 function santiagoSlot(): { hour: number; minute: number; ymd: string } {
   const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Santiago',
+    timeZone: CHILE_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
