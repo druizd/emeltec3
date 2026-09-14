@@ -288,7 +288,19 @@ function extractCounterSamples(
     } catch {
       v = null;
     }
-    if (v === null) continue;
+    // Un contador acumulado NUNCA es negativo: si la muestra lo es, el crudo
+    // está corrupto y no hay lectura que rescatar.
+    //
+    // Dejarla pasar es peor que perderla. El algoritmo de segmentos la lee como
+    // una cuenta que retrocedió, la confirma como reset y abre el segmento
+    // siguiente desde ese valor; al cerrar el período suma
+    // `valorFin - segmentBase` y con una base de -7e10 el mes entero se va a
+    // 1e16. Pasó en S130 el 08-09-2026: tres muestras del recambio traían
+    // `REG3000 = 53716` (bit de signo en 1, exponente 163) y el gráfico mensual
+    // quedó en notación científica.
+    //
+    // El seed cross-month ya tenía este guard (`seed > 0`); acá faltaba.
+    if (v === null || v < 0) continue;
     out.push({ time: row.time, v });
   }
   return out;

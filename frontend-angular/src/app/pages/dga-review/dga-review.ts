@@ -17,6 +17,8 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { concatMap, from, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import {
   DgaReviewActionPayload,
   DgaReviewSite,
@@ -218,11 +220,115 @@ const WARNING_LABELS: Record<string, string> = {
           </p>
         </div>
       } @else {
+        <!-- Chips por anomalía: el backlog casi siempre es de un solo tipo,
+             así que agruparlo es lo que hace navegable una cola larga. -->
+        @if (codigosPresentes().length > 1) {
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-caption-xs font-semibold uppercase tracking-wide text-slate-500">
+              Anomalía
+            </span>
+            <button
+              type="button"
+              (click)="setFilterCodigo('')"
+              [class]="
+                filterCodigo() === ''
+                  ? 'rounded-full border border-primary bg-primary/10 px-3 py-1 text-caption font-semibold text-primary-dark'
+                  : 'rounded-full border border-slate-300 bg-white px-3 py-1 text-caption text-slate-600 transition-colors hover:bg-slate-50'
+              "
+            >
+              Todas ({{ slots().length }})
+            </button>
+            @for (c of codigosPresentes(); track c.code) {
+              <button
+                type="button"
+                (click)="setFilterCodigo(c.code)"
+                [class]="
+                  filterCodigo() === c.code
+                    ? 'rounded-full border border-primary bg-primary/10 px-3 py-1 text-caption font-semibold text-primary-dark'
+                    : 'rounded-full border border-slate-300 bg-white px-3 py-1 text-caption text-slate-600 transition-colors hover:bg-slate-50'
+                "
+              >
+                {{ c.label }} ({{ c.n }})
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Barra de acciones en bloque. Sticky: con 70 filas el botón tiene
+             que seguir a la vista mientras se marca. -->
+        @if (seleccionados() > 0) {
+          <div
+            class="sticky top-2 z-10 rounded-xl border border-primary/40 bg-white px-4 py-3 shadow-md"
+          >
+            <div class="flex flex-wrap items-end gap-3">
+              <div class="flex flex-col gap-1">
+                <span class="text-caption-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Seleccionadas
+                </span>
+                <span class="font-mono text-h5 font-semibold text-primary-dark">
+                  {{ seleccionados() }}
+                </span>
+              </div>
+
+              <label class="flex min-w-64 flex-1 flex-col gap-1">
+                <span class="text-caption-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Nota admin (se aplica a todas)
+                </span>
+                <input
+                  type="text"
+                  [ngModel]="bulkNote()"
+                  (ngModelChange)="bulkNote.set($event)"
+                  [disabled]="bulkProgress() !== null"
+                  placeholder="Motivo de la decisión — queda en cada medición"
+                  class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-body-sm text-slate-700 disabled:opacity-50"
+                />
+              </label>
+
+              @if (bulkProgress(); as p) {
+                <div class="flex items-center gap-2 text-body-sm text-slate-600">
+                  <span
+                    class="material-symbols-outlined animate-spin text-[18px]"
+                    aria-hidden="true"
+                    >progress_activity</span
+                  >
+                  <span class="font-mono">{{ p.done }} / {{ p.total }}</span>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  (click)="aceptarSeleccionados()"
+                  class="rounded-lg bg-primary px-3 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-primary-dark active:scale-95"
+                >
+                  Aceptar y enviar {{ seleccionados() }}
+                </button>
+                <button
+                  type="button"
+                  (click)="descartarSeleccionados()"
+                  class="rounded-lg border border-red-300 bg-white px-3 py-2 text-body-sm font-semibold text-red-700 transition-colors hover:bg-red-50 active:scale-95"
+                >
+                  Descartar {{ seleccionados() }}
+                </button>
+                <button
+                  type="button"
+                  (click)="limpiarSeleccion()"
+                  class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-body-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
+                >
+                  Limpiar
+                </button>
+              }
+            </div>
+            <p class="mt-2 text-caption-xs text-slate-500">
+              Se declaran los valores tal como están en cada fila. Para corregir un valor, usa la
+              acción individual de esa medición.
+            </p>
+          </div>
+        }
+
         <div class="flex flex-wrap items-center justify-between gap-2">
           <p class="text-caption text-slate-500">
-            Mostrando {{ slots().length }} de {{ total() }}
+            Mostrando {{ visibles().length }} de {{ total() }}
             {{ total() === 1 ? 'medición' : 'mediciones' }}
-            @if (hasFilters()) {
+            @if (hasFilters() || filterCodigo()) {
               <span> (filtrado)</span>
             }
           </p>
@@ -241,6 +347,19 @@ const WARNING_LABELS: Record<string, string> = {
           <table class="min-w-full text-caption">
             <thead class="bg-surface-subtle">
               <tr>
+                <th class="dga-table-header w-10">
+                  <input
+                    type="checkbox"
+                    [checked]="todosVisiblesMarcados()"
+                    (change)="alternarTodosVisibles()"
+                    [attr.aria-label]="
+                      todosVisiblesMarcados()
+                        ? 'Desmarcar todas las mediciones visibles'
+                        : 'Marcar todas las mediciones visibles'
+                    "
+                    class="h-4 w-4 cursor-pointer rounded border-slate-300 accent-primary"
+                  />
+                </th>
                 <th class="dga-table-header">Obra</th>
                 <th class="dga-table-header">Medición</th>
                 <th class="dga-table-header">Anomalías</th>
@@ -252,8 +371,18 @@ const WARNING_LABELS: Record<string, string> = {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              @for (s of slots(); track slotKey(s)) {
-                <tr class="hover:bg-slate-50">
+              @for (s of visibles(); track slotKey(s)) {
+                <tr [class]="estaMarcado(s) ? 'bg-primary/5' : 'hover:bg-slate-50'">
+                  <td class="px-3 py-2 align-top">
+                    <input
+                      type="checkbox"
+                      [checked]="estaMarcado(s)"
+                      (change)="alternarMarca(s)"
+                      [disabled]="bulkProgress() !== null"
+                      [attr.aria-label]="'Marcar medición ' + formatTs(s.ts)"
+                      class="h-4 w-4 cursor-pointer rounded border-slate-300 accent-primary disabled:opacity-50"
+                    />
+                  </td>
                   <td class="px-3 py-2 align-top">
                     <div class="font-semibold text-slate-700">{{ s.codigo_obra || s.obra }}</div>
                     <div class="text-caption-xs text-slate-500">
@@ -394,12 +523,103 @@ export class DgaReviewComponent {
   /** Edits por slot (caudal/totalizador/nivel/nota). Map serializable. */
   private edits = signal<Record<string, RowEdit>>({});
 
+  // ---- Selección múltiple y acciones en bloque ----
+
+  /**
+   * Claves (`site_id::ts`) de los slots marcados. Un Set y no un campo en
+   * RowEdit porque la selección sobrevive al filtro por anomalía: marcar 40
+   * slots, cambiar de chip y seguir marcando es el flujo real cuando hay
+   * backlog.
+   */
+  selected = signal<ReadonlySet<string>>(new Set());
+
+  /** Nota que se escribe UNA vez y se aplica a todos los seleccionados. */
+  bulkNote = signal<string>('');
+
+  /** Progreso de la ejecución secuencial: null cuando no hay nada corriendo. */
+  bulkProgress = signal<{ done: number; total: number; fallidos: number } | null>(null);
+
+  /** Chip de anomalía activo. Vacío = todas. Filtra SOLO en cliente. */
+  filterCodigo = signal<string>('');
+
+  /**
+   * Códigos presentes en la página actual, con su conteo, para los chips.
+   * Se calcula sobre `slots()` y no sobre `visibles()` — si no, al elegir un
+   * chip desaparecerían los demás y no habría cómo volver.
+   */
+  codigosPresentes = computed(() => {
+    const conteo = new Map<string, number>();
+    for (const s of this.slots()) {
+      for (const w of s.validation_warnings) {
+        const code = String(w.code);
+        conteo.set(code, (conteo.get(code) ?? 0) + 1);
+      }
+    }
+    return [...conteo.entries()]
+      .map(([code, n]) => ({ code, n, label: this.warningLabel(code) }))
+      .sort((a, b) => b.n - a.n);
+  });
+
+  /** Slots que la tabla muestra: los de la página, acotados por el chip. */
+  visibles = computed(() => {
+    const code = this.filterCodigo();
+    if (!code) return this.slots();
+    return this.slots().filter((s) => s.validation_warnings.some((w) => String(w.code) === code));
+  });
+
+  seleccionados = computed(() => this.selected().size);
+
+  /** Para el checkbox de cabecera: marcado sólo si TODO lo visible está. */
+  todosVisiblesMarcados = computed(() => {
+    const vis = this.visibles();
+    if (vis.length === 0) return false;
+    const sel = this.selected();
+    return vis.every((s) => sel.has(this.slotKey(s)));
+  });
+
   constructor() {
     this.reload();
   }
 
   slotKey(s: DgaReviewSlot): string {
     return `${s.site_id}::${s.ts}`;
+  }
+
+  estaMarcado(s: DgaReviewSlot): boolean {
+    return this.selected().has(this.slotKey(s));
+  }
+
+  alternarMarca(s: DgaReviewSlot): void {
+    const key = this.slotKey(s);
+    this.selected.update((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  /** Marca o desmarca TODO lo visible, respetando lo seleccionado fuera del chip. */
+  alternarTodosVisibles(): void {
+    const vis = this.visibles();
+    const marcarTodos = !this.todosVisiblesMarcados();
+    this.selected.update((prev) => {
+      const next = new Set(prev);
+      for (const s of vis) {
+        const key = this.slotKey(s);
+        if (marcarTodos) next.add(key);
+        else next.delete(key);
+      }
+      return next;
+    });
+  }
+
+  limpiarSeleccion(): void {
+    this.selected.set(new Set());
+  }
+
+  setFilterCodigo(code: string): void {
+    this.filterCodigo.set(this.filterCodigo() === code ? '' : code);
   }
 
   warningLabel(code: string): string {
@@ -550,6 +770,19 @@ export class DgaReviewComponent {
           // sin resultados no vacía el selector con el que se filtró.
           if (page.sitios.length > 0) this.sitios.set(page.sitios);
           this.initEdits(page.slots);
+          // La selección se descarta al recargar: las claves podrían no existir
+          // en la página nueva y actuar sobre una selección invisible es
+          // exactamente lo que no se quiere en una cola que declara a SNIA.
+          this.selected.set(new Set());
+          // Un chip que ya no tiene filas dejaría la tabla vacía sin explicación.
+          if (
+            this.filterCodigo() &&
+            !page.slots.some((s) =>
+              s.validation_warnings.some((w) => String(w.code) === this.filterCodigo()),
+            )
+          ) {
+            this.filterCodigo.set('');
+          }
           this.loading.set(false);
         },
         error: (err) => {
@@ -674,6 +907,101 @@ export class DgaReviewComponent {
       admin_note: e.note.trim(),
     };
     this.executeAction(s, payload);
+  }
+
+  /**
+   * Aplica la MISMA acción a todos los slots marcados, uno por uno contra el
+   * endpoint de a uno.
+   *
+   * Secuencial (`concatMap`) y no en paralelo a propósito: cada llamada puede
+   * disparar el diálogo 2FA del interceptor global, y N peticiones simultáneas
+   * abrirían N diálogos. Además el backend escribe la nota y el autor en cada
+   * slot, así que el rastro queda igual de completo que aceptando a mano.
+   *
+   * Al aceptar se mandan los valores YA cargados en cada fila —los del sensor,
+   * sin editar—: el caso de uso es un backlog que se revisó en conjunto y se
+   * declara tal cual. Para corregir un valor hay que usar la acción individual.
+   */
+  private ejecutarEnBloque(accion: 'accept' | 'discard'): void {
+    const nota = this.bulkNote().trim();
+    if (nota.length < 5) {
+      this.error.set(
+        'Escribe la nota admin (mín. 5 caracteres): se aplicará a todos los marcados.',
+      );
+      return;
+    }
+    const objetivo = this.slots().filter((s) => this.selected().has(this.slotKey(s)));
+    if (objetivo.length === 0) return;
+
+    this.error.set('');
+    this.codeMessage.set('');
+    this.bulkProgress.set({ done: 0, total: objetivo.length, fallidos: 0 });
+
+    from(objetivo)
+      .pipe(
+        concatMap((s) => {
+          const e = this.edit(s);
+          const payload: DgaReviewActionPayload =
+            accion === 'accept'
+              ? {
+                  site_id: s.site_id,
+                  ts: s.ts,
+                  action: 'accept',
+                  values: {
+                    caudal_instantaneo: this.numOrNull(e.caudal),
+                    flujo_acumulado: this.numOrNull(e.totalizador),
+                    nivel_freatico: this.numOrNull(e.nivel),
+                  },
+                  admin_note: nota,
+                }
+              : { site_id: s.site_id, ts: s.ts, action: 'discard', admin_note: nota };
+          return this.dga.applyReviewDecision(payload).pipe(
+            // Un slot que falla no puede abortar el lote: se cuenta y sigue.
+            catchError(() => of(null)),
+            concatMap((r) => of({ slot: s, ok: r !== null })),
+          );
+        }),
+      )
+      .subscribe({
+        next: ({ slot, ok }) => {
+          this.bulkProgress.update((p) =>
+            p ? { ...p, done: p.done + 1, fallidos: p.fallidos + (ok ? 0 : 1) } : p,
+          );
+          if (!ok) return;
+          const key = this.slotKey(slot);
+          this.slots.update((list) => list.filter((x) => this.slotKey(x) !== key));
+          this.total.update((n) => Math.max(0, n - 1));
+          this.selected.update((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        },
+        complete: () => {
+          const p = this.bulkProgress();
+          const okCount = (p?.done ?? 0) - (p?.fallidos ?? 0);
+          const verbo = accion === 'accept' ? 'aceptada(s) y enviándose' : 'descartada(s)';
+          this.bulkProgress.set(null);
+          this.bulkNote.set('');
+          this.codeMessage.set(
+            `${okCount} medición(es) ${verbo}.` +
+              (p?.fallidos ? ` ${p.fallidos} no se pudo(ieron) procesar: siguen en la cola.` : ''),
+          );
+          if (p?.fallidos) {
+            this.error.set(
+              `${p.fallidos} medición(es) fallaron. Quedaron en la cola para reintentar.`,
+            );
+          }
+        },
+      });
+  }
+
+  aceptarSeleccionados(): void {
+    this.ejecutarEnBloque('accept');
+  }
+
+  descartarSeleccionados(): void {
+    this.ejecutarEnBloque('discard');
   }
 
   private executeAction(s: DgaReviewSlot, payload: DgaReviewActionPayload): void {
