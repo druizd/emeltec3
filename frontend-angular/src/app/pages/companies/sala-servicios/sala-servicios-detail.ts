@@ -7,26 +7,26 @@ import type {
   SiteDashboardHistoryEntry,
 } from '@emeltec/shared';
 import { Subscription, timer } from 'rxjs';
-import { AuthService } from '../../services/auth.service';
-import { CompanyService } from '../../services/company.service';
-import { CHILE_TIME_ZONE } from '../../shared/timezone';
-import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
-import { getSiteTypeUi } from '../../shared/site-type-ui';
-import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
+import { AuthService } from '../../../services/auth.service';
+import { CompanyService } from '../../../services/company.service';
+import { CHILE_TIME_ZONE } from '../../../shared/timezone';
+import { type SiteContext, findAccessibleSite } from '../../../shared/site-context';
+import { getSiteTypeUi } from '../../../shared/site-type-ui';
+import { SiteVariableSettingsPanelComponent } from '../components/site-variable-settings-panel';
 import {
   TelemetryLineChartCardComponent,
   type TelemetryLineChart,
-} from './components/telemetry-line-chart-card';
+} from '../components/telemetry-line-chart-card';
 import {
   WaterDetailDescargaComponent,
   type DownloadDataType,
-} from './components/water-detail-descarga/water-detail-descarga';
-import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
+} from '../components/water-detail-descarga/water-detail-descarga';
+import { WaterDetailAlertasComponent } from '../components/water-detail-alertas/water-detail-alertas';
 
-type ProcesoSection = 'monitoreo' | 'tendencias' | 'historico' | 'alertas';
+type SeccionSala = 'monitoreo' | 'tendencias' | 'historico' | 'alertas';
 
 /** Una variable analogica del sitio, ya resuelta contra el reg_map. */
-interface ProcesoVariable {
+interface VariableSala {
   key: string;
   alias: string;
   unidad: string | null;
@@ -34,7 +34,7 @@ interface ProcesoVariable {
 }
 
 /** Una fila del historico con las analogicas indexadas por clave. */
-interface ProcesoFila {
+interface FilaSala {
   timestampMs: number;
   fecha: string;
   valores: Record<string, number | null>;
@@ -83,13 +83,13 @@ const MAGNITUDES: Record<string, string> = {
  * caudal ni totalizador: las variables van todas por el pseudo-campo
  * `analogicas`, que el backend expande a una columna por variable del reg_map.
  */
-const CAMPOS_DESCARGA_PROCESO: DownloadDataType[] = [
+const CAMPOS_DESCARGA: DownloadDataType[] = [
   { id: 'analogicas', label: 'Variables analógicas', unit: '—' },
   { id: 'digitales', label: 'Señales digitales', unit: '0/1' },
 ];
 
 @Component({
-  selector: 'app-company-site-process-detail',
+  selector: 'app-sala-servicios-detail',
   standalone: true,
   imports: [
     CommonModule,
@@ -99,7 +99,7 @@ const CAMPOS_DESCARGA_PROCESO: DownloadDataType[] = [
     SiteVariableSettingsPanelComponent,
   ],
   template: `
-    <div class="proceso-page">
+    <div class="sala-page">
       @if (siteContext(); as context) {
         <section class="dashboard-shell">
           <header class="site-head">
@@ -371,7 +371,7 @@ const CAMPOS_DESCARGA_PROCESO: DownloadDataType[] = [
   `,
   styles: [
     `
-      .proceso-page {
+      .sala-page {
         min-height: 100%;
         overflow-x: hidden;
         padding: 0 18px 32px;
@@ -859,7 +859,7 @@ const CAMPOS_DESCARGA_PROCESO: DownloadDataType[] = [
     `,
   ],
 })
-export class CompanySiteProcessDetailComponent implements OnInit, OnDestroy {
+export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
@@ -868,8 +868,8 @@ export class CompanySiteProcessDetailComponent implements OnInit, OnDestroy {
   private pollSub?: Subscription;
 
   readonly maxSeries = MAX_SERIES_GRAFICO;
-  readonly camposDescarga = CAMPOS_DESCARGA_PROCESO;
-  readonly tabs: { id: ProcesoSection; label: string; icon: string }[] = [
+  readonly camposDescarga = CAMPOS_DESCARGA;
+  readonly tabs: { id: SeccionSala; label: string; icon: string }[] = [
     { id: 'monitoreo', label: 'Monitoreo', icon: 'monitoring' },
     { id: 'tendencias', label: 'Tendencias', icon: 'query_stats' },
     { id: 'historico', label: 'Histórico', icon: 'table_rows' },
@@ -877,7 +877,7 @@ export class CompanySiteProcessDetailComponent implements OnInit, OnDestroy {
   ];
 
   readonly siteContext = signal<SiteContext | null>(null);
-  readonly activeSection = signal<ProcesoSection>('monitoreo');
+  readonly activeSection = signal<SeccionSala>('monitoreo');
   readonly descargaAbierta = signal(false);
   readonly configAbierta = signal(false);
   readonly canEditSiteSettings = this.auth.canEditSiteSettings;
@@ -890,7 +890,7 @@ export class CompanySiteProcessDetailComponent implements OnInit, OnDestroy {
   readonly enVivo = signal<SiteDashboardData | null>(null);
   readonly cargandoEnVivo = signal(false);
   /** Orden cronologico: es el que necesita el grafico. */
-  readonly filasCronologicas = signal<ProcesoFila[]>([]);
+  readonly filasCronologicas = signal<FilaSala[]>([]);
   /** La tabla se lee al reves: arriba la lectura mas nueva. */
   readonly filas = computed(() => [...this.filasCronologicas()].reverse());
   readonly cargandoHistorico = signal(false);
@@ -906,8 +906,8 @@ export class CompanySiteProcessDetailComponent implements OnInit, OnDestroy {
    * El vivo solo entra como respaldo, para poder listar las variables antes de
    * que llegue el historico.
    */
-  readonly variables = computed<ProcesoVariable[]>(() => {
-    const desdeHistorico = new Map<string, ProcesoVariable>();
+  readonly variables = computed<VariableSala[]>(() => {
+    const desdeHistorico = new Map<string, VariableSala>();
     for (const fila of this.filasCronologicas()) {
       for (const [key, meta] of Object.entries(fila.meta)) {
         if (!desdeHistorico.has(key)) desdeHistorico.set(key, { key, ...meta });
@@ -1012,7 +1012,7 @@ export class CompanySiteProcessDetailComponent implements OnInit, OnDestroy {
     const timestamps = filas.map((fila) => fila.timestampMs);
     const grupos = new Map<
       string,
-      { servicio: (typeof SERVICIOS)[number]; magnitud: string; vars: ProcesoVariable[] }
+      { servicio: (typeof SERVICIOS)[number]; magnitud: string; vars: VariableSala[] }
     >();
 
     for (const variable of this.variables()) {
@@ -1148,7 +1148,7 @@ export class CompanySiteProcessDetailComponent implements OnInit, OnDestroy {
     this.pollSub?.unsubscribe();
   }
 
-  setActiveSection(section: ProcesoSection): void {
+  setActiveSection(section: SeccionSala): void {
     this.activeSection.set(section);
   }
 
@@ -1235,7 +1235,7 @@ export class CompanySiteProcessDetailComponent implements OnInit, OnDestroy {
    * ultima lectura arriba es lo que espera el operador, asi que la tabla usa
    * este mismo arreglo invertido al paginar.
    */
-  private aFilas(rows: SiteDashboardHistoryEntry[]): ProcesoFila[] {
+  private aFilas(rows: SiteDashboardHistoryEntry[]): FilaSala[] {
     return rows
       .map((row) => {
         const ms = new Date(row.timestamp).getTime();
@@ -1243,7 +1243,7 @@ export class CompanySiteProcessDetailComponent implements OnInit, OnDestroy {
         for (const [key, analog] of Object.entries(row.analogicas || {})) {
           valores[key] = analog?.ok === false ? null : this.aNumero(analog?.valor);
         }
-        const meta: ProcesoFila['meta'] = {};
+        const meta: FilaSala['meta'] = {};
         for (const [key, analog] of Object.entries(row.analogicas || {})) {
           meta[key] = {
             alias: analog?.alias || key,

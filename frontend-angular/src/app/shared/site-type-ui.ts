@@ -63,6 +63,7 @@ export const SITE_MODULES: SiteModuleUi[] = [
     color: '#6366f1',
     bg: 'rgba(99,102,241,0.08)',
     border: 'rgba(99,102,241,0.20)',
+    // [sala-servicios] piloto Kross: sacar 'sala_servicios' de esta lista.
     siteTypes: ['proceso', 'pasteurizador', 'sala_servicios'],
   },
   {
@@ -133,6 +134,7 @@ const SITE_TYPE_UI: Record<string, SiteTypeUi> = {
     routeSegment: 'process',
     badgeClass: 'bg-indigo-50 text-indigo-700',
   },
+  // [sala-servicios] piloto Kross: borrar esta entrada completa.
   sala_servicios: {
     id: 'sala_servicios',
     label: 'Sala de servicios',
@@ -182,6 +184,7 @@ export function normalizeSiteType(value: string | null | undefined): string {
   if (normalized.includes('elect')) return 'electrico';
   if (normalized.includes('ril')) return 'riles';
   if (normalized.includes('pasteur')) return 'pasteurizador';
+  // [sala-servicios] piloto Kross: borrar estas tres lineas.
   // Antes que 'proceso': una "sala de servicios de proceso" es sala de servicios.
   if (normalized.includes('servicio') || normalized.includes('utilities')) {
     return 'sala_servicios';

@@ -378,6 +378,7 @@ const SITE_TYPE_CATALOG = {
     ],
     transforms: [...COMMON_TRANSFORMS],
   },
+  // [sala-servicios] piloto Kross: borrar esta entrada completa.
   // Una sala de servicios no es una maquina: son los utilities de la planta
   // (vapor, frio, aire comprimido) medidos con una sola maleta. Los roles
   // llevan el servicio adentro porque es lo que agrupa la vista — sin eso
