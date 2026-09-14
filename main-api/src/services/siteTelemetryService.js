@@ -64,6 +64,23 @@ function normalizeTransform(value) {
 }
 
 /**
+ * El rango de ingenieria declarado en el mapeo, cuando se configuro por rango
+ * (un 4-20 mA con su escala). Sirve para distinguir una medicion buena de un
+ * lazo caido: la escala extrapola fuera del rango, asi que un lazo por debajo
+ * de 4 mA no da cero, da un numero menor que `min` — creible y falso.
+ *
+ * `null` cuando el mapeo no declara rango: ahi no hay contra que comparar.
+ */
+function rangoIngenieria(mapping) {
+  const params = parseMappingParams(mapping.parametros);
+  if (cleanString(params.modo_escala).toLowerCase() !== 'rango') return null;
+  const min = numberOrNull(params.ing_min);
+  const max = numberOrNull(params.ing_max);
+  if (min === null || max === null || min === max) return null;
+  return { min: Math.min(min, max), max: Math.max(min, max) };
+}
+
+/**
  * La clave derivada del alias. Es la identidad estable de una variable dentro
  * del sitio: no cambia si le mueven el rol.
  */
@@ -232,6 +249,8 @@ function buildDashboardVariablesForRaw({
         : mapping.rol_dashboard || 'generico',
       transformacion,
       unidad: mapping.unidad || null,
+      // Rango declarado del instrumento, para poder marcar un lazo fuera de escala.
+      rango: rangoIngenieria(mapping),
       fuente: {
         d1: mapping.d1,
         d2: mapping.d2 || null,
@@ -488,6 +507,7 @@ function analogMappings(mappings) {
         alias: mapping.alias || mapping.d1,
         unidad: mapping.unidad || null,
         rol: mapping.rol_dashboard || 'generico',
+        rango: rangoIngenieria(mapping),
       };
     });
 }
