@@ -2,7 +2,11 @@ const { calcularNivelFreatico } = require('../utils/nivelFreatico');
 const { VARIABLE_TRANSFORM_IDS } = require('../config/siteTypeCatalog');
 // Fuente única de la matemática de transformación (CommonJS, resuelve en dev
 // src/, dist/ y vitest sin ambigüedad de extensión).
-const { applyMappingTransform, parseMappingParams } = require('../utils/mappingTransform.js');
+const {
+  applyMappingTransform,
+  parseMappingParams,
+  filterMappingsVigentesAt,
+} = require('../utils/mappingTransform.js');
 
 const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
 
@@ -193,16 +197,28 @@ function buildDerivedNivelFreatico({ variables, pozoConfig, rawData }) {
   return derived;
 }
 
+/**
+ * `at` es el instante de la muestra: los recorridos históricos pasan el `time`
+ * de la fila y el dashboard en vivo lo omite, que vale AHORA. Filtrar acá los
+ * mapeos fuera de ventana mantiene coherente todo lo que viene después — la
+ * lista de variables, el resolver por rol y el derivado de nivel freático ven
+ * solo los que regían en ese instante.
+ *
+ * Gemelo de `modules/sites/service.ts`: los dos resolvedores están duplicados
+ * (el histórico HTTP usa este, el fill DGA el TS), así que un cambio acá va
+ * siempre acompañado del mismo cambio allá.
+ */
 function buildDashboardVariablesForRaw({
   site,
   mappings,
   pozoConfig,
   rawData,
   telemetryError = null,
+  at = undefined,
 }) {
   const variables = [];
 
-  for (const mapping of mappings) {
+  for (const mapping of filterMappingsVigentesAt(mappings, at)) {
     const rawD1 = readRawValue(rawData, mapping.d1);
     const rawD2 = readRawValue(rawData, mapping.d2);
     const transformacion = normalizeTransform(mapping.transformacion);
@@ -547,14 +563,23 @@ function serializeDigitalRow(digitales, rawData, telemetryError = null) {
 
 function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig, includeAnalogicas = false }) {
   const rawData = row?.data || {};
-  const variables = buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData });
+  // Fila histórica: vale el mapeo que regía en el instante de la muestra, no el
+  // de hoy.
+  const vigentes = filterMappingsVigentesAt(mappings, row?.time);
+  const variables = buildDashboardVariablesForRaw({
+    site,
+    mappings,
+    pozoConfig,
+    rawData,
+    at: row?.time,
+  });
 
   return {
     // Opt-in: en un sitio de agua estas columnas repiten lo que ya viene por
     // rol, y `dashboard-history` es endpoint caliente (lo precalienta el cache
     // warmer). Solo las pide quien las va a usar.
     ...(includeAnalogicas
-      ? { analogicas: serializeAnalogRow(analogMappings(mappings), rawData, pozoConfig) }
+      ? { analogicas: serializeAnalogRow(analogMappings(vigentes), rawData, pozoConfig) }
       : {}),
     timestamp: toUtcIsoString(row.time),
     fecha: toUtcIsoString(row.time),
@@ -565,7 +590,7 @@ function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig, includeAna
     nivel_freatico: serializeHistoricalVariable(
       findHistoricalVariable(variables, 'nivel_freatico'),
     ),
-    digitales: serializeDigitalRow(digitalMappings(mappings), rawData),
+    digitales: serializeDigitalRow(digitalMappings(vigentes), rawData),
   };
 }
 
@@ -594,63 +619,106 @@ function createHistoricalRowMapper({
   sampleRawData = {},
   includeAnalogicas = false,
 }) {
-  const skeleton = buildDashboardVariablesForRaw({
-    site,
-    mappings,
-    pozoConfig,
-    rawData: sampleRawData,
-  });
+  // Instantes en que cambia el juego de mapeos vigentes. Un sitio sin ventanas
+  // configuradas —hoy, todos— deja esta lista vacía, cae siempre en el tramo 0
+  // y resuelve UNA sola vez, igual que antes de que existiera la vigencia.
+  const cortes = [
+    ...new Set(
+      mappings
+        .flatMap((mapping) => [mapping.vigente_desde, mapping.vigente_hasta])
+        .map((valor) =>
+          valor === undefined || valor === null || valor === '' ? null : new Date(valor).getTime(),
+        )
+        .filter((ms) => ms !== null && Number.isFinite(ms)),
+    ),
+  ].sort((a, b) => a - b);
 
-  // Las señales digitales se resuelven una sola vez, igual que los roles: por
-  // fila queda solo la aritmética del bit dentro de applyMappingTransform.
-  const digitales = digitalMappings(mappings);
-  // Igual que los digitales: se resuelven una vez y por fila queda solo el
-  // applyMappingTransform. Vacío cuando no se piden, así el bucle no corre.
-  const analogicas = includeAnalogicas ? analogMappings(mappings) : [];
+  /**
+   * Resuelve roles, digitales y analógicas para el instante `at`. Es el mismo
+   * trabajo que se hacía una vez en el cuerpo del mapper; ahora se hace una vez
+   * POR TRAMO, porque un rango que cruza un corte de vigencia tiene distintos
+   * mapeos ganadores a cada lado.
+   */
+  function buildResolucion(at) {
+    const skeleton = buildDashboardVariablesForRaw({
+      site,
+      mappings,
+      pozoConfig,
+      rawData: sampleRawData,
+      at,
+    });
 
-  const mappingById = new Map(mappings.map((mapping) => [mapping.id, mapping]));
-  const mappingByKey = new Map(
-    mappings.map((mapping) => [responseKeyForMapping(mapping), mapping]),
-  );
+    const vigentes = filterMappingsVigentesAt(mappings, at);
 
-  // Resuelve cada rol histórico a uno de:
-  //  - { kind: 'mapping', mapping, alias, unidad }: transforma rawData con un mapping directo
-  //  - { kind: 'derived_nivel_freatico', sourceMapping, alias, unidad }: deriva via calcularNivelFreatico usando un mapping fuente + pozoConfig
-  //  - null: rol no presente en este sitio
-  const resolved = {};
-  for (const role of HISTORICAL_ROLES) {
-    const variable = findHistoricalVariable(skeleton, role);
-    if (!variable) {
-      resolved[role] = null;
-      continue;
-    }
+    // Las señales digitales se resuelven una sola vez por tramo, igual que los
+    // roles: por fila queda solo la aritmética del bit dentro de
+    // applyMappingTransform.
+    const digitales = digitalMappings(vigentes);
+    // Igual que los digitales. Vacío cuando no se piden, así el bucle no corre.
+    const analogicas = includeAnalogicas ? analogMappings(vigentes) : [];
 
-    if (variable.derivado && role === 'nivel_freatico') {
-      const sourceMapping = mappingByKey.get(variable.fuente?.variable);
-      resolved[role] = sourceMapping
+    const mappingById = new Map(vigentes.map((mapping) => [mapping.id, mapping]));
+    const mappingByKey = new Map(
+      vigentes.map((mapping) => [responseKeyForMapping(mapping), mapping]),
+    );
+
+    // Resuelve cada rol histórico a uno de:
+    //  - { kind: 'mapping', mapping, alias, unidad }: transforma rawData con un mapping directo
+    //  - { kind: 'derived_nivel_freatico', sourceMapping, alias, unidad }: deriva via calcularNivelFreatico usando un mapping fuente + pozoConfig
+    //  - null: rol no presente en este sitio
+    const resolved = {};
+    for (const role of HISTORICAL_ROLES) {
+      const variable = findHistoricalVariable(skeleton, role);
+      if (!variable) {
+        resolved[role] = null;
+        continue;
+      }
+
+      if (variable.derivado && role === 'nivel_freatico') {
+        const sourceMapping = mappingByKey.get(variable.fuente?.variable);
+        resolved[role] = sourceMapping
+          ? {
+              kind: 'derived_nivel_freatico',
+              sourceMapping,
+              alias: variable.alias,
+              unidad: variable.unidad || 'm',
+            }
+          : null;
+        continue;
+      }
+
+      const mapping = mappingById.get(variable.id);
+      resolved[role] = mapping
         ? {
-            kind: 'derived_nivel_freatico',
-            sourceMapping,
+            kind: 'mapping',
+            mapping,
             alias: variable.alias,
-            unidad: variable.unidad || 'm',
+            unidad: variable.unidad || mapping.unidad || null,
           }
         : null;
-      continue;
     }
 
-    const mapping = mappingById.get(variable.id);
-    resolved[role] = mapping
-      ? {
-          kind: 'mapping',
-          mapping,
-          alias: variable.alias,
-          unidad: variable.unidad || mapping.unidad || null,
-        }
-      : null;
+    return { digitales, analogicas, resolved };
+  }
+
+  // Una resolución por tramo, calculada la primera vez que aparece una fila de
+  // ese tramo. Un histórico que no cruza ningún corte paga exactamente una.
+  const resoluciones = new Map();
+  function resolucionPara(time) {
+    const t = new Date(time).getTime();
+    let tramo = 0;
+    while (tramo < cortes.length && Number.isFinite(t) && t >= cortes[tramo]) tramo++;
+    let resolucion = resoluciones.get(tramo);
+    if (!resolucion) {
+      resolucion = buildResolucion(time);
+      resoluciones.set(tramo, resolucion);
+    }
+    return resolucion;
   }
 
   return function mapRow(row) {
     const rawData = row?.data || {};
+    const { digitales, analogicas, resolved } = resolucionPara(row.time);
     const out = {
       timestamp: toUtcIsoString(row.time),
       fecha: toUtcIsoString(row.time),

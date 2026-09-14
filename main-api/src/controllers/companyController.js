@@ -25,7 +25,7 @@ const { formatRutForStorage } = require('../utils/rut');
 const SITE_COLUMNS =
   'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo, es_maleta_piloto';
 const MAP_COLUMNS =
-  'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
+  'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, vigente_desde, vigente_hasta, created_at, updated_at';
 /** Igual que MAP_COLUMNS pero calificado con `r.`, para los SELECT que hacen JOIN. */
 const MAP_COLUMNS_R = MAP_COLUMNS.split(', ')
   .map((col) => `r.${col}`)
@@ -297,6 +297,44 @@ function bitRoleError(transformacion, rolDashboard) {
   return 'Una senal digital no puede ocupar un rol de dashboard: usa el rol generico.';
 }
 
+/** Milisegundos de una fecha de vigencia, o null si viene vacia. */
+function vigenciaMs(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const ms = value instanceof Date ? value.getTime() : Date.parse(String(value));
+  return Number.isNaN(ms) ? null : ms;
+}
+
+/**
+ * Parsea un extremo de la ventana de vigencia. Devuelve `{ value, error }`.
+ * Vacio es valido y significa "sin limite por ese lado".
+ */
+function parseVigencia(value, label) {
+  if (value === undefined || value === null || value === '') return { value: null, error: null };
+  const ms = vigenciaMs(value);
+  if (ms === null) return { value: null, error: `${label} no es una fecha valida.` };
+  return { value: new Date(ms).toISOString(), error: null };
+}
+
+/**
+ * ¿Se pisan dos ventanas de vigencia? Intervalos SEMIABIERTOS
+ * `[desde, hasta)`, con null = sin limite por ese lado.
+ *
+ * Son disjuntas solo si una termina en o antes de que empiece la otra. El "o
+ * antes" incluye el borde exacto a proposito: con ventanas contiguas la muestra
+ * del instante del corte cae en la nueva y en una sola, que es lo que evita que
+ * los contadores la sumen dos veces.
+ */
+function ventanasSolapan(a, b) {
+  const aDesde = vigenciaMs(a?.vigente_desde);
+  const aHasta = vigenciaMs(a?.vigente_hasta);
+  const bDesde = vigenciaMs(b?.vigente_desde);
+  const bHasta = vigenciaMs(b?.vigente_hasta);
+
+  const aTerminaAntes = aHasta !== null && bDesde !== null && aHasta <= bDesde;
+  const bTerminaAntes = bHasta !== null && aDesde !== null && bHasta <= aDesde;
+  return !aTerminaAntes && !bTerminaAntes;
+}
+
 /**
  * Una palabra de senales digitales se configura como N variables que comparten
  * `d1`, asi que el candado "un mapeo por dato original" no puede ser absoluto.
@@ -307,21 +345,33 @@ function bitRoleError(transformacion, rolDashboard) {
  *
  * @returns el mensaje de conflicto, o null si el mapeo entrante puede convivir.
  */
-function findD1Conflict(existentes, { d1, transformacion, bit }) {
+function findD1Conflict(existentes, { d1, transformacion, bit, vigencia }) {
   if (!existentes.length) return null;
 
+  const candidato = vigencia || { vigente_desde: null, vigente_hasta: null };
+
   if (transformacion !== 'bit') {
-    return `La variable ${d1} ya tiene un mapeo para este sitio.`;
+    // Dos mapeos del mismo `d1` con ventanas DISJUNTAS no son dos
+    // interpretaciones en pugna: son el mismo instrumento antes y despues de
+    // cambiar de escala. Es justo como se expresa una rectificacion a mitad de
+    // serie, asi que conviven.
+    const solapado = existentes.find((mapping) => ventanasSolapan(mapping, candidato));
+    if (!solapado) return null;
+    return `La variable ${d1} ya tiene un mapeo vigente en esa ventana ("${solapado.alias}"). Cierra el anterior con "vigente hasta" antes de abrir el nuevo.`;
   }
 
   const analogico = existentes.find(
-    (mapping) => normalizeVariableTransform(mapping.transformacion) !== 'bit',
+    (mapping) =>
+      normalizeVariableTransform(mapping.transformacion) !== 'bit' &&
+      ventanasSolapan(mapping, candidato),
   );
   if (analogico) {
     return `La variable ${d1} ya esta mapeada como "${analogico.alias}" y no se puede separar en bits.`;
   }
 
-  const ocupado = existentes.find((mapping) => bitIndexOf(mapping) === bit);
+  const ocupado = existentes.find(
+    (mapping) => bitIndexOf(mapping) === bit && ventanasSolapan(mapping, candidato),
+  );
   if (ocupado) {
     return `El bit ${bit} de ${d1} ya lo usa "${ocupado.alias}".`;
   }
@@ -2943,9 +2993,24 @@ exports.createSiteVariableMap = async (req, res, next) => {
     const rolDashboard = normalizeVariableRole(req.body.rol_dashboard);
     const transformacion = normalizeVariableTransform(req.body.transformacion);
     const parametros = parseJsonObject(req.body.parametros);
+    const vigenteDesde = parseVigencia(req.body.vigente_desde, 'vigente_desde');
+    const vigenteHasta = parseVigencia(req.body.vigente_hasta, 'vigente_hasta');
 
     if (!alias || !d1) {
       return badRequest(res, 'alias y d1 son requeridos.');
+    }
+    if (vigenteDesde.error) {
+      return badRequest(res, vigenteDesde.error);
+    }
+    if (vigenteHasta.error) {
+      return badRequest(res, vigenteHasta.error);
+    }
+    if (
+      vigenteDesde.value &&
+      vigenteHasta.value &&
+      vigenciaMs(vigenteDesde.value) >= vigenciaMs(vigenteHasta.value)
+    ) {
+      return badRequest(res, 'vigente_desde debe ser anterior a vigente_hasta.');
     }
     if (!rolDashboard) {
       return badRequest(res, 'rol_dashboard no es valido.');
@@ -2980,11 +3045,16 @@ exports.createSiteVariableMap = async (req, res, next) => {
     }
 
     const existing = await db.query(
-      'SELECT id, alias, transformacion, parametros FROM reg_map WHERE sitio_id = $1 AND d1 = $2',
+      'SELECT id, alias, transformacion, parametros, vigente_desde, vigente_hasta FROM reg_map WHERE sitio_id = $1 AND d1 = $2',
       [siteId, d1],
     );
 
-    const choque = findD1Conflict(existing.rows, { d1, transformacion, bit: bitIndex });
+    const choque = findD1Conflict(existing.rows, {
+      d1,
+      transformacion,
+      bit: bitIndex,
+      vigencia: { vigente_desde: vigenteDesde.value, vigente_hasta: vigenteHasta.value },
+    });
     if (choque) {
       return conflict(res, choque);
     }
@@ -2993,8 +3063,8 @@ exports.createSiteVariableMap = async (req, res, next) => {
     const id = requestedId || generateMapId();
 
     const { rows } = await db.query(
-      `INSERT INTO reg_map (id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
+      `INSERT INTO reg_map (id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, vigente_desde, vigente_hasta)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11::timestamptz, $12::timestamptz)
        RETURNING ${MAP_COLUMNS}`,
       [
         id,
@@ -3007,6 +3077,8 @@ exports.createSiteVariableMap = async (req, res, next) => {
         transformacion,
         JSON.stringify(parametros),
         siteId,
+        vigenteDesde.value,
+        vigenteHasta.value,
       ],
     );
 
@@ -3091,6 +3163,37 @@ exports.updateSiteVariableMap = async (req, res, next) => {
       return badRequest(res, nextRolError);
     }
 
+    // Vigencia: null explicito significa "sin limite por ese lado", asi que hay
+    // que distinguirlo de `undefined` (el campo no vino en el PATCH).
+    const vigenteDesdePatch =
+      req.body.vigente_desde === undefined
+        ? undefined
+        : parseVigencia(req.body.vigente_desde, 'vigente_desde');
+    const vigenteHastaPatch =
+      req.body.vigente_hasta === undefined
+        ? undefined
+        : parseVigencia(req.body.vigente_hasta, 'vigente_hasta');
+
+    if (vigenteDesdePatch?.error) {
+      return badRequest(res, vigenteDesdePatch.error);
+    }
+    if (vigenteHastaPatch?.error) {
+      return badRequest(res, vigenteHastaPatch.error);
+    }
+
+    const nextVigenteDesde =
+      vigenteDesdePatch === undefined ? (current.vigente_desde ?? null) : vigenteDesdePatch.value;
+    const nextVigenteHasta =
+      vigenteHastaPatch === undefined ? (current.vigente_hasta ?? null) : vigenteHastaPatch.value;
+
+    if (
+      nextVigenteDesde &&
+      nextVigenteHasta &&
+      vigenciaMs(nextVigenteDesde) >= vigenciaMs(nextVigenteHasta)
+    ) {
+      return badRequest(res, 'vigente_desde debe ser anterior a vigente_hasta.');
+    }
+
     const nextCutError = cutOffError(nextParametros);
     if (nextCutError) {
       return badRequest(res, nextCutError);
@@ -3114,7 +3217,7 @@ exports.updateSiteVariableMap = async (req, res, next) => {
       nextTransform === 'bit' || normalizeVariableTransform(current.transformacion) === 'bit';
     if (nextD1 !== current.d1 || tocaBits) {
       const hermanos = await db.query(
-        `SELECT id, alias, transformacion, parametros
+        `SELECT id, alias, transformacion, parametros, vigente_desde, vigente_hasta
            FROM reg_map
           WHERE sitio_id = $1 AND d1 = $2 AND id <> $3`,
         [siteId, nextD1, mapId],
@@ -3123,6 +3226,7 @@ exports.updateSiteVariableMap = async (req, res, next) => {
         d1: nextD1,
         transformacion: nextTransform,
         bit: nextBit,
+        vigencia: { vigente_desde: nextVigenteDesde, vigente_hasta: nextVigenteHasta },
       });
       if (choque) {
         return conflict(res, choque);
@@ -3156,6 +3260,17 @@ exports.updateSiteVariableMap = async (req, res, next) => {
     if (parametros !== undefined) {
       params.push(JSON.stringify(parametros));
       updates.push(`parametros = $${params.length}::jsonb`);
+    }
+
+    // Fuera del bucle de `fields` porque ahi un valor vacio se descarta, y acá
+    // vaciar el campo es justo lo que abre la ventana por ese lado.
+    if (vigenteDesdePatch !== undefined) {
+      params.push(vigenteDesdePatch.value);
+      updates.push(`vigente_desde = $${params.length}::timestamptz`);
+    }
+    if (vigenteHastaPatch !== undefined) {
+      params.push(vigenteHastaPatch.value);
+      updates.push(`vigente_hasta = $${params.length}::timestamptz`);
     }
 
     if (!updates.length) {

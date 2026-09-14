@@ -253,6 +253,70 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
   return applyCutOff(computeMappingValue({ rawData, mapping, pozoConfig }), params);
 }
 
+// ============================================================================
+//  VIGENCIA TEMPORAL DE UN MAPEO
+// ============================================================================
+
+/** Milisegundos de un Date / ISO / epoch. null si no se puede interpretar. */
+function toMs(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const ms = Date.parse(String(value));
+  return Number.isNaN(ms) ? null : ms;
+}
+
+/**
+ * ¿Está este mapeo vigente en el instante `ts`?
+ *
+ * `reg_map` no podía expresar que un instrumento cambiara de escala a mitad de
+ * la serie: una sola `transformacion` y un solo juego de `parametros` para toda
+ * la historia. Corregir el factor arreglaba un tramo y rompía el otro (S127,
+ * S128, S130, S148). La salida es que convivan VARIAS filas para la misma
+ * variable física, cada una con su ventana y sus propios parámetros.
+ *
+ * La ventana es SEMIABIERTA `[vigente_desde, vigente_hasta)`, igual que los
+ * rangos de mes del resto del código. Así dos ventanas contiguas no solapan en
+ * el instante del corte: la muestra exacta del borde cae en la nueva, no en las
+ * dos — si solaparan, los contadores sumarían esa muestra dos veces.
+ *
+ * Ambos extremos en NULL (el caso de todos los mapeos que existían antes de
+ * esta columna) significa "siempre vigente", así que sin ventanas configuradas
+ * el comportamiento es exactamente el de antes.
+ *
+ * `ts` ausente se interpreta como AHORA, que es lo que quieren los consumidores
+ * de tiempo real (dashboard, alertas). Los que recorren historia — contadores,
+ * histórico HTTP, fill DGA — pasan el timestamp de cada muestra.
+ */
+function isMappingVigenteAt(mapping, ts) {
+  if (!isPlainObject(mapping)) return false;
+
+  const desde = toMs(mapping.vigente_desde);
+  const hasta = toMs(mapping.vigente_hasta);
+  if (desde === null && hasta === null) return true;
+
+  const t = toMs(ts) ?? Date.now();
+  if (desde !== null && t < desde) return false;
+  if (hasta !== null && t >= hasta) return false;
+  return true;
+}
+
+/**
+ * Filtra una lista de mapeos dejando los vigentes en `ts`.
+ *
+ * Va antes de cualquier resolución por rol: si un mapeo retirado sigue
+ * compitiendo, gana por puntaje aunque lleve meses muerto — es lo que dejaba a
+ * S127/S130 leyendo el uint32 apagado en vez del medidor vivo. Con la ventana
+ * cerrada el retirado simplemente no entra al concurso.
+ */
+function filterMappingsVigentesAt(mappings, ts) {
+  if (!Array.isArray(mappings)) return [];
+  return mappings.filter((m) => isMappingVigenteAt(m, ts));
+}
+
 module.exports = {
   applyMappingTransform,
   applyCutOff,
@@ -264,4 +328,6 @@ module.exports = {
   readRawValue,
   numberOrNull,
   isPlainObject,
+  isMappingVigenteAt,
+  filterMappingsVigentesAt,
 };

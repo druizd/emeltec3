@@ -26,6 +26,7 @@ import {
   getSiteById,
 } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
+import { filterMappingsVigentesAt } from '../sites/transforms';
 import type { PozoConfig, RegMap, Site } from '../sites/types';
 
 const POLL_INTERVAL_MS = Number(process.env.DGA_WORKER_POLL_MS ?? 60_000);
@@ -86,10 +87,17 @@ async function fillSlot(
   const representative = await getDashboardBucketExact(idSerial, slot.ts);
   if (!representative) return 'no_data';
 
+  // El fill recorre historia, así que el mapeo que vale es el que estaba
+  // vigente en el instante del slot, no el de hoy. Un instrumento que cambió de
+  // escala a mitad de la serie tiene dos filas en `reg_map` con ventanas
+  // disjuntas: sin este filtro, el slot de marzo se declararía con el factor
+  // que empezó a regir en julio.
+  const mappingsVigentes = filterMappingsVigentesAt(bundle.mappings, slot.ts);
+
   const processed = mapHistoricalDashboardRow({
     row: representative,
     site: bundle.site,
-    mappings: bundle.mappings,
+    mappings: mappingsVigentes,
     pozoConfig: bundle.pozoConfig,
   });
 
@@ -98,7 +106,7 @@ async function fillSlot(
   const totalizador = totalizadorRaw == null ? null : Math.trunc(totalizadorRaw);
   const nivelFreatico = numericOrNull(processed.nivel_freatico.valor);
 
-  const totalizadorMap = bundle.mappings.find((m) => m.rol_dashboard === 'totalizador');
+  const totalizadorMap = mappingsVigentes.find((m) => m.rol_dashboard === 'totalizador');
   const totalizadorParams = (totalizadorMap?.parametros ?? {}) as Record<string, unknown>;
 
   let lastValidTotalizador: number | null = null;
