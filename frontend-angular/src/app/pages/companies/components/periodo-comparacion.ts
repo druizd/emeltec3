@@ -8,6 +8,8 @@
  * producen días de 23 o 25 horas.
  */
 
+import { CHILE_TIME_ZONE } from '../../../shared/timezone';
+
 export type PeriodoPresetKey = 'semana' | 'mes' | '7d';
 
 export interface RangoPeriodo {
@@ -40,7 +42,7 @@ export const MAX_DIAS_AGREGADOS = 366;
 /** Fecha de hoy en Chile como 'YYYY-MM-DD' (no la del navegador). */
 export function hoyChileIso(ahora: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Santiago',
+    timeZone: CHILE_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

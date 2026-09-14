@@ -1,5 +1,5 @@
 -- 2026-08-17 — Nueva condición de alerta `consumo_diario`. Evalúa el DELTA del
--- totalizador acumulado en el día calendario (America/Santiago), no el valor
+-- totalizador acumulado en el día calendario (Chile UTC-4 fijo), no el valor
 -- acumulado del contador.
 --
 -- Motivación: con `mayor_que` sobre un totalizador, el umbral se compara contra
@@ -56,7 +56,7 @@ COMMENT ON COLUMN alertas.condicion IS
     'Para las tres condiciones DGA, id_serial y equipo se ignoran; '
     'cooldown_minutos es obligatorio (mínimo recomendado: 60 minutos). '
     'consumo_diario dispara si el DELTA del totalizador en el día calendario '
-    '(America/Santiago, parcial mientras el día transcurre) supera umbral_bajo. '
+    '(Chile UTC-4 fijo, parcial mientras el día transcurre) supera umbral_bajo. '
     'variable_key apunta al d1 del reg_map; el delta ya viene transformado, así que '
     'umbral_bajo va en unidades de ingeniería (m³), NO en valor crudo del payload.';
 

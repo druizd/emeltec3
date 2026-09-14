@@ -9,6 +9,7 @@ import {
 } from '../../../services/health-digest.service';
 import { UserService } from '../../../services/user.service';
 import { ToastService } from '../../../services/toast.service';
+import { CHILE_TIME_ZONE } from '../../../shared/timezone';
 
 interface CandidatoEquipo {
   email: string;
@@ -388,7 +389,7 @@ export class AlertasCorreoSectionComponent {
   private readonly original = signal<DigestDestinatario[]>([]);
   readonly meta = signal<DigestMeta>({
     horarios_resumen: [7, 16],
-    zona_horaria: 'America/Santiago',
+    zona_horaria: CHILE_TIME_ZONE,
     fallback_email: '',
     worker_activo: false,
     worker_seguridad_activo: false,

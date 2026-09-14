@@ -41,6 +41,7 @@ import type {
   ContadorMensualPoint,
   MonthDeltaResult,
 } from './types';
+import { CHILE_TIME_ZONE } from '../../shared/time';
 
 const LAZY_REFRESH_STALE_MS = 60 * 60 * 1000;
 
@@ -54,7 +55,7 @@ function mesToIsoDay(mes: unknown): string {
   return String(mes).slice(0, 10);
 }
 
-export const CHILE_TZ = 'America/Santiago';
+export const CHILE_TZ = CHILE_TIME_ZONE;
 
 /**
  * Milisegundos de un timestamp que puede venir como Date (node-pg parsea

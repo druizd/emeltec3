@@ -6,9 +6,12 @@
  * día no se expande al rango correcto en hora de Chile, un "hasta el 17" deja
  * fuera las últimas horas del 17 y el usuario ve menos de lo que hay.
  *
- * El truco ingenuo (toLocaleString + reparse) devuelve offset 0 cuando el
- * navegador ya está en Chile — que es el caso normal de esta app — así que la
- * regresión pasaría desapercibida sin estos casos.
+ * La zona es UTC-4 FIJA (`Etc/GMT+4`), no el reloj de pared: `dato_dga` genera
+ * `fecha`/`hora` en esa zona y es lo que se declara a SNIA, así que el filtro
+ * tiene que recortar los mismos días que muestra la tabla. Seguir el reloj de
+ * pared dejaba el corte 1 h adentro del día vecino durante el horario de
+ * verano, y en invierno los dos criterios coinciden — por eso el caso de enero
+ * de más abajo es el único que detecta la regresión.
  */
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
@@ -62,10 +65,14 @@ describe('DgaReviewComponent — filtros', () => {
     expect(capturado.at(-1)!.hasta).toBe('2026-07-18T03:59:59.999Z');
   });
 
-  it('respeta el horario de verano chileno (UTC-3 en enero)', () => {
+  it('mantiene UTC-4 fijo en pleno horario de verano, no sigue el reloj de pared', () => {
     const c = crear();
     c.onFilterChange(c.filterDesde, '2026-01-15');
-    expect(capturado.at(-1)!.desde).toBe('2026-01-15T03:00:00.000Z');
+    // El 15-ene el reloj chileno va en UTC-3, pero la tabla muestra los días
+    // tal como `dato_dga` los genera (Etc/GMT+4) y como salen a SNIA. Si esto
+    // volviera a dar '...T03:00:00.000Z', el filtro y la tabla discreparían en
+    // una hora justo en el período en que se está declarando.
+    expect(capturado.at(-1)!.desde).toBe('2026-01-15T04:00:00.000Z');
   });
 
   it('manda el site_id elegido', () => {

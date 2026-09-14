@@ -1,6 +1,7 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { TimezoneLegendComponent } from '../../../../components/ui/timezone-legend';
 import { DgaService } from '../../../../services/dga.service';
 
 interface DgaReportRow {
@@ -21,7 +22,7 @@ interface DgaReportRow {
 @Component({
   selector: 'app-water-detail-dga-reporte',
   standalone: true,
-  imports: [A11yModule],
+  imports: [A11yModule, TimezoneLegendComponent],
   template: `
     <ng-container>
       <!-- Modal Reporte DGA -->
@@ -207,6 +208,10 @@ interface DgaReportRow {
               <span>{{ dgaReportError() }}</span>
             </div>
           }
+          <div class="px-5 py-2">
+            <app-timezone-legend variant="plain" />
+          </div>
+
           <p class="px-5 py-2 text-caption-xs text-slate-500 italic">
             Para configurar informantes, transport y caudal máx del pozo, usa el botón
             <span class="font-semibold text-primary-container">Configurar reporte DGA</span> del

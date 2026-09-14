@@ -10,6 +10,7 @@ import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
 import type { RegMap } from '../sites/types';
 import { siteUrl } from '../../utils/siteUrl';
+import { CHILE_TIME_ZONE } from '../../shared/time';
 interface AlertRegla {
   nombre: string;
   severidad: string;
@@ -153,7 +154,7 @@ function evalCondicion(
 function diaActual(): string {
   const localDate = new Date(
     new Date().toLocaleString('en-US', {
-      timeZone: process.env.ALERT_TIMEZONE ?? 'America/Santiago',
+      timeZone: process.env.ALERT_TIMEZONE ?? CHILE_TIME_ZONE,
     }),
   );
   return DIAS_VALIDOS[localDate.getDay()] ?? 'domingo';

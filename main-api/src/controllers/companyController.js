@@ -2633,7 +2633,7 @@ exports.getSitePeriodAggregatesDaily = async (req, res, next) => {
 
 /**
  * GET /api/companies/sites/:siteId/dashboard-history/export
- * Exporta historico transformado en CSV, filtrando por sitio y rango local America/Santiago.
+ * Exporta historico transformado en CSV, filtrando por sitio y rango local Chile (UTC-4 fijo).
  */
 exports.exportSiteDashboardHistory = async (req, res, next) => {
   try {
