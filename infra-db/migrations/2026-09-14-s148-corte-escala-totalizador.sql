@@ -123,18 +123,32 @@ ON CONFLICT (id) DO UPDATE
       vigente_desde = EXCLUDED.vigente_desde,
       vigente_hasta = EXCLUDED.vigente_hasta;
 
--- Si el mapeo origen no existe, el INSERT ... SELECT no inserta nada y el
--- UPDATE no afecta filas: el sitio quedaria a medias sin avisar. Mejor abortar.
+-- Red de seguridad: si el mapeo origen existe pero algo del UPDATE o del INSERT
+-- fallara en silencio, el sitio quedaria a medias -- leyendo parte de su
+-- historico con la escala equivocada y sin nada que lo delate.
+--
+-- Pero solo donde el sitio EXISTE. El CI aplica todas las migraciones sobre una
+-- base recien creada, y ahi el UPDATE no afecta filas y el INSERT ... SELECT no
+-- inserta ninguna: esta migracion es un no-op legitimo, no un error. Lo mismo
+-- vale para una instalacion nueva o un entorno de desarrollo.
 DO $$
 DECLARE
-  n INT;
+  totalizadores INT;
 BEGIN
-  SELECT count(*) INTO n
+  IF NOT EXISTS (
+    SELECT 1 FROM reg_map WHERE id = 'RMF259B339' AND sitio_id = 'S148'
+  ) THEN
+    RAISE NOTICE 'S148/RMF259B339 no existe en esta base: migracion sin efecto.';
+    RETURN;
+  END IF;
+
+  SELECT count(*) INTO totalizadores
     FROM reg_map
    WHERE sitio_id = 'S148'
      AND rol_dashboard = 'totalizador';
-  IF n <> 2 THEN
-    RAISE EXCEPTION 'S148 deberia quedar con 2 mapeos de totalizador, quedo con %', n;
+
+  IF totalizadores <> 2 THEN
+    RAISE EXCEPTION 'S148 deberia quedar con 2 mapeos de totalizador, quedo con %', totalizadores;
   END IF;
 END $$;
 
