@@ -21,9 +21,16 @@ const { mapHistoricalDashboardRow, createHistoricalRowMapper, analogMappings } =
   require('../siteTelemetryService') as {
     mapHistoricalDashboardRow: (input: unknown) => AnalogRow;
     createHistoricalRowMapper: (input: unknown) => (row: unknown) => AnalogRow;
-    analogMappings: (
-      mappings: unknown[],
-    ) => Array<{ key: string; alias: string; unidad: string | null; rol: string }>;
+    analogMappings: (mappings: unknown[]) => Array<{
+      // La entrada lleva el mapping original además de la clave derivada: es lo
+      // que permite comprobar que la clave de una variable no se mueve cuando
+      // aparece otra nueva (se cruza por `mapping.id`).
+      mapping: { id: string };
+      key: string;
+      alias: string;
+      unidad: string | null;
+      rol: string;
+    }>;
   };
 /* eslint-enable @typescript-eslint/no-require-imports */
 
