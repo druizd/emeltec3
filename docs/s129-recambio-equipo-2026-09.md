@@ -8,15 +8,15 @@ Expediente del caso. Tercero de la serie, junto con
 caudalímetro**, y el único que al cierre de la revisión no tiene nada mal
 configurado: lo que lo detiene es el reloj del equipo.
 
-|                       |                                                             |
-| --------------------- | ----------------------------------------------------------- |
-| **Sitio**             | `S129` · Pozo 3 · Faenadora San Vicente (Agrosuper, `E113`) |
-| **Obra DGA**          | `OB-0601-445`                                               |
-| **Serial anterior**   | `151.21.35.27`                                              |
-| **Serial nuevo**      | `151.24.16.0`                                               |
-| **Instrumento nuevo** | SITRANS FMT020                                              |
-| **Periodicidad DGA**  | Horaria, transporte **`shadow`** (no declara)               |
-| **Derecho**           | 60 L/s — **sin cargar** al 14-09-2026                       |
+|                       |                                                              |
+| --------------------- | ------------------------------------------------------------ |
+| **Sitio**             | `S129` · Pozo 3 · Faenadora San Vicente (Agrosuper, `E113`)  |
+| **Obra DGA**          | `OB-0601-445`                                                |
+| **Serial anterior**   | `151.21.35.27`                                               |
+| **Serial nuevo**      | `151.24.16.0`                                                |
+| **Instrumento nuevo** | SITRANS FMT020                                               |
+| **Periodicidad DGA**  | Horaria, transporte **`shadow`** (no declara)                |
+| **Derecho**           | **60 L/s máximo** (resolución mayor) — cargado el 14-09-2026 |
 
 ## Línea de tiempo
 
@@ -177,24 +177,74 @@ equipo, probablemente en remoto.
 **Es el bloqueante para pasar a `rest`**: los 129 slots pendientes saldrían con
 la marca temporal corrida, y un `enviado` ya no se corrige.
 
-### El derecho: instantáneo contra medio
+## El pozo empezó a bombear sobre su derecho en septiembre
 
-|                                       |                              |
-| ------------------------------------- | ---------------------------- |
-| Caudal **instantáneo**                | **77,9 L/s** — 30% sobre 60  |
-| Caudal **medio horario** (218,3 m³/h) | **60,6 L/s** — en el derecho |
+La resolución fija un **máximo de 60 L/s** y el pozo mide **77,9 L/s**: un 30%
+por encima. No es un tema de interpretación (instantáneo contra medio) — la
+resolución es de caudal máximo.
 
-El pozo bombea a 77,9 L/s durante ~78% de cada hora. Si la resolución fija el
-derecho como caudal **máximo instantáneo**, se excede en 30%; si lo fija como
-caudal **medio** o por volumen anual, está prácticamente en el límite exacto.
+### El aumento es real, y lo confirma el totalizador
 
-El caudal es binario —0 o ~77, sin valores intermedios— así que **71 de los 129
-slots pendientes superan** el límite de 72 L/s (60 × 1,20). No hay un solo slot
-entre 60 y 72.
+El caudalímetro es nuevo, así que la primera sospecha es que mida distinto. La
+prueba independiente es el **avance horario del totalizador**, que es volumen
+acumulado y no depende del sensor de caudal:
 
-Cargar el derecho antes de pasar a `rest` deja esos 71 retenidos en
-`requires_review`. Cargarlo después los declara y luego activa el control. **Es
-una decisión de criterio, no técnica**, y conviene tomarla leyendo la resolución.
+| mes        | avance máx   | caudal medio implícito | caudal máx declarado |
+| ---------- | ------------ | ---------------------- | -------------------- |
+| jul-26     | 209 m³/h     | **58,1 L/s**           | 57,8                 |
+| ago-26     | 214 m³/h     | **59,4 L/s**           | 59,1                 |
+| **sep-26** | **279 m³/h** | **77,5 L/s**           | **77,9**             |
+
+En julio y agosto los dos instrumentos concuerdan al decimal, y el pozo operaba
+en 58-59 L/s: **justo bajo el derecho**. En septiembre el totalizador marca
+77,5 L/s por sí solo. **El medidor nuevo no sobreestima — el pozo bombea más.**
+
+> Mayo y junio dan 105-110 L/s en esta misma métrica. Es casi seguro artefacto:
+> con slots faltantes el `lag` mide varias horas juntas. No usarlos como
+> referencia sin antes contar los huecos.
+
+Distribución del exceso por mes, sobre el caudal declarado:
+
+| mes        | slots | sobre 60 L/s | caudal máx |
+| ---------- | ----- | ------------ | ---------- |
+| may-26     | 738   | 8            | 62,2       |
+| jun-26     | 713   | **0**        | 56,1       |
+| jul-26     | 743   | **0**        | 57,8       |
+| ago-26     | 719   | **0**        | 59,1       |
+| **sep-26** | 163   | **73**       | **77,9**   |
+
+Cuatro meses sin un solo slot sobre el derecho — agosto llegó a 59,1, a un
+decimal del límite — y en septiembre, 73.
+
+### La pregunta para terreno
+
+**Un caudalímetro no cambia el caudal, sólo lo mide.** El salto coincide con la
+intervención del 08-09, así que algo más se tocó ese día: la válvula quedó más
+abierta, se ajustó la bomba, o se removió una restricción de la línea.
+
+Conviene preguntarle a la cuadrilla **qué más se intervino además del
+datalogger**. Si fue un cambio involuntario, revertirlo devuelve el pozo a los
+59 L/s y el problema desaparece sin más trámite.
+
+Mientras tanto, **cada hora de bombeo suma exceso sobre la resolución**.
+
+### Qué se hizo con los slots
+
+El caudal de este pozo es **binario** —0 o ~77, sin valores intermedios— así que
+cargar el derecho no filtró picos sueltos: **separó las horas de bombeo de las
+horas de pozo detenido**. De 132 slots, 73 quedaron retenidos con
+`flow_exceeds_water_right` (caudal 76,6 – 77,9) y 59 quedaron `pendiente`
+(caudal 0,000 en todos).
+
+Eso tiene una consecuencia que hay que ver antes de soltar el `shadow`:
+**declarar sólo los 59 significaría declarar únicamente las horas en que el pozo
+estaba parado**, y ninguna de las 73 en que bombeó. El totalizador saldría
+correcto —el volumen queda registrado— pero la serie de caudal mostraría un pozo
+que nunca opera. Es peor que no declarar: es declarar una imagen falsa.
+
+**Los 73 se declaran con su caudal real.** El dato está verificado por dos vías
+y omitirlo sería ocultar el incumplimiento, que es peor que el incumplimiento.
+La plataforma hizo lo que debía: detectarlo y retenerlo para decisión humana.
 
 ### El caudal llega en cero dos de cada tres lecturas
 
@@ -231,15 +281,18 @@ En S130, en cambio, el `AI23` quedó bien (57,7 contra 57,5 del Modbus).
 
 ### De terreno
 
+- **Averiguar qué se intervino el 08-09 además del datalogger** — el caudal
+  subió de 59 a 77,5 L/s ese día y la causa no es la medición.
 - **Corregir el reloj del datalogger** (−1 h). Bloquea el paso a `rest`.
 - **Replicar la configuración del datalogger de S128** (remapeo `REG4000`).
 - **Recalibrar `AI23`** si alguna vez se quiere volver a usar como respaldo.
 
 ### De decisión
 
-- **El derecho**: leer la resolución y definir si 60 L/s es caudal instantáneo o
-  medio. De eso depende si se regula la válvula o si basta con cargar el dato.
-- **El orden**: pasar a `rest` antes o después de cargar el derecho.
+- **Declarar los 73 slots retenidos** con su caudal real, desde la cola de
+  revisión. Sin eso, soltar el `shadow` declara sólo las horas de pozo detenido.
+- **Informar al cliente del exceso** sobre la resolución. Es lo urgente: no se
+  corrige desde la plataforma y sigue acumulando.
 
 ### Ante la DGA
 
