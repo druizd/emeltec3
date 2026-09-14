@@ -35,7 +35,40 @@ export function motivoBajaLabel(failReason: string | null | undefined): string {
   );
 }
 
-/** `true` si el slot lo cerró un operador y no el agotamiento de reintentos. */
-export function esBajaManual(estatus: string, failReason: string | null | undefined): boolean {
-  return estatus === 'fallido' && (failReason ?? '').startsWith('baja_');
+/**
+ * `true` si el slot lo cerró un operador y no el agotamiento de reintentos.
+ *
+ * Hay DOS vías de baja y guardan distinto, así que hacen falta los dos
+ * criterios:
+ *
+ *   - la de rango escribe `fail_reason = 'baja_<motivo>'`;
+ *   - la de a una deja ahí la nota libre, SIN prefijo, y sólo se reconoce por
+ *     la nota que extrae el backend del warning `admin_discarded`.
+ */
+export function esBajaManual(
+  estatus: string,
+  failReason: string | null | undefined,
+  bajaNota?: string | null | undefined,
+): boolean {
+  if (estatus !== 'fallido') return false;
+  return (failReason ?? '').startsWith('baja_') || Boolean(bajaNota);
+}
+
+/**
+ * Texto completo para el cliente: el motivo tipificado da el encabezado y la
+ * nota del operador explica por qué justo en ese período.
+ *
+ * La nota puede no existir —una baja hecha antes de que se guardara, o un
+ * motivo sin nota— y en ese caso el motivo solo ya se entiende.
+ */
+export function notaBajaCompleta(
+  failReason: string | null | undefined,
+  bajaNota: string | null | undefined,
+): string {
+  const motivo = motivoBajaLabel(failReason);
+  const nota = (bajaNota ?? '').trim();
+  if (!nota) return motivo;
+  // Sin duplicar: en la baja de a una, `fail_reason` ES la nota.
+  if (nota === (failReason ?? '').trim()) return nota;
+  return `${motivo} — ${nota}`;
 }

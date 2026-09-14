@@ -10,7 +10,7 @@
  * deja 211 mediciones cerradas (S130, septiembre 2026). El prefijo `baja_` en
  * `fail_reason` es lo único que las distingue.
  */
-import { esBajaManual, motivoBajaLabel, MOTIVO_BAJA_LABEL } from './baja-manual';
+import { esBajaManual, motivoBajaLabel, notaBajaCompleta, MOTIVO_BAJA_LABEL } from './baja-manual';
 
 describe('esBajaManual', () => {
   it('reconoce una baja hecha por un operador', () => {
@@ -71,5 +71,51 @@ describe('motivoBajaLabel', () => {
     expect(motivoBajaLabel(null).length).toBeGreaterThan(0);
     expect(motivoBajaLabel(undefined).length).toBeGreaterThan(0);
     expect(motivoBajaLabel('').length).toBeGreaterThan(0);
+  });
+});
+
+describe('esBajaManual — la baja de a una no lleva prefijo', () => {
+  it('reconoce la baja individual por la nota, no por el fail_reason', () => {
+    // `markReviewSlotFailedManual` guarda la nota del admin COMO fail_reason,
+    // sin prefijo `baja_`. Sin el tercer argumento estas bajas se seguirían
+    // mostrando como "reintentos agotados".
+    expect(esBajaManual('fallido', 'Pozo detenido, caudal negativo por reflujo', null)).toBe(false);
+    expect(
+      esBajaManual(
+        'fallido',
+        'Pozo detenido, caudal negativo por reflujo',
+        'Pozo detenido, caudal negativo por reflujo',
+      ),
+    ).toBe(true);
+  });
+
+  it('una falla de envío no tiene nota y sigue leyéndose como falla', () => {
+    expect(esBajaManual('fallido', 'network_error', null)).toBe(false);
+  });
+});
+
+describe('notaBajaCompleta', () => {
+  it('junta el motivo tipificado con la nota del operador', () => {
+    const texto = notaBajaCompleta(
+      'baja_recambio_instrumento',
+      'Medidor viejo con totalizador congelado desde el 30/08.',
+    );
+    expect(texto).toContain('recambio de instrumento');
+    expect(texto).toContain('congelado desde el 30/08');
+    expect(texto).toContain('—');
+  });
+
+  it('no duplica cuando fail_reason ES la nota (baja de a una)', () => {
+    const nota = 'Pozo detenido, caudal negativo por reflujo';
+    expect(notaBajaCompleta(nota, nota)).toBe(nota);
+  });
+
+  it('sin nota devuelve sólo el motivo', () => {
+    expect(notaBajaCompleta('baja_sin_dato_crudo', null)).toBe(
+      motivoBajaLabel('baja_sin_dato_crudo'),
+    );
+    expect(notaBajaCompleta('baja_sin_dato_crudo', '   ')).toBe(
+      motivoBajaLabel('baja_sin_dato_crudo'),
+    );
   });
 });

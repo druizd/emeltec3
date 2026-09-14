@@ -24,7 +24,7 @@ import { type ContadorMensualPoint, CompanyService } from '../../../../services/
 import { AuthService } from '../../../../services/auth.service';
 import { DatoDgaRow, DgaService } from '../../../../services/dga.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
-import { esBajaManual, motivoBajaLabel } from './baja-manual';
+import { esBajaManual, notaBajaCompleta } from './baja-manual';
 
 /**
  * Devuelve "YYYY-MM-DD" para hoy en zona Chile (UTC-4, fijo sin DST).
@@ -2063,7 +2063,7 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
     // operador cerró con un motivo documentado, y mostrarla como "Fallido —
     // reintentos agotados" describe algo que no ocurrió. Se separa en su propio
     // estado para que el cliente entienda qué pasó sin tener que preguntar.
-    if (esBajaManual(r.estatus, r.fail_reason)) {
+    if (esBajaManual(r.estatus, r.fail_reason, r.baja_nota)) {
       return {
         id: `dga-${idx}-${r.ts}`,
         recordId: `${r.fecha}-${r.hora.replace(/:/g, '')}`,
@@ -2075,7 +2075,9 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
         totalizador: r.flujo_acumulado == null ? null : Number(r.flujo_acumulado),
         estado: 'Dado de baja',
         enviadoDga: '',
-        respuesta: motivoBajaLabel(r.fail_reason),
+        // El motivo tipificado da el encabezado y la nota del operador explica
+        // por qué justo ahí. Juntas responden la pregunta completa.
+        respuesta: notaBajaCompleta(r.fail_reason, r.baja_nota),
         comprobante: '',
       };
     }
