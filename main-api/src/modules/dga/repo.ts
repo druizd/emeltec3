@@ -254,6 +254,15 @@ export interface DatoDgaRow {
   flujo_acumulado: string | null;
   nivel_freatico: string | null;
   estatus: string;
+  /**
+   * Distingue un `fallido` que agotó reintentos contra SNIA de uno que un
+   * operador cerró a propósito (prefijo `baja_`). Sin esto la vista del cliente
+   * muestra los dos como "Fallido — reintentos agotados", que para una baja
+   * documentada es sencillamente falso.
+   */
+  fail_reason: string | null;
+  /** Nota del operador al dar de baja el período. Null si no es una baja. */
+  baja_nota: string | null;
   comprobante: string | null;
 }
 
@@ -1661,7 +1670,24 @@ export async function queryDatoDgaBySite(
             to_char(fecha, 'YYYY-MM-DD')      AS fecha,
             to_char(hora,  'HH24:MI:SS')      AS hora,
             caudal_instantaneo, flujo_acumulado, nivel_freatico,
-            estatus, comprobante
+            estatus, fail_reason, comprobante,
+            -- Nota que escribió el operador al cerrar el período. Es lo único
+            -- que explica POR QUÉ se dio de baja justo ahí, y sin ella el
+            -- cliente ve el estado pero no la razón.
+            --
+            -- Sale del warning y no de \`fail_reason\` porque las dos vías de
+            -- baja guardan distinto: la de a una deja la nota en \`fail_reason\`
+            -- (sin prefijo \`baja_\`) y la de rango deja ahí el motivo tipificado.
+            -- El warning es el único lugar donde la nota está en las dos.
+            --
+            -- Se proyecta SOLO \`reason\`: el resto del warning —el email del
+            -- operador, el timestamp interno— es auditoría, no algo que deba
+            -- viajar al cliente.
+            (SELECT w ->> 'reason'
+               FROM jsonb_array_elements(COALESCE(validation_warnings, '[]'::jsonb)) w
+              WHERE w ->> 'code' IN ('admin_discarded', 'admin_discarded_bulk')
+              ORDER BY w ->> 'at' DESC NULLS LAST
+              LIMIT 1) AS baja_nota
        FROM dato_dga
       WHERE site_id = $1
         AND ts >= $2 AND ts < $3

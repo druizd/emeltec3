@@ -8,6 +8,7 @@ const {
   mapHistoricalDashboardRow,
   createHistoricalRowMapper,
   digitalMappings,
+  analogMappings,
 } = require('../services/siteTelemetryService');
 const {
   getSiteTypeCatalog,
@@ -433,6 +434,10 @@ const HISTORY_EXPORT_FIELDS = {
   totalizador: 'Totalizador',
   nivel_freatico: 'Nivel Freatico',
   digitales: 'Senales digitales',
+  // Igual que `digitales`: una columna por variable analogica del reg_map, con
+  // su alias de encabezado. Es lo unico exportable en un sitio de proceso, que
+  // no tiene ninguno de los cuatro roles de agua.
+  analogicas: 'Variables analogicas',
 };
 
 const HISTORY_EXPORT_DEFAULT_FIELDS = [
@@ -1822,6 +1827,12 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
       : dashboardHistoryGranularity();
     const granConfig = HISTORY_EXPORT_GRANULARITY[granularity];
 
+    // Las variables analogicas del reg_map van aparte de los 4 roles de agua, y
+    // solo si el cliente las pide: son las que necesita un sitio de proceso,
+    // donde caudal/nivel/totalizador no existen. Default false para no engordar
+    // la respuesta de los sitios de agua.
+    const includeAnalogicas = parseBoolean(req.query.analogicas, false);
+
     if (!site.activo) {
       return res.json({
         ok: true,
@@ -2062,6 +2073,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
       mappings,
       pozoConfig,
       sampleRawData: historyRes.rows[0]?.data || {},
+      includeAnalogicas,
     });
     const rows = historyRes.rows.map(mapRow);
     timings.push(`js_map;dur=${ms(tMap).toFixed(1)}`);
@@ -2688,6 +2700,7 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     // Las señales digitales no se filtran por rol (viven todas en 'generico'):
     // se resuelven por transformación, igual que en el histórico.
     const digitales = exportRoles.has('digitales') ? digitalMappings(allMappings) : [];
+    const analogicas = exportRoles.has('analogicas') ? analogMappings(allMappings) : [];
     const mappings = [
       ...allMappings.filter((m) => {
         const rol = m.rol_dashboard || 'generico';
@@ -2696,15 +2709,23 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
         return false;
       }),
       ...digitales.map((entry) => entry.mapping),
-    ];
+      ...analogicas.map((entry) => entry.mapping),
+    ]
+      // Un mismo mapeo puede entrar dos veces (por rol y como analogica); si se
+      // duplica, la variable sale duplicada del builder.
+      .filter((m, i, arr) => arr.findIndex((other) => other.id === m.id) === i);
     const delimiter = ';';
     const header = [
       'Fecha',
-      ...fields.flatMap((field) =>
-        field === 'digitales'
-          ? digitales.map((entry) => entry.alias)
-          : [HISTORY_EXPORT_FIELDS[field]],
-      ),
+      ...fields.flatMap((field) => {
+        if (field === 'digitales') return digitales.map((entry) => entry.alias);
+        if (field === 'analogicas') {
+          return analogicas.map((entry) =>
+            entry.unidad ? `${entry.alias} [${entry.unidad}]` : entry.alias,
+          );
+        }
+        return [HISTORY_EXPORT_FIELDS[field]];
+      }),
     ];
 
     const filename = exportFileName(site, from, to, 'csv');
@@ -2749,17 +2770,27 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
         if (batch.rows.length === 0) break;
 
         const lines = batch.rows.map((rawRow) => {
-          const row = mapHistoricalDashboardRow({ row: rawRow, site, mappings, pozoConfig });
+          const row = mapHistoricalDashboardRow({
+            row: rawRow,
+            site,
+            mappings,
+            pozoConfig,
+            includeAnalogicas: analogicas.length > 0,
+          });
           const fecha = row.timestamp
             ? formatChileTimestamp(row.timestamp) || row.fecha
             : row.fecha;
           return [
             fecha,
-            ...fields.flatMap((field) =>
-              field === 'digitales'
-                ? digitales.map((entry) => csvValue(row.digitales?.[entry.key]))
-                : [csvValue(row[field])],
-            ),
+            ...fields.flatMap((field) => {
+              if (field === 'digitales') {
+                return digitales.map((entry) => csvValue(row.digitales?.[entry.key]));
+              }
+              if (field === 'analogicas') {
+                return analogicas.map((entry) => csvValue(row.analogicas?.[entry.key]));
+              }
+              return [csvValue(row[field])];
+            }),
           ]
             .map((value) => csvCell(value, delimiter))
             .join(delimiter);

@@ -238,6 +238,83 @@ export const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       },
     ],
   },
+  sala_servicios: {
+    id: 'sala_servicios',
+    label: 'Sala de servicios',
+    roles: [
+      {
+        id: 'vapor_presion',
+        label: 'Vapor - presion',
+        unitHint: 'bar',
+        description: 'Presion del manifold o de la linea de vapor.',
+      },
+      {
+        id: 'vapor_temperatura',
+        label: 'Vapor - temperatura',
+        unitHint: 'C',
+        description: 'Temperatura del manifold o de la linea de vapor.',
+      },
+      {
+        id: 'vapor_caudal',
+        label: 'Vapor - caudal',
+        unitHint: 'kg/h',
+        description: 'Caudal masico de vapor.',
+      },
+      {
+        id: 'frio_temperatura',
+        label: 'Frio - temperatura',
+        unitHint: 'C',
+        description: 'Temperatura de un circuito de frio.',
+      },
+      {
+        id: 'frio_caudal',
+        label: 'Frio - caudal',
+        unitHint: 'm3/h',
+        description: 'Caudal de un circuito de frio.',
+      },
+      {
+        id: 'aire_presion',
+        label: 'Aire comprimido - presion',
+        unitHint: 'bar',
+        description: 'Presion de la linea de aire comprimido.',
+      },
+      {
+        id: 'aire_caudal',
+        label: 'Aire comprimido - caudal',
+        unitHint: 'm3/h',
+        description: 'Caudal de aire comprimido.',
+      },
+      { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
+      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+    ],
+    transforms: [
+      {
+        id: 'directo',
+        label: 'Directo',
+        description: 'Usa el valor entrante sin modificarlo.',
+        enabled: true,
+      },
+      {
+        id: 'lineal',
+        label: 'Lineal',
+        description: 'Aplica valor * factor + offset.',
+        enabled: true,
+      },
+      {
+        id: 'bit',
+        label: 'Senal digital (un bit de la palabra)',
+        description: 'Separa un bit de un registro donde cada bit es una senal 0/1.',
+        enabled: true,
+      },
+      {
+        id: 'ieee754_32',
+        label: 'IEEE754 32 bits',
+        description: 'Une dos registros Modbus para obtener FLOAT32.',
+        enabled: true,
+        requiresD2: true,
+      },
+    ],
+  },
   pasteurizador: {
     id: 'pasteurizador',
     label: 'Pasteurizador',

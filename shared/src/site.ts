@@ -140,6 +140,22 @@ export interface SiteDashboardHistoryDigital {
   error: string | null;
 }
 
+/**
+ * Una variable analógica dentro de una fila histórica: las 4-20 mA y los float
+ * del equipo, que en un sitio de proceso son TODAS las variables. Solo viajan
+ * cuando se pide `analogicas=1`, porque en un sitio de agua repiten lo que ya
+ * va por rol.
+ */
+export interface SiteDashboardHistoryAnalog {
+  ok: boolean;
+  valor: number | string | null;
+  alias: string;
+  unidad: string | null;
+  /** `rol_dashboard` del reg_map; 'generico' en los sitios de proceso. */
+  rol: string;
+  error: string | null;
+}
+
 export interface SiteDashboardHistoryEntry {
   timestamp: string;
   fecha?: string;
@@ -154,6 +170,11 @@ export interface SiteDashboardHistoryEntry {
    * shape de la fila no depende de la configuración.
    */
   digitales?: Record<string, SiteDashboardHistoryDigital>;
+  /**
+   * Variables analógicas del sitio, indexadas por la clave de respuesta de cada
+   * una. Ausente (no vacío) cuando no se pidieron: es opt-in por `analogicas=1`.
+   */
+  analogicas?: Record<string, SiteDashboardHistoryAnalog>;
 }
 
 /** Paginación de `GET /api/companies/sites/:siteId/dashboard-history`. */
