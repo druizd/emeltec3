@@ -215,8 +215,27 @@ stateDiagram-v2
 > variable_key VARCHAR(50)   -- campo en data JSON o 'dga_atrasado'
 > condicion    VARCHAR       -- 'mayor_que'|'menor_que'|'fuera_rango'|'sin_datos'|'dga_atrasado'
 > severidad    VARCHAR       -- 'baja'|'media'|'alta'|'critica'
-> cooldown_minutos INTEGER DEFAULT 5
+> cooldown_minutos INTEGER DEFAULT 5   -- anti-flapping, NO reenvío (ver abajo)
 > ```
+
+> [!info] `alertas_eventos` — un aviso por episodio
+>
+> Desde `2026-09-14-alertas-consolidado.sql`, `cooldown_minutos` dejó de ser un
+> reloj de reenvío: mientras el evento siga abierto, las repeticiones se agrupan
+> en él y no hay correo nuevo. El cooldown solo impide abrir un episodio nuevo
+> justo después de cerrar uno.
+>
+> ```sql
+> notificado      BOOLEAN      -- FALSE = en la cola del consolidado
+> notificado_at   TIMESTAMPTZ  -- último correo; base del re-aviso diario
+> repeticiones    INTEGER      -- veces que la condición volvió a cumplirse
+> resuelta_motivo TEXT         -- 'manual' | 'rearme_automatico'
+> ```
+>
+> El correo sale consolidado a las 08:00 y 18:00 (hora de pared chilena, no el
+> `Etc/GMT+4` fijo); solo `critica` se manda al instante. Cada slot enviado se
+> registra en `alertas_digest_envios (slot_ts PK)`, que es el candado contra
+> envíos duplicados.
 
 > [!info] `incidencias`
 >

@@ -136,6 +136,12 @@ describe('evaluarAlerta — valor transformado por el reg_map', () => {
   });
 });
 
+/**
+ * Los destinatarios se resuelven al disparar solo cuando la severidad manda
+ * correo inmediato (critica). El resto queda encolado y los resuelve el
+ * consolidado — por eso estas reglas son criticas: lo que se prueba acá es a
+ * quién se le avisa, no cuándo.
+ */
 describe('evaluarAlerta — destinatarios del correo', () => {
   function paramsNotificacion() {
     const call = queryMock.mock.calls.find((c) => /FROM usuario/.test(String(c[0])));
@@ -146,7 +152,11 @@ describe('evaluarAlerta — destinatarios del correo', () => {
     const client = makeClient({ mapping: caudalMapping, data: crudoS127 });
     await evaluarAlerta(
       client,
-      makeAlerta({ notificar_user_ids: ['U001', 'U002'], notificar_superadmins: true }),
+      makeAlerta({
+        notificar_user_ids: ['U001', 'U002'],
+        notificar_superadmins: true,
+        severidad: 'critica',
+      }),
     );
     await new Promise((r) => setTimeout(r, 0)); // notificarUsuarios corre sin await
     expect(paramsNotificacion()).toEqual([
@@ -161,7 +171,11 @@ describe('evaluarAlerta — destinatarios del correo', () => {
     const client = makeClient({ mapping: caudalMapping, data: crudoS127 });
     await evaluarAlerta(
       client,
-      makeAlerta({ notificar_user_ids: ['U001'], notificar_superadmins: false }),
+      makeAlerta({
+        notificar_user_ids: ['U001'],
+        notificar_superadmins: false,
+        severidad: 'critica',
+      }),
     );
     await new Promise((r) => setTimeout(r, 0));
     expect(paramsNotificacion()).toEqual([
@@ -176,7 +190,7 @@ describe('evaluarAlerta — destinatarios del correo', () => {
     const client = makeClient({ mapping: caudalMapping, data: crudoS127 });
     await evaluarAlerta(
       client,
-      makeAlerta({ notificar_user_ids: null, notificar_superadmins: null }),
+      makeAlerta({ notificar_user_ids: null, notificar_superadmins: null, severidad: 'critica' }),
     );
     await new Promise((r) => setTimeout(r, 0));
     // Lista vacia → la query cae en `cardinality = 0 AND id = creado_por`.
