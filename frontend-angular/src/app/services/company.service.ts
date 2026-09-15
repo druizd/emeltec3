@@ -12,10 +12,15 @@ import type {
   CreateOperationalContactPayload,
   OperationalContact,
   CreateRilesFuentePayload,
+  CreateRilesLimitePayload,
+  CreateRilesMuestraPayload,
   RilesBalancePayload,
   RilesConfig,
   RilesFuente,
   RilesGranularidad,
+  RilesLimite,
+  RilesMuestraEvaluada,
+  RilesParametro,
   SiteRecord,
   SiteDashboardData,
   SiteDashboardHistoryEntry,
@@ -572,6 +577,82 @@ export class CompanyService {
     if (options.hasta) params.set('hasta', options.hasta);
     return this.http.get<ApiResponse<RilesBalancePayload>>(
       `/api/companies/sites/${encodeURIComponent(siteId)}/riles/balance?${params.toString()}`,
+    );
+  }
+
+  // ── RILes: laboratorio ─────────────────────────────────────────────────────
+
+  /** Catálogo global de parámetros. Cuelga del sitio sólo por el guard de acceso. */
+  getRilesParametros(siteId: string): Observable<ApiResponse<RilesParametro[]>> {
+    return this.http.get<ApiResponse<RilesParametro[]>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/parametros`,
+    );
+  }
+
+  getRilesLimites(siteId: string): Observable<ApiResponse<RilesLimite[]>> {
+    return this.http.get<ApiResponse<RilesLimite[]>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/limites`,
+    );
+  }
+
+  createRilesLimite(
+    siteId: string,
+    payload: CreateRilesLimitePayload,
+  ): Observable<ApiResponse<RilesLimite>> {
+    return this.http.post<ApiResponse<RilesLimite>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/limites`,
+      payload,
+    );
+  }
+
+  /**
+   * Da de baja un límite: cierra su vigencia, no borra la fila. La muestra de
+   * marzo tiene que seguir leyéndose contra el límite que regía en marzo.
+   */
+  cerrarRilesLimite(
+    siteId: string,
+    limiteId: string,
+    hasta?: string,
+  ): Observable<ApiResponse<RilesLimite>> {
+    const params = hasta ? `?hasta=${encodeURIComponent(hasta)}` : '';
+    return this.http.delete<ApiResponse<RilesLimite>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/limites/${encodeURIComponent(limiteId)}${params}`,
+    );
+  }
+
+  getRilesMuestras(
+    siteId: string,
+    options: { desde?: string; hasta?: string } = {},
+  ): Observable<ApiResponse<RilesMuestraEvaluada[]>> {
+    const params = new URLSearchParams();
+    if (options.desde) params.set('desde', options.desde);
+    if (options.hasta) params.set('hasta', options.hasta);
+    const qs = params.toString();
+    return this.http.get<ApiResponse<RilesMuestraEvaluada[]>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/muestras${qs ? `?${qs}` : ''}`,
+    );
+  }
+
+  createRilesMuestra(
+    siteId: string,
+    payload: CreateRilesMuestraPayload,
+  ): Observable<ApiResponse<RilesMuestraEvaluada>> {
+    return this.http.post<ApiResponse<RilesMuestraEvaluada>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/muestras`,
+      payload,
+    );
+  }
+
+  /**
+   * Una muestra sí se borra, a diferencia de un límite o una fuente: es la
+   * transcripción de un informe, y una transcripción equivocada se corrige.
+   */
+  deleteRilesMuestra(
+    siteId: string,
+    muestraId: string,
+  ): Observable<ApiResponse<{ id: string; eliminada: boolean }>> {
+    return this.http.delete<ApiResponse<{ id: string; eliminada: boolean }>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/riles/muestras/${encodeURIComponent(muestraId)}`,
     );
   }
 
