@@ -4,7 +4,11 @@ const router = express.Router();
 const companyController = require('../controllers/companyController');
 const pasteurizadorController = require('../controllers/pasteurizadorController');
 const { protect } = require('../middlewares/authMiddleware');
-const { requireSiteAccess } = require('../middlewares/coldRoomAccess');
+const { requireSiteAccess, requireRole } = require('../middlewares/coldRoomAccess');
+
+// Configurar el balance de un sitio RILes es una decisión de operación, no del
+// cliente que lo mira: el prorrateo de un pozo cambia los m³ que se le informan.
+const RILES_ADMIN_ROLES = ['SuperAdmin', 'Admin', 'Gerente'];
 
 // Lazy require del controller TS compilado de contadores (puede no estar
 // disponible en dev sin build). Se monta solo si carga.
@@ -27,6 +31,17 @@ try {
 } catch (err) {
   if (err && err.code !== 'MODULE_NOT_FOUND') {
     console.warn('[companyRoutes] No se pudo cargar siteOperacionConfig controller:', err.message);
+  }
+}
+
+let rilesController = null;
+try {
+  rilesController = require(
+    path.join(__dirname, '..', '..', 'dist', 'modules', 'riles', 'controller'),
+  );
+} catch (err) {
+  if (err && err.code !== 'MODULE_NOT_FOUND') {
+    console.warn('[companyRoutes] No se pudo cargar riles controller:', err.message);
   }
 }
 
@@ -80,6 +95,42 @@ if (contadoresController) {
     '/sites/:siteId/contadores-jornadas',
     requireSiteAccess('siteId'),
     contadoresController.getJornadaSeriesHandler,
+  );
+}
+if (rilesController) {
+  router.get(
+    '/sites/:siteId/riles/config',
+    requireSiteAccess('siteId'),
+    rilesController.getRilesConfigHandler,
+  );
+  router.put(
+    '/sites/:siteId/riles/config',
+    requireSiteAccess('siteId'),
+    requireRole(...RILES_ADMIN_ROLES),
+    rilesController.updateRilesConfigHandler,
+  );
+  router.get(
+    '/sites/:siteId/riles/fuentes',
+    requireSiteAccess('siteId'),
+    rilesController.listRilesFuentesHandler,
+  );
+  router.post(
+    '/sites/:siteId/riles/fuentes',
+    requireSiteAccess('siteId'),
+    requireRole(...RILES_ADMIN_ROLES),
+    rilesController.createRilesFuenteHandler,
+  );
+  // DELETE cierra la vigencia; no borra la fila.
+  router.delete(
+    '/sites/:siteId/riles/fuentes/:fuenteId',
+    requireSiteAccess('siteId'),
+    requireRole(...RILES_ADMIN_ROLES),
+    rilesController.cerrarRilesFuenteHandler,
+  );
+  router.get(
+    '/sites/:siteId/riles/balance',
+    requireSiteAccess('siteId'),
+    rilesController.getRilesBalanceHandler,
   );
 }
 if (siteOperacionConfigController) {

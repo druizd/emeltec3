@@ -202,6 +202,27 @@ const httpServer = app.listen(config.port, () => {
     }
   }
 
+  // Contadores daily worker TS (materializa site_contador_diario + jornada).
+  // Sin esto, `getDailySeries` igual responde, pero recomputando cada dia
+  // contra el hypertable en cada request. Kill switch propio:
+  // ENABLE_CONTADORES_DAILY_WORKER (default false dentro del worker).
+  try {
+    const contadoresDailyWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'contadores',
+      'daily-worker',
+    );
+    const { startContadoresDailyWorker } = require(contadoresDailyWorkerPath);
+    startContadoresDailyWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar contadores daily worker:', err.message);
+    }
+  }
+
   // Mathei simulation worker TS (real pasteurizador -> virtual electrico/riles).
   // Default OFF + dry-run ON. Requiere ENABLE_MATHEI_SIMULATION_WORKER=true.
   try {
@@ -384,6 +405,21 @@ function shutdown(signal) {
     );
     const { stopContadoresWorker } = require(contadoresWorkerPath);
     stopContadoresWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
+
+  try {
+    const contadoresDailyWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'contadores',
+      'daily-worker',
+    );
+    const { stopContadoresDailyWorker } = require(contadoresDailyWorkerPath);
+    stopContadoresDailyWorker();
   } catch (_err) {
     // worker no estaba activo
   }

@@ -3,9 +3,17 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type { CompanyNode, SiteDashboardData } from '@emeltec/shared';
 import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
-import { CompanyService, type TelemetryHistoryRow } from '../../services/company.service';
+import {
+  CompanyService,
+  type ContadorMensualPoint,
+  type TelemetryHistoryRow,
+} from '../../services/company.service';
 import { SkeletonComponent } from '../../components/ui/skeleton';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
+import { RilesBalancePanelComponent } from './riles/riles-balance-panel';
+import { RilesConfigPanelComponent } from './riles/riles-config-panel';
+import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
+import { WaterDetailBitacoraComponent } from './components/water-detail-bitacora/water-detail-bitacora';
 import {
   TelemetryLineChartCardComponent,
   type TelemetryLineChart,
@@ -19,9 +27,9 @@ interface RilesMonth {
   shortVolume: string;
   tag: string;
   status: 'active' | 'idle';
-  quality: string;
+  /** Lecturas que respaldan el delta del mes. 0 = mes sin datos, no mes en cero. */
+  muestras: string;
   range: string;
-  band: string;
 }
 
 interface RilesKpi {
@@ -37,7 +45,7 @@ interface RilesChart extends TelemetryLineChart {
   wide?: boolean;
 }
 
-type RilesTab = 'dashboard' | 'configurar';
+type RilesTab = 'monitoreo' | 'balance' | 'calidad' | 'alertas' | 'bitacora' | 'configurar';
 type RilesMissingMode = 'gap' | 'zero' | 'carry';
 
 const RILES_REALTIME_WINDOW_MS = 3 * 60 * 60 * 1000;
@@ -53,6 +61,10 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
     SkeletonComponent,
     SiteVariableSettingsPanelComponent,
     TelemetryLineChartCardComponent,
+    RilesBalancePanelComponent,
+    RilesConfigPanelComponent,
+    WaterDetailAlertasComponent,
+    WaterDetailBitacoraComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-4 pb-8 pt-4 text-slate-700 md:px-6">
@@ -89,24 +101,24 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
               </div>
 
               <div class="flex flex-wrap items-center gap-2">
-                <span
-                  class="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-caption font-bold text-emerald-700"
-                >
-                  <span class="material-symbols-outlined text-[17px]">sensors</span>
-                  Equipo simulado: {{ context.site.id_serial || 'RILES-DEMO-01' }}
-                </span>
-                <button
-                  type="button"
-                  class="inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-700 bg-cyan-700 px-4 text-body-sm font-semibold text-white transition-colors hover:bg-cyan-800 active:scale-[0.98]"
-                >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
-                    >download</span
+                @if (context.site.id_serial) {
+                  <span
+                    class="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-caption font-bold text-emerald-700"
                   >
-                  Descargar mes activo (.xlsx)
-                </button>
+                    <span class="material-symbols-outlined text-[17px]">sensors</span>
+                    {{ context.site.id_serial }}
+                  </span>
+                } @else {
+                  <span
+                    class="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-caption font-bold text-slate-500"
+                  >
+                    <span class="material-symbols-outlined text-[17px]">sensors_off</span>
+                    Sin equipo asociado
+                  </span>
+                }
                 <button
                   type="button"
-                  (click)="setTab(activeTab() === 'configurar' ? 'dashboard' : 'configurar')"
+                  (click)="setTab(activeTab() === 'configurar' ? 'monitoreo' : 'configurar')"
                   class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 active:scale-95"
                   aria-label="Configurar variables RILES"
                   [attr.aria-pressed]="activeTab() === 'configurar'"
@@ -141,101 +153,138 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
             <div class="h-1 bg-emerald-500"></div>
           </header>
 
-          @if (activeTab() === 'configurar') {
-            <app-site-variable-settings-panel
-              [siteId]="context.site.id"
-              [site]="context.site"
-              accentColor="#22c55e"
-              accentSoft="rgba(34,197,94,0.10)"
+          @if (activeTab() === 'balance') {
+            <app-riles-balance-panel [siteId]="context.site.id" />
+          } @else if (activeTab() === 'calidad') {
+            <section
+              class="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center shadow-sm"
+            >
+              <span class="material-symbols-outlined text-[28px] text-slate-300">science</span>
+              <h2 class="mt-3 text-h6 font-semibold text-slate-800">
+                Calidad del efluente: todavía no
+              </h2>
+              <p class="mx-auto mt-1 max-w-xl text-body-sm font-semibold text-slate-500">
+                Acá van los análisis de laboratorio y la carga contaminante en kg, que sale de
+                cruzar la concentración de cada parámetro con el volumen que ya calcula el balance.
+                Falta definir con el cliente la norma, los límites y la frecuencia del autocontrol.
+              </p>
+            </section>
+          } @else if (activeTab() === 'alertas') {
+            <app-water-detail-alertas
+              [sitioId]="context.site.id"
+              [empresaId]="context.company.id"
             />
+          } @else if (activeTab() === 'bitacora') {
+            <app-water-detail-bitacora
+              [sitioId]="context.site.id"
+              [empresaId]="context.company.id"
+            />
+          } @else if (activeTab() === 'configurar') {
+            <div class="space-y-5">
+              <app-riles-config-panel
+                [siteId]="context.site.id"
+                [sitiosHermanos]="context.subCompany.sites || []"
+              />
+              <app-site-variable-settings-panel
+                [siteId]="context.site.id"
+                [site]="context.site"
+                accentColor="#22c55e"
+                accentSoft="rgba(34,197,94,0.10)"
+              />
+            </div>
           } @else {
-            @if (selectedMonth(); as month) {
+            @if (tieneDatos()) {
               <main class="space-y-5">
-                <section
-                  class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm lg:flex-row lg:items-center"
-                  aria-label="Selector de mes"
-                >
-                  <p
-                    class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                    style="font-family: var(--font-josefin);"
+                @if (selectedMonth(); as month) {
+                  <section
+                    class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm lg:flex-row lg:items-center"
+                    aria-label="Selector de mes"
                   >
-                    Mes en vista
-                  </p>
-                  <div class="flex flex-wrap gap-2">
-                    @for (item of months(); track item.id) {
-                      <button
-                        type="button"
-                        (click)="activeMonthId.set(item.id)"
-                        [class]="monthButtonClass(item.id)"
-                      >
-                        <span>{{ item.label }}</span>
-                        <span class="text-[11px] opacity-75">{{ item.shortVolume }}</span>
-                      </button>
-                    }
-                  </div>
-                </section>
+                    <p
+                      class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+                      style="font-family: var(--font-josefin);"
+                    >
+                      Mes en vista
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                      @for (item of months(); track item.id) {
+                        <button
+                          type="button"
+                          (click)="activeMonthId.set(item.id)"
+                          [class]="monthButtonClass(item.id)"
+                        >
+                          <span>{{ item.label }}</span>
+                          <span class="text-[11px] opacity-75">{{ item.shortVolume }}</span>
+                        </button>
+                      }
+                    </div>
+                  </section>
 
-                <section
-                  class="overflow-hidden rounded-xl border border-cyan-800/20 bg-cyan-800 text-white shadow-sm"
-                >
-                  <div
-                    class="grid gap-5 px-5 py-5 md:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(130px,0.5fr))]"
+                  <section
+                    class="overflow-hidden rounded-xl border border-cyan-800/20 bg-cyan-800 text-white shadow-sm"
                   >
-                    <div>
-                      <p
-                        class="text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-100"
-                        style="font-family: var(--font-josefin);"
-                      >
-                        Totalizador historico (toda la operacion)
-                      </p>
-                      <div class="mt-2 flex flex-wrap items-end gap-2">
-                        <strong
-                          class="text-[34px] font-semibold leading-none md:text-[40px]"
+                    <div
+                      class="grid gap-5 px-5 py-5 md:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(130px,0.5fr))]"
+                    >
+                      <div>
+                        <p
+                          class="text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-100"
+                          style="font-family: var(--font-josefin);"
+                        >
+                          Volumen descargado en el mes
+                        </p>
+                        <div class="mt-2 flex flex-wrap items-end gap-2">
+                          <strong
+                            class="text-[34px] font-semibold leading-none md:text-[40px]"
+                            style="font-family: var(--font-mono);"
+                          >
+                            {{ month.volume }}
+                          </strong>
+                          <span class="pb-1 text-body font-semibold text-cyan-100">{{
+                            month.unit
+                          }}</span>
+                        </div>
+                        <p class="mt-2 text-body-sm font-semibold text-cyan-50">
+                          Delta del totalizador, con los resets del contador resueltos.
+                        </p>
+                      </div>
+
+                      <div class="rounded-lg bg-white/10 p-3">
+                        <p
+                          class="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100"
+                        >
+                          Lecturas
+                        </p>
+                        <p
+                          class="mt-2 text-h5 font-semibold"
                           style="font-family: var(--font-mono);"
                         >
-                          {{ month.volume }}
-                        </strong>
-                        <span class="pb-1 text-body font-semibold text-cyan-100">{{
-                          month.unit
-                        }}</span>
+                          {{ month.muestras }}
+                        </p>
                       </div>
-                      <p class="mt-2 text-body-sm font-semibold text-cyan-50">
-                        Banda incertidumbre: {{ month.band }}
-                      </p>
+                      <div class="rounded-lg bg-white/10 p-3">
+                        <p
+                          class="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100"
+                        >
+                          Ultimo dato
+                        </p>
+                        <p class="mt-2 text-body-sm font-bold text-white">{{ month.range }}</p>
+                      </div>
+                      <div class="rounded-lg bg-white/10 p-3">
+                        <p
+                          class="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100"
+                        >
+                          Estado
+                        </p>
+                        <p
+                          class="mt-2 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-caption font-bold text-emerald-700"
+                        >
+                          {{ month.tag }}
+                        </p>
+                      </div>
                     </div>
-
-                    <div class="rounded-lg bg-white/10 p-3">
-                      <p
-                        class="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100"
-                      >
-                        Calidad
-                      </p>
-                      <p class="mt-2 text-h5 font-semibold" style="font-family: var(--font-mono);">
-                        {{ month.quality }}
-                      </p>
-                    </div>
-                    <div class="rounded-lg bg-white/10 p-3">
-                      <p
-                        class="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100"
-                      >
-                        Periodo
-                      </p>
-                      <p class="mt-2 text-body-sm font-bold text-white">{{ month.range }}</p>
-                    </div>
-                    <div class="rounded-lg bg-white/10 p-3">
-                      <p
-                        class="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100"
-                      >
-                        Estado
-                      </p>
-                      <p
-                        class="mt-2 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-caption font-bold text-emerald-700"
-                      >
-                        {{ month.tag }}
-                      </p>
-                    </div>
-                  </div>
-                </section>
+                  </section>
+                }
 
                 <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   @for (kpi of kpis(); track kpi.label) {
@@ -269,68 +318,63 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
                   }
                 </section>
 
-                <section class="space-y-3">
-                  <div>
-                    <h2 class="text-h6 font-semibold text-slate-900">Totalizador por mes</h2>
-                    <p class="text-body-sm font-semibold text-slate-500">
-                      Volumen acumulado mensual con banda Manning, click para activar.
-                    </p>
-                  </div>
-                  <div class="grid gap-3 xl:grid-cols-3">
-                    @for (item of months(); track item.id) {
-                      <button
-                        type="button"
-                        (click)="activeMonthId.set(item.id)"
-                        [class]="monthCardClass(item.id)"
-                      >
-                        <span class="flex items-center justify-between gap-3">
-                          <span class="text-body font-semibold text-slate-900">{{
-                            item.label
-                          }}</span>
-                          <span
-                            [class]="
-                              item.status === 'active'
-                                ? 'rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700'
-                                : 'rounded-md bg-cyan-50 px-2 py-1 text-[10px] font-bold uppercase text-cyan-700'
-                            "
-                          >
-                            {{ item.tag }}
-                          </span>
-                        </span>
-                        <span
-                          class="mt-5 block text-left text-[28px] font-semibold leading-none text-slate-900"
-                          style="font-family: var(--font-mono);"
+                @if (months().length) {
+                  <section class="space-y-3">
+                    <div>
+                      <h2 class="text-h6 font-semibold text-slate-900">Volumen por mes</h2>
+                      <p class="text-body-sm font-semibold text-slate-500">
+                        Delta mensual del totalizador. Click para activar el mes.
+                      </p>
+                    </div>
+                    <div class="grid gap-3 xl:grid-cols-3">
+                      @for (item of months(); track item.id) {
+                        <button
+                          type="button"
+                          (click)="activeMonthId.set(item.id)"
+                          [class]="monthCardClass(item.id)"
                         >
-                          {{ item.volume }}
-                          <small class="text-caption font-semibold text-slate-500">{{
-                            item.unit
-                          }}</small>
-                        </span>
-                        <span
-                          class="mt-3 block text-left text-caption font-semibold text-slate-500"
-                        >
-                          banda: {{ item.band }}
-                        </span>
-                        <span
-                          class="mt-4 flex flex-wrap gap-4 text-caption font-semibold text-slate-500"
-                        >
-                          <span class="inline-flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[14px]"
-                              >calendar_month</span
+                          <span class="flex items-center justify-between gap-3">
+                            <span class="text-body font-semibold text-slate-900">{{
+                              item.label
+                            }}</span>
+                            <span
+                              [class]="
+                                item.status === 'active'
+                                  ? 'rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700'
+                                  : 'rounded-md bg-cyan-50 px-2 py-1 text-[10px] font-bold uppercase text-cyan-700'
+                              "
                             >
-                            {{ item.range }}
-                          </span>
-                          <span class="inline-flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[14px] text-rose-500">
-                              sensors
+                              {{ item.tag }}
                             </span>
-                            {{ item.quality }}
                           </span>
-                        </span>
-                      </button>
-                    }
-                  </div>
-                </section>
+                          <span
+                            class="mt-5 block text-left text-[28px] font-semibold leading-none text-slate-900"
+                            style="font-family: var(--font-mono);"
+                          >
+                            {{ item.volume }}
+                            <small class="text-caption font-semibold text-slate-500">{{
+                              item.unit
+                            }}</small>
+                          </span>
+                          <span
+                            class="mt-4 flex flex-wrap gap-4 text-caption font-semibold text-slate-500"
+                          >
+                            <span class="inline-flex items-center gap-1">
+                              <span class="material-symbols-outlined text-[14px]"
+                                >calendar_month</span
+                              >
+                              {{ item.range }}
+                            </span>
+                            <span class="inline-flex items-center gap-1">
+                              <span class="material-symbols-outlined text-[14px]"> sensors </span>
+                              {{ item.muestras }}
+                            </span>
+                          </span>
+                        </button>
+                      }
+                    </div>
+                  </section>
+                }
 
                 <section class="grid gap-5 xl:grid-cols-2">
                   @for (chart of charts(); track chart.title) {
@@ -340,14 +384,6 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
                     />
                   }
                 </section>
-
-                <p
-                  class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-caption font-semibold leading-5 text-slate-500 shadow-sm"
-                >
-                  Nota: caudal y volumen se calculan con ecuacion de Manning para flujo parcial en
-                  tuberia de descarga. La banda refleja incertidumbre por rugosidad real de la
-                  tuberia. Para eliminarla, se requiere aforo manual de calibracion en planta.
-                </p>
               </main>
             } @else {
               @if (historyLoading()) {
@@ -410,75 +446,105 @@ export class CompanySiteRilesDetailComponent implements OnInit {
   dashboardData = signal<SiteDashboardData | null>(null);
   historyRows = signal<TelemetryHistoryRow[]>([]);
   historyLoading = signal(false);
-  activeTab = signal<RilesTab>('dashboard');
+  monthlyCounters = signal<ContadorMensualPoint[]>([]);
+  activeTab = signal<RilesTab>('monitoreo');
   activeMonthId = signal('');
-  readonly telemetryKeys = [
-    'caudal',
-    'totalizador',
-    'nivel',
-    'ph',
-    'conductividad',
-    'temperatura',
-    'calidad_sensor_pct',
-  ];
+  readonly telemetryKeys = ['caudal', 'totalizador', 'nivel', 'ph', 'conductividad', 'temperatura'];
 
   readonly tabs: { id: RilesTab; label: string; icon: string }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'layers' },
+    { id: 'monitoreo', label: 'Monitoreo', icon: 'layers' },
+    { id: 'balance', label: 'Balance', icon: 'balance' },
+    { id: 'calidad', label: 'Calidad', icon: 'science' },
+    { id: 'alertas', label: 'Alertas', icon: 'notifications' },
+    { id: 'bitacora', label: 'Bitacora', icon: 'history_edu' },
     { id: 'configurar', label: 'Configurar', icon: 'build' },
   ];
 
   readonly months = computed<RilesMonth[]>(() => this.buildMonths());
+
+  /**
+   * Hay algo que mostrar en Monitoreo. Un sitio puede tener telemetría sin
+   * totalizador mapeado (y entonces no hay meses) o al revés, así que basta con
+   * cualquiera de las dos.
+   */
+  readonly tieneDatos = computed(() => this.historyRows().length > 0 || this.months().length > 0);
 
   selectedMonth = computed<RilesMonth | null>(() => {
     const months = this.months();
     return months.find((month) => month.id === this.activeMonthId()) || months.at(-1) || null;
   });
 
+  /**
+   * Una tarjeta por variable que el sitio efectivamente mide.
+   *
+   * Un valor ausente se muestra como ausente: antes esta vista rellenaba el
+   * nivel con "0,01" y la calidad del sensor con 99 % cuando no llegaba nada,
+   * que es peor que no mostrar la tarjeta.
+   */
   readonly kpis = computed<RilesKpi[]>(() => {
     const month = this.selectedMonth();
-    if (!month) return [];
+    const kpis: RilesKpi[] = [];
+
     const nivel = this.metricNumber('nivel');
-    const caudal = this.metricNumber('caudal');
-    const totalizador = this.metricNumber('totalizador');
-    const calidad = this.metricNumber('calidad_sensor_pct');
-    const volume = this.volumeParts(totalizador);
-    return [
-      {
+    if (nivel !== null) {
+      kpis.push({
         label: 'Nivel camara',
-        value:
-          nivel === null ? (month.status === 'active' ? '0,01' : '0') : this.formatNumber(nivel, 3),
+        value: this.formatNumber(nivel, 3),
         unit: 'm',
-        helper: month.status === 'active' ? 'con flujo en mes activo' : 'sin flujo en mes',
+        helper: 'ultima lectura',
         icon: 'south',
         tone: 'neutral',
-      },
-      {
-        label: 'Caudal actual',
-        value: caudal === null ? '0' : this.formatNumber(caudal, 3),
-        unit: 'L/s',
-        helper: month.status === 'active' ? 'descarga detectada' : 'sin flujo actual',
-        icon: 'water_drop',
-        tone: 'primary',
-      },
-      {
+      });
+    }
+
+    const caudal = this.metricNumber('caudal');
+    kpis.push({
+      label: 'Caudal actual',
+      value: caudal === null ? '—' : this.formatNumber(caudal, 3),
+      unit: 'L/s',
+      helper: caudal === null ? 'sin lectura' : caudal > 0 ? 'descarga en curso' : 'sin flujo',
+      icon: 'water_drop',
+      tone: 'primary',
+    });
+
+    if (month) {
+      kpis.push({
         label: 'Vol. mes activo',
-        value: totalizador === null ? month.volume : volume.value,
-        unit: totalizador === null ? month.unit : volume.unit,
-        helper: `banda: ${month.band}`,
+        value: month.volume,
+        unit: month.unit,
+        helper: month.muestras,
         icon: 'inventory_2',
         tone: 'success',
-      },
-      {
-        label: 'Calidad sensor',
-        value: calidad === null ? month.quality : `${this.formatNumber(calidad, 1)}%`,
-        unit: '',
-        helper: this.dashboardData()?.ultima_lectura
-          ? 'ultima lectura: Operativo'
-          : 'sin lectura real',
-        icon: 'badge',
+      });
+    }
+
+    // Calidad del efluente: sólo aparecen las que el sitio tenga mapeadas.
+    const calidad: { rol: string; label: string; unit: string; icon: string; decimales: number }[] =
+      [
+        { rol: 'ph', label: 'pH', unit: 'pH', icon: 'science', decimales: 2 },
+        {
+          rol: 'conductividad',
+          label: 'Conductividad',
+          unit: 'uS/cm',
+          icon: 'bolt',
+          decimales: 1,
+        },
+        { rol: 'temperatura', label: 'Temperatura', unit: 'C', icon: 'thermostat', decimales: 1 },
+      ];
+    for (const item of calidad) {
+      const valor = this.metricNumber(item.rol);
+      if (valor === null) continue;
+      kpis.push({
+        label: item.label,
+        value: this.formatNumber(valor, item.decimales),
+        unit: item.unit,
+        helper: 'ultima lectura',
+        icon: item.icon,
         tone: 'warning',
-      },
-    ];
+      });
+    }
+
+    return kpis;
   });
 
   readonly charts = computed<RilesChart[]>(() => {
@@ -528,7 +594,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       },
       {
         title: 'Caudal descarga',
-        subtitle: 'Descarga por minuto con banda Manning, L/s',
+        subtitle: 'Descarga por minuto, L/s',
         tone: 'cyan',
         timestamps,
         ...xRange,
@@ -547,30 +613,6 @@ export class CompanySiteRilesDetailComponent implements OnInit {
             3,
             false,
             1,
-            'avg',
-            'zero',
-          ),
-          this.chartSeries(
-            rows,
-            'caudal',
-            'Caudal min',
-            '#16a34a',
-            'L/s',
-            3,
-            false,
-            0.78,
-            'avg',
-            'zero',
-          ),
-          this.chartSeries(
-            rows,
-            'caudal',
-            'Caudal max',
-            '#d97706',
-            'L/s',
-            3,
-            false,
-            1.22,
             'avg',
             'zero',
           ),
@@ -646,6 +688,15 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       },
       error: () => undefined,
     });
+
+    this.companyService
+      .getSiteMonthlyCounters(context.site.id, { rol: 'totalizador', meses: 12 })
+      .subscribe({
+        next: (res) => {
+          if (res.ok) this.monthlyCounters.set(res.data || []);
+        },
+        error: () => this.monthlyCounters.set([]),
+      });
 
     if (!context.site.id_serial) {
       this.historyRows.set([]);
@@ -806,67 +857,48 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     return Number.isFinite(parsed) ? parsed : Number.NaN;
   }
 
+  /**
+   * Los meses salen del módulo de contadores, no del crudo.
+   *
+   * Antes esta vista hacía `max(totalizador) − min(totalizador)` sobre las
+   * lecturas del rango: eso ignora los resets del contador y los recambios de
+   * medidor, que es justo lo que `site_contador_mensual` ya tiene resuelto.
+   */
   private buildMonths(): RilesMonth[] {
-    const rows = this.orderedHistoryRows();
-    if (!rows.length) return [];
-
-    const byMonth = new Map<string, TelemetryHistoryRow[]>();
-    for (const row of rows) {
-      const key = this.monthKey(row);
-      if (!key) continue;
-      const bucket = byMonth.get(key) || [];
-      bucket.push(row);
-      byMonth.set(key, bucket);
-    }
-
-    const months = Array.from(byMonth.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-3)
-      .map(([month, monthRows]) => this.monthSummary(month, monthRows));
-    return months;
+    return this.monthlyCounters()
+      .filter((punto) => punto.muestras > 0 || punto.delta !== null)
+      .slice(-6)
+      .map((punto) => this.monthSummary(punto));
   }
 
-  private monthSummary(month: string, rows: TelemetryHistoryRow[]): RilesMonth {
-    const totalizers = rows
-      .map((row) => this.numericValue(row, 'totalizador'))
-      .filter((value): value is number => value !== null);
-    const caudales = rows
-      .map((row) => this.numericValue(row, 'caudal'))
-      .filter((value): value is number => value !== null);
-    const qualityValues = rows
-      .map((row) => this.numericValue(row, 'calidad_sensor_pct'))
-      .filter((value): value is number => value !== null);
-    const minTotal = totalizers.length ? Math.min(...totalizers) : 0;
-    const maxTotal = totalizers.length ? Math.max(...totalizers) : 0;
-    const volumeM3 = Math.max(0, maxTotal - minTotal);
+  private monthSummary(punto: ContadorMensualPoint): RilesMonth {
+    const volumeM3 = punto.delta;
     const volume = this.volumeParts(volumeM3);
-    const quality = qualityValues.length
-      ? qualityValues.reduce((sum, value) => sum + value, 0) / qualityValues.length
-      : 99;
-    const active = volumeM3 > 0 || caudales.some((value) => value > 0);
+    const sinDatos = punto.muestras === 0;
+    const active = (volumeM3 ?? 0) > 0;
 
     return {
-      id: month,
-      label: this.monthLabel(month),
-      volume: volume.value,
-      unit: volume.unit,
-      shortVolume: active ? `${volume.value} ${volume.unit}` : 'sin flujo',
-      tag: active ? 'Con flujo' : 'Sin flujo',
+      id: punto.mes,
+      label: this.monthLabel(punto.mes.slice(0, 7)),
+      volume: volumeM3 === null ? '—' : volume.value,
+      unit: volumeM3 === null ? '' : volume.unit,
+      shortVolume: sinDatos ? 'sin datos' : active ? `${volume.value} ${volume.unit}` : 'sin flujo',
+      tag: sinDatos ? 'Sin datos' : active ? 'Con flujo' : 'Sin flujo',
       status: active ? 'active' : 'idle',
-      quality: `${this.formatNumber(quality, 1)}%`,
-      range: this.rangeLabel(rows),
-      band: this.bandLabel(volumeM3),
+      muestras: `${this.formatNumber(punto.muestras, 0)} lecturas`,
+      range: punto.ultimo_dato ? this.fechaHora(punto.ultimo_dato) : 'sin lecturas',
     };
   }
 
-  private dateKey(row: TelemetryHistoryRow): string {
-    const value = row.timestamp_completo || row.fecha || '';
-    return value.includes(' ') ? value.split(' ')[0] : value.slice(0, 10);
-  }
-
-  private monthKey(row: TelemetryHistoryRow): string {
-    const date = this.dateKey(row);
-    return date.length >= 7 ? date.slice(0, 7) : '';
+  /** `DD/MM/YYYY HH:MM`, el formato de fecha de la plataforma. */
+  private fechaHora(iso: string): string {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return iso;
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mi = String(date.getMinutes()).padStart(2, '0');
+    return `${dd}/${mm}/${date.getFullYear()} ${hh}:${mi}`;
   }
 
   private monthLabel(month: string): string {
@@ -887,22 +919,6 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     ];
     const index = Number(rawMonth) - 1;
     return `${names[index] || month} ${year || ''}`.trim();
-  }
-
-  private rangeLabel(rows: TelemetryHistoryRow[]): string {
-    const first = this.dateKey(rows[0] || ({} as TelemetryHistoryRow));
-    const last = this.dateKey(rows[rows.length - 1] || ({} as TelemetryHistoryRow));
-    return first && last ? `${first} -> ${last}` : 'sin rango';
-  }
-
-  private bandLabel(volumeM3: number): string {
-    const low = volumeM3 * 0.85;
-    const high = volumeM3 * 1.15;
-    const base = this.volumeParts(volumeM3);
-    if (base.unit === 'L') {
-      return `${this.formatNumber(low * 1000, 2)} - ${this.formatNumber(high * 1000, 2)} L`;
-    }
-    return `${this.formatNumber(low, 3)} - ${this.formatNumber(high, 3)} m3`;
   }
 
   private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {
