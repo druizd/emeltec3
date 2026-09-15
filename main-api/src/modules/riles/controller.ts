@@ -23,8 +23,32 @@ import {
   mismaSubEmpresa,
   upsertRilesConfig,
 } from './repo';
-import { getBalance } from './service';
-import { DEFAULT_CONFIG, DIRECCIONES, MODOS_CAUDAL, NORMAS, type RilesConfig } from './types';
+import {
+  cerrarLimite,
+  createLimite,
+  createMuestra,
+  deleteMuestra,
+  findLimiteById,
+  findMuestraById,
+  listLimites,
+  listParametros,
+  parametrosDesconocidos,
+} from './lab-repo';
+import { getBalance, getMuestra, getMuestras } from './service';
+import type { AuthUser } from '../../shared/permissions';
+import {
+  DEFAULT_CONFIG,
+  DIRECCIONES,
+  MODOS_CAUDAL,
+  NORMAS,
+  TIPOS_LIMITE,
+  TIPOS_MUESTRA,
+  type RilesConfig,
+} from './types';
+
+function getUser(req: Request): AuthUser | undefined {
+  return (req as Request & { user?: AuthUser }).user;
+}
 
 const FECHA = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'formato YYYY-MM-DD esperado');
 
@@ -240,4 +264,251 @@ function rangoPorDefecto(granularidad: 'dia' | 'mes'): string {
   const hoy = getDayRangeChile(ahora).diaIso;
   const inicio = new Date(Date.parse(`${hoy}T00:00:00Z`) - 29 * 86_400_000);
   return inicio.toISOString().slice(0, 10);
+}
+
+// ── Laboratorio (fase 2) ─────────────────────────────────────────────────────
+
+const LimiteBody = z
+  .object({
+    parametro: z.string().trim().min(1).max(30),
+    norma: z.enum(NORMAS),
+    tipo: z.enum(TIPOS_LIMITE).default('concentracion'),
+    limite_min: z.number().min(0).nullable().default(null),
+    limite_max: z.number().min(0).nullable().default(null),
+    unidad: z.string().trim().min(1).max(20),
+    vigencia_desde: FECHA,
+    vigencia_hasta: FECHA.nullable().default(null),
+    nota: z.string().trim().max(500).nullable().default(null),
+  })
+  .refine((l) => l.limite_min !== null || l.limite_max !== null, {
+    message: 'Un límite sin piso ni techo no limita nada: declare al menos uno de los dos',
+  })
+  .refine((l) => l.limite_min === null || l.limite_max === null || l.limite_max >= l.limite_min, {
+    message: 'El techo del límite es menor que su piso',
+  });
+
+const ResultadoBody = z.object({
+  parametro: z.string().trim().min(1).max(30),
+  valor: z.number().min(0),
+  unidad: z.string().trim().min(1).max(20),
+  bajo_ld: z.boolean().default(false),
+  nota: z.string().trim().max(300).nullable().default(null),
+});
+
+const MuestraBody = z.object({
+  fecha_muestra: FECHA,
+  tipo: z.enum(TIPOS_MUESTRA).default('autocontrol'),
+  laboratorio: z.string().trim().max(120).nullable().default(null),
+  n_informe: z.string().trim().max(60).nullable().default(null),
+  punto: z.string().trim().max(80).nullable().default(null),
+  documento_id: z.string().trim().max(30).nullable().default(null),
+  nota: z.string().trim().max(500).nullable().default(null),
+  resultados: z.array(ResultadoBody).min(1, 'Una muestra sin resultados no dice nada'),
+});
+
+const RangoQuery = z.object({ desde: FECHA.optional(), hasta: FECHA.optional() });
+
+export async function listRilesParametrosHandler(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const parametros = await listParametros();
+    res.json(ok(parametros, { count: parametros.length }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listRilesLimitesHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const limites = await listLimites(siteIdDe(req));
+    res.json(ok(limites, { count: limites.length }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createRilesLimiteHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const siteId = siteIdDe(req);
+    const parsed = LimiteBody.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Body invalido', { details: parsed.error.issues });
+    }
+    const body = parsed.data;
+
+    const faltantes = await parametrosDesconocidos([body.parametro]);
+    if (faltantes.length > 0) {
+      throw new ValidationError(`El parámetro "${faltantes[0]}" no está en el catálogo`);
+    }
+
+    const creado = await createLimite({ sitio_id: siteId, ...body });
+    res.status(201).json(ok(creado));
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Cierra la vigencia de un límite. No lo borra: la muestra de marzo tiene que
+ * seguir leyéndose contra el límite que regía en marzo.
+ */
+export async function cerrarRilesLimiteHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const siteId = siteIdDe(req);
+    const limiteId = String(req.params.limiteId ?? '').trim();
+    if (!limiteId) throw new ValidationError('limiteId requerido');
+
+    const parsed = CerrarQuery.safeParse(req.query);
+    if (!parsed.success) {
+      throw new ValidationError('Parametros invalidos', { details: parsed.error.issues });
+    }
+
+    const existente = await findLimiteById(limiteId);
+    if (!existente || existente.sitio_id !== siteId) {
+      throw new NotFoundError('Límite no encontrado en este sitio');
+    }
+
+    const hasta = parsed.data.hasta ?? getDayRangeChile(new Date()).diaIso;
+    if (hasta < existente.vigencia_desde) {
+      throw new ValidationError('La fecha de cierre es anterior al inicio de la vigencia');
+    }
+
+    res.json(ok(await cerrarLimite(limiteId, hasta)));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listRilesMuestrasHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = siteIdDe(req);
+    const parsed = RangoQuery.safeParse(req.query);
+    if (!parsed.success) {
+      throw new ValidationError('Parametros invalidos', { details: parsed.error.issues });
+    }
+
+    const hoy = getDayRangeChile(new Date()).diaIso;
+    const hasta = parsed.data.hasta ?? hoy;
+    const desde = parsed.data.desde ?? haceUnAnio(hoy);
+    if (desde > hasta) throw new ValidationError('`desde` es posterior a `hasta`');
+
+    const muestras = await getMuestras({ sitioId: siteId, desde, hasta });
+    res.json(ok(muestras, { count: muestras.length, durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getRilesMuestraHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const siteId = siteIdDe(req);
+    const muestraId = String(req.params.muestraId ?? '').trim();
+    if (!muestraId) throw new ValidationError('muestraId requerido');
+    res.json(ok(await getMuestra(siteId, muestraId)));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createRilesMuestraHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const siteId = siteIdDe(req);
+    const parsed = MuestraBody.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Body invalido', { details: parsed.error.issues });
+    }
+    const body = parsed.data;
+
+    // Una muestra fechada mañana es un error de tipeo, no un dato del futuro.
+    if (body.fecha_muestra > getDayRangeChile(new Date()).diaIso) {
+      throw new ValidationError('La fecha de la muestra es futura');
+    }
+
+    // Dos filas del mismo parámetro chocarían contra el índice único con una
+    // traza de Postgres; mejor decir cuál se repite.
+    const vistos = new Set<string>();
+    for (const r of body.resultados) {
+      if (vistos.has(r.parametro)) {
+        throw new ValidationError(`El parámetro "${r.parametro}" viene repetido en la muestra`);
+      }
+      vistos.add(r.parametro);
+    }
+
+    const faltantes = await parametrosDesconocidos([...vistos]);
+    if (faltantes.length > 0) {
+      throw new ValidationError(
+        `Estos parámetros no están en el catálogo: ${faltantes.join(', ')}`,
+      );
+    }
+
+    const creada = await createMuestra({
+      sitio_id: siteId,
+      ...body,
+      created_by: String(getUser(req)?.id ?? '') || null,
+    });
+    res.status(201).json(ok(await getMuestra(siteId, creada.id)));
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Una muestra sí se borra, a diferencia de un límite o una fuente: es la
+ * transcripción de un informe, y una transcripción equivocada se corrige.
+ */
+export async function deleteRilesMuestraHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const siteId = siteIdDe(req);
+    const muestraId = String(req.params.muestraId ?? '').trim();
+    if (!muestraId) throw new ValidationError('muestraId requerido');
+
+    const existente = await findMuestraById(muestraId);
+    if (!existente || existente.sitio_id !== siteId) {
+      throw new NotFoundError('Muestra no encontrada en este sitio');
+    }
+
+    await deleteMuestra(muestraId);
+    res.json(ok({ id: muestraId, eliminada: true }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** Un año hacia atrás: el período que cubre un informe anual de autocontrol. */
+function haceUnAnio(hoy: string): string {
+  const [y, m, d] = hoy.split('-').map(Number);
+  const anio = String(y! - 1).padStart(4, '0');
+  return `${anio}-${String(m!).padStart(2, '0')}-${String(d!).padStart(2, '0')}`;
 }

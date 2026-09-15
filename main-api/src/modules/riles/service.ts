@@ -25,11 +25,18 @@ import {
   type SeriePorPeriodo,
 } from './balance';
 import { findRilesConfig, listFuentes } from './repo';
+import { catalogoPorCodigo, findMuestraById, listLimites, listMuestras } from './lab-repo';
+import { contarExcedencias, evaluarResultados } from './laboratorio';
 import {
   DEFAULT_CONFIG,
   type RilesBalancePayload,
   type RilesConfig,
   type RilesGranularidad,
+  type RilesLimite,
+  type RilesMuestra,
+  type RilesMuestraEvaluada,
+  type RilesNorma,
+  type RilesParametro,
 } from './types';
 
 /** Cuántos meses hay que pedirle a contadores para cubrir desde `desdeIso`. */
@@ -111,4 +118,113 @@ export async function getBalance(opts: {
     hasta,
     puntos: construirPuntos({ periodos, granularidad, config, aportes, propio }),
   };
+}
+
+// ── Laboratorio (fase 2) ─────────────────────────────────────────────────────
+
+/**
+ * El volumen descargado por día en el rango, indexado por fecha.
+ *
+ * Es el mismo `getBalance` de la pantalla, pedido en granularidad diaria: la
+ * carga de una muestra se calcula contra el volumen del día en que se tomó, no
+ * contra el del mes. Se pide UNA vez para todas las muestras del rango.
+ */
+async function volumenesPorDia(
+  sitioId: string,
+  desde: string,
+  hasta: string,
+): Promise<Map<string, { m3: number | null; estimado: boolean }>> {
+  const balance = await getBalance({ sitioId, desde, hasta, granularidad: 'dia' });
+  return new Map(
+    balance.puntos.map((p) => [p.periodo, { m3: p.volumen_salida_m3, estimado: p.estimado }]),
+  );
+}
+
+function evaluarMuestra(opts: {
+  muestra: RilesMuestra;
+  catalogo: Map<string, RilesParametro>;
+  limites: RilesLimite[];
+  norma: RilesNorma | null;
+  volumen: { m3: number | null; estimado: boolean } | undefined;
+}): RilesMuestraEvaluada {
+  const { muestra, catalogo, limites, norma, volumen } = opts;
+  const resultados = evaluarResultados({
+    resultados: muestra.resultados,
+    catalogo,
+    limites,
+    norma,
+    fecha: muestra.fecha_muestra,
+    volumenM3: volumen?.m3 ?? null,
+  });
+  return {
+    ...muestra,
+    volumen_dia_m3: volumen?.m3 ?? null,
+    volumen_estimado: volumen?.estimado ?? false,
+    norma,
+    resultados,
+    n_excede: contarExcedencias(resultados),
+  };
+}
+
+export async function getMuestras(opts: {
+  sitioId: string;
+  desde: string;
+  hasta: string;
+}): Promise<RilesMuestraEvaluada[]> {
+  const { sitioId, desde, hasta } = opts;
+
+  const site = await getSiteById(sitioId);
+  if (!site) throw new NotFoundError('Sitio no encontrado');
+
+  const muestras = await listMuestras({ sitioId, desde, hasta });
+  // Sin muestras no hay nada que cruzar: ni se consulta el balance, que es la
+  // parte cara (dos series de contadores por cada día del rango).
+  if (muestras.length === 0) return [];
+
+  const [config, catalogo, limites] = await Promise.all([
+    findRilesConfig(sitioId),
+    catalogoPorCodigo(),
+    listLimites(sitioId),
+  ]);
+
+  // El rango de las muestras, no el pedido: si el operador pide un año y hay
+  // tres muestras en marzo, el balance diario se pide sólo para marzo.
+  const fechas = muestras.map((m) => m.fecha_muestra).sort();
+  const volumenes = await volumenesPorDia(sitioId, fechas[0]!, fechas[fechas.length - 1]!);
+
+  const norma = config?.norma ?? null;
+  return muestras.map((muestra) =>
+    evaluarMuestra({
+      muestra,
+      catalogo,
+      limites,
+      norma,
+      volumen: volumenes.get(muestra.fecha_muestra),
+    }),
+  );
+}
+
+export async function getMuestra(
+  sitioId: string,
+  muestraId: string,
+): Promise<RilesMuestraEvaluada> {
+  const muestra = await findMuestraById(muestraId);
+  if (!muestra || muestra.sitio_id !== sitioId) {
+    throw new NotFoundError('Muestra no encontrada en este sitio');
+  }
+
+  const [config, catalogo, limites, volumenes] = await Promise.all([
+    findRilesConfig(sitioId),
+    catalogoPorCodigo(),
+    listLimites(sitioId),
+    volumenesPorDia(sitioId, muestra.fecha_muestra, muestra.fecha_muestra),
+  ]);
+
+  return evaluarMuestra({
+    muestra,
+    catalogo,
+    limites,
+    norma: config?.norma ?? null,
+    volumen: volumenes.get(muestra.fecha_muestra),
+  });
 }
