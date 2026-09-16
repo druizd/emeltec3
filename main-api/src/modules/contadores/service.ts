@@ -19,7 +19,7 @@ import { cache } from '../../config/redis';
 // Datos pueden estar hasta 15 min stale; aceptable para totalizadores que
 // suman gradual y el chart muestra horizonte de 30/90 dias.
 const JORNADA_CACHE_TTL_S = 900;
-import { applyMappingTransform } from '../sites/transforms';
+import { applyMappingTransform, isMappingVigenteAt } from '../sites/transforms';
 import { getPozoConfigBySiteId } from '../sites/repo';
 import type { PozoConfig, RegMap } from '../sites/types';
 import {
@@ -285,6 +285,16 @@ function extractCounterSamples(
 ): CounterSample[] {
   const out: CounterSample[] = [];
   for (const row of rows) {
+    // La ventana de vigencia del mapeo recorta qué buckets le tocan. Un
+    // instrumento que cambió de escala a mitad de la serie tiene DOS filas en
+    // `reg_map` con ventanas disjuntas, y el mes del corte se calcula dos veces
+    // — una por mapeo, cada una viendo solo sus propios buckets. Las dos filas
+    // resultantes las suma después `aggregateCounterRows`, que ya sabía sumar
+    // varios `variable_id` del mismo periodo.
+    //
+    // Sin este recorte el mapeo nuevo leería también los buckets viejos con su
+    // factor nuevo, que es justo el 100x de S148.
+    if (!isMappingVigenteAt(mapping, row.time)) continue;
     if (isZeroPayload(row.data, mapping)) continue;
     let v: number | null = null;
     try {
@@ -434,9 +444,9 @@ export async function computeMonthDeltaForVariable(opts: {
   // valor_inicio se setea con la primera lectura del mes).
   // Ventana acotada a 7 dias para no enlazar tras paradas largas o
   // reemplazos de sensor.
-  const prevResult = await query<{ data: Record<string, unknown> }>(
+  const prevResult = await query<{ bucket: string; data: Record<string, unknown> }>(
     `
-    SELECT data
+    SELECT bucket, data
     FROM equipo_1min
     WHERE id_serial = $1
       AND bucket >= ($2::timestamptz - INTERVAL '7 days')
@@ -457,8 +467,15 @@ export async function computeMonthDeltaForVariable(opts: {
   let valorFin: number | null = null;
   let ultimoDato: string | null = null;
 
+  // El seed también respeta la ventana. Si no, el mapeo NUEVO arrancaría su
+  // primer mes sembrado con la última lectura del mapeo VIEJO — otra escala —
+  // y el salto entre ambas entraría al delta como consumo real.
   const prevRow = prevResult.rows[0];
-  if (prevRow && !isZeroPayload(prevRow.data, mapping)) {
+  if (
+    prevRow &&
+    isMappingVigenteAt(mapping, prevRow.bucket) &&
+    !isZeroPayload(prevRow.data, mapping)
+  ) {
     try {
       const raw = applyMappingTransform({ rawData: prevRow.data, mapping, pozoConfig });
       const seed = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number(raw);

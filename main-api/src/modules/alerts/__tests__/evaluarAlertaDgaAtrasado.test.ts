@@ -133,7 +133,10 @@ describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers'
 
   it('comprobante hace 12h con periodicidad dia → dentro del periodo, no inserta', async () => {
     vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
-    const client = makeClient([{ rows: [configCon(12)] }, { rows: [] }]);
+    // La tercera respuesta es el cierre de eventos abiertos: esta condición
+    // escala por severidad y no pasa por debeNotificar, así que nadie más los
+    // rearma y quedarían saliendo cada día en el consolidado.
+    const client = makeClient([{ rows: [configCon(12)] }, { rows: [] }, { rows: [] }]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
     expect(insertDe(client)).toBeUndefined();
   });
@@ -182,13 +185,35 @@ describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers'
     const client = makeClient([
       { rows: [configCon(2, 'hora')] },
       { rows: [{ severidad: 'alta' }] },
-      { rows: [] },
+      { rows: [] }, // INSERT del evento de recuperación
+      { rows: [] }, // cierre de los eventos de atraso que seguían abiertos
     ]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
     const ins = insertDe(client);
     expect(ins).toBeDefined();
     expect(ins!.sql).toMatch(/'baja',TRUE,TRUE/);
     expect(String(ins!.params[5])).toMatch(/al día/);
+  });
+
+  it('recupera: también cierra los eventos de atraso que seguían abiertos', async () => {
+    // Sin esto, un atraso ya superado seguiría apareciendo todos los días en la
+    // sección "siguen abiertas" del consolidado, aunque SNIA lleve semanas
+    // recibiendo: esta condición escala por severidad y nunca pasa por
+    // `debeNotificar`, que es quien rearma al resto.
+    vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
+    const client = makeClient([
+      { rows: [configCon(2, 'hora')] },
+      { rows: [{ severidad: 'alta' }] },
+      { rows: [] },
+      { rows: [] },
+    ]);
+    await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
+    const cierre = client._calls.find(
+      (c) => c.sql.includes('UPDATE alertas_eventos') && c.sql.includes('resuelta = FALSE'),
+    );
+    expect(cierre).toBeDefined();
+    expect(cierre!.sql).toContain("resuelta_motivo = 'rearme_automatico'");
+    expect(cierre!.params).toEqual(['alerta-1']);
   });
 
   it('sin ningún comprobante todavía: la referencia es fecha_inicio/hora_inicio (lag 2h → no inserta)', async () => {
@@ -200,7 +225,7 @@ describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers'
       fecha_inicio: '2026-06-20',
       hora_inicio: '06:00:00',
     };
-    const client = makeClient([{ rows: [config] }, { rows: [] }]);
+    const client = makeClient([{ rows: [config] }, { rows: [] }, { rows: [] }]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
     expect(insertDe(client)).toBeUndefined();
   });

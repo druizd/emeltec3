@@ -10,7 +10,13 @@ import {
   getPozoConfigBySiteId,
   getSiteById,
 } from './repo';
-import { applyMappingTransform, normalizeTransform, readRawValue } from './transforms';
+import {
+  applyMappingTransform,
+  filterMappingsVigentesAt,
+  normalizeTransform,
+  readRawValue,
+  type VigenciaInstant,
+} from './transforms';
 import type {
   DashboardData,
   DashboardResumen,
@@ -190,11 +196,21 @@ function buildDashboardVariablesForRaw(opts: {
   pozoConfig: PozoConfig | null;
   rawData: unknown;
   telemetryError?: string | null;
+  /**
+   * Instante de la muestra. Los recorridos históricos pasan el `time` de la
+   * fila; el dashboard en vivo lo omite y vale AHORA.
+   */
+  at?: VigenciaInstant;
 }): DashboardVariable[] {
-  const { site, mappings, pozoConfig, rawData, telemetryError = null } = opts;
+  const { site, mappings, pozoConfig, rawData, telemetryError = null, at } = opts;
   const variables: DashboardVariable[] = [];
 
-  for (const mapping of mappings) {
+  // Descartar acá los mapeos fuera de ventana es lo que mantiene coherente todo
+  // lo que viene después: la lista de variables, el resolver por rol y el
+  // derivado de nivel freático ven solo los que regían en ese instante.
+  const vigentes = filterMappingsVigentesAt(mappings, at);
+
+  for (const mapping of vigentes) {
     const rawD1 = readRawValue(rawData, mapping.d1);
     const rawD2 = readRawValue(rawData, mapping.d2 ?? undefined);
     const transformacion = normalizeTransform(mapping.transformacion);
@@ -395,6 +411,7 @@ export function mapHistoricalDashboardRow(opts: {
     mappings,
     pozoConfig,
     rawData: row.data,
+    at: row.time,
   });
   return {
     timestamp: toUtcIsoString(row.time),

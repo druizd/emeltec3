@@ -220,7 +220,7 @@ describe('evaluarAlertaReviewQueue — evento reconocido', () => {
     expect(hizoInsert(client)).toBe(false);
   });
 
-  it('abierto SIN reconocer y sobre el umbral → sigue rigiendo el cooldown', async () => {
+  it('abierto SIN reconocer y sobre el umbral → agrupa, no manda otro correo', async () => {
     const client = makeClient({
       eventoAbierto: { id: 'EV1', reconocida_at: null },
       dentroDeCooldown: true,
@@ -230,7 +230,7 @@ describe('evaluarAlertaReviewQueue — evento reconocido', () => {
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
 
     expect(hizoInsert(client)).toBe(false);
-    expect(hizoUpdate(client, 'repeticiones')).toBe(false);
+    expect(hizoUpdate(client, 'repeticiones')).toBe(true);
     expect(hizoUpdate(client, 'resuelta = TRUE')).toBe(false);
   });
 });

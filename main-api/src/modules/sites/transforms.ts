@@ -33,6 +33,13 @@ export interface MappingTransformInput {
   pozoConfig?: PozoConfig | null;
 }
 
+/**
+ * Instante contra el que se evalúa la vigencia de un mapeo. Los buckets de
+ * `equipo_1min` llegan como Date (node-pg parsea TIMESTAMPTZ así) o como ISO
+ * según el camino, y el fill DGA trabaja con el `ts` del slot.
+ */
+export type VigenciaInstant = Date | string | number | null | undefined;
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mappingTransformMod = require('../../utils/mappingTransform.js') as {
   applyMappingTransform: (input: MappingTransformInput) => number | unknown;
@@ -44,6 +51,8 @@ const mappingTransformMod = require('../../utils/mappingTransform.js') as {
   readRawValue: (rawData: unknown, key: string | null | undefined) => unknown;
   numberOrNull: (value: unknown) => number | null;
   isPlainObject: (value: unknown) => value is Record<string, unknown>;
+  isMappingVigenteAt: (mapping: unknown, ts?: VigenciaInstant) => boolean;
+  filterMappingsVigentesAt: <T>(mappings: T[], ts?: VigenciaInstant) => T[];
 };
 
 export const applyMappingTransform = mappingTransformMod.applyMappingTransform;
@@ -55,3 +64,5 @@ export const parseMappingParams = mappingTransformMod.parseMappingParams;
 export const readRawValue = mappingTransformMod.readRawValue;
 export const numberOrNull = mappingTransformMod.numberOrNull;
 export const isPlainObject = mappingTransformMod.isPlainObject;
+export const isMappingVigenteAt = mappingTransformMod.isMappingVigenteAt;
+export const filterMappingsVigentesAt = mappingTransformMod.filterMappingsVigentesAt;

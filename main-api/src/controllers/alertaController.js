@@ -558,7 +558,11 @@ exports.resolverEvento = async (req, res) => {
   }
 
   const { rows } = await pool.query(
-    `UPDATE alertas_eventos SET resuelta = TRUE, resuelta_at = NOW() WHERE id = $1 RETURNING *`,
+    // El motivo distingue este cierre del rearme automatico del worker
+    // (cuando la condicion se normaliza sola). Ver la migracion del 14-09-2026.
+    `UPDATE alertas_eventos
+        SET resuelta = TRUE, resuelta_at = NOW(), resuelta_motivo = 'manual'
+      WHERE id = $1 RETURNING *`,
     [id],
   );
 

@@ -11,6 +11,8 @@ import { config } from '../../config/appConfig';
 import type { RegMap } from '../sites/types';
 import { siteUrl } from '../../utils/siteUrl';
 import { CHILE_TIME_ZONE } from '../../shared/time';
+import { destinatariosDeAlerta, nombreCompleto } from './destinatarios';
+import { procesarDigestPendiente } from './digest';
 interface AlertRegla {
   nombre: string;
   severidad: string;
@@ -52,12 +54,24 @@ const { beat } = heartbeatMod;
 
 const POLL_INTERVAL_MS = Number(process.env.ALERT_POLL_MS ?? 60_000);
 
-/** Default espejo del de appConfig, para tests que mockean `config` sin `alertas`. */
-const GUARDIA_EMELTEC_DEFAULT = ['druiz@emeltec.cl', 'nlira@emeltec.cl'];
+/**
+ * Severidades que mandan correo al instante. El resto queda en la cola del
+ * consolidado (`notificado = FALSE`) y sale a las 08:00 / 18:00. Default
+ * espejo del de appConfig, para tests que mockean `config` sin `alertas`.
+ */
+const SEVERIDADES_INMEDIATAS_DEFAULT = ['critica'];
 
-function guardiaEmeltec(): string[] {
-  const lista = (config as { alertas?: { emeltecEmails?: string[] } }).alertas?.emeltecEmails;
-  return Array.isArray(lista) && lista.length > 0 ? lista : GUARDIA_EMELTEC_DEFAULT;
+function esInmediata(severidad: string): boolean {
+  const cfg = (config as { alertas?: { digest?: { enabled?: boolean; inmediato?: string[] } } })
+    .alertas?.digest;
+  // Con el consolidado apagado se vuelve al correo inmediato por evento (pero
+  // sin la repetición por cooldown, que ya no existe).
+  if (cfg?.enabled === false) return true;
+  const lista =
+    Array.isArray(cfg?.inmediato) && cfg.inmediato.length > 0
+      ? cfg.inmediato
+      : SEVERIDADES_INMEDIATAS_DEFAULT;
+  return lista.includes(String(severidad).toLowerCase());
 }
 const DIAS_VALIDOS = [
   'domingo',
@@ -252,44 +266,46 @@ async function notificarUsuarios(
   eventoId: string,
   mensaje: string,
 ): Promise<void> {
-  // Destinatarios: los elegidos en la regla, más el equipo Emeltec si la regla
-  // lo pide. Con la lista vacía se conserva el comportamiento histórico (avisar
-  // al creador), así que una regla anterior a esta opción sigue igual.
-  const elegidos = Array.isArray(alerta.notificar_user_ids)
-    ? alerta.notificar_user_ids.filter((id) => typeof id === 'string' && id.length > 0)
-    : [];
-  // "Avisar al equipo Emeltec" no es todos los SuperAdmin: es la guardia de
-  // alertas (ALERT_EMELTEC_EMAILS). Sigue exigiendo tipo SuperAdmin para que
-  // un correo mal escrito en la env no le mande alertas a un cliente.
-  const avisarSuperadmins = alerta.notificar_superadmins !== false;
-  const guardia = guardiaEmeltec();
-  const usuarios = await query<{
-    id: string;
-    email: string;
-    nombre: string;
-    apellido: string | null;
-  }>(
-    `SELECT DISTINCT id, email, nombre, apellido FROM usuario
-     WHERE COALESCE(activo, TRUE)
-       AND (
-         ($2::boolean AND tipo = 'SuperAdmin' AND lower(email) = ANY($4::text[]))
-         OR id = ANY($3::text[])
-         OR (cardinality($3::text[]) = 0 AND id = $1)
-       )`,
-    [alerta.creado_por, avisarSuperadmins, elegidos, guardia],
-    { name: 'alerts__notify_users' },
-  );
-  for (const u of usuarios.rows) {
+  const usuarios = await destinatariosDeAlerta(alerta);
+  for (const u of usuarios) {
     await sendAlertEmail(
       u.email,
-      `${u.nombre} ${u.apellido ?? ''}`.trim(),
+      nombreCompleto(u),
       mensaje,
       alerta as unknown as AlertRegla,
     ).catch(() => undefined);
   }
-  await query(`UPDATE alertas_eventos SET notificado = TRUE WHERE id = $1`, [eventoId], {
-    name: 'alerts__mark_notified',
-  });
+  await query(
+    `UPDATE alertas_eventos SET notificado = TRUE, notificado_at = NOW() WHERE id = $1`,
+    [eventoId],
+    { name: 'alerts__mark_notified' },
+  );
+}
+
+/**
+ * Decide si este evento manda correo ahora o espera al consolidado.
+ *
+ * Una crítica no puede esperar hasta las 18:00, pero el resto sí: encoladas
+ * salen todas juntas en un correo por destinatario. "Encolar" no es hacer nada
+ * — el evento ya está insertado con `notificado = FALSE`, que ES la cola; lo
+ * único que hay que hacer es no mandar el correo suelto.
+ */
+function entregarNotificacion(
+  alerta: Alerta & { valor_detectado: string; condicion_texto: string },
+  eventoId: string,
+  mensaje: string,
+  etiqueta: string,
+): void {
+  if (!esInmediata(alerta.severidad)) {
+    logger.info(
+      { alertaId: alerta.id, eventoId, severidad: alerta.severidad },
+      'alerts: evento encolado para el consolidado',
+    );
+    return;
+  }
+  notificarUsuarios(alerta, eventoId, mensaje).catch((err) =>
+    logger.error({ err: (err as Error).message }, `alerts: notificacion ${etiqueta} falló`),
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -362,6 +378,17 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
         ],
       );
     }
+    // Los eventos de atraso que siguen abiertos se cierran acá: esta condición
+    // no pasa por `debeNotificar` (escala por severidad, no por evento abierto),
+    // así que nadie más los rearma. Sin esto un atraso ya superado seguiría
+    // apareciendo todos los días en la sección "siguen abiertas" del
+    // consolidado, aunque SNIA lleve semanas recibiendo.
+    await client.query(
+      `UPDATE alertas_eventos
+          SET resuelta = TRUE, resuelta_at = NOW(), resuelta_motivo = 'rearme_automatico'
+        WHERE alerta_id = $1 AND resuelta = FALSE`,
+      [alerta.id],
+    );
     return;
   }
 
@@ -397,9 +424,7 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
       tierSev,
     ],
   )) as { rows: Array<{ id: string }> };
-  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
-    logger.error({ err: (err as Error).message }, 'alerts: notificacion DGA falló'),
-  );
+  entregarNotificacion(ctx, ins.rows[0]!.id, mensaje, 'dga_atrasado');
 }
 
 /**
@@ -468,9 +493,7 @@ export async function evaluarAlertaDgaSlotsFallidos(client: any, alerta: Alerta)
       alerta.severidad,
     ],
   )) as { rows: Array<{ id: string }> };
-  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
-    logger.error({ err: (err as Error).message }, 'alerts: notificacion dga_slots_fallidos falló'),
-  );
+  entregarNotificacion(ctx, ins.rows[0]!.id, mensaje, 'dga_slots_fallidos');
 }
 
 /**
@@ -537,12 +560,7 @@ export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Pro
       alerta.severidad,
     ],
   )) as { rows: Array<{ id: string }> };
-  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
-    logger.error(
-      { err: (err as Error).message },
-      'alerts: notificacion review_queue_acumulacion falló',
-    ),
-  );
+  entregarNotificacion(ctx, ins.rows[0]!.id, mensaje, 'review_queue_acumulacion');
 }
 
 /**
@@ -603,9 +621,7 @@ export async function evaluarAlertaConsumoDiario(client: any, alerta: Alerta): P
       alerta.severidad,
     ],
   )) as { rows: Array<{ id: string }> };
-  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
-    logger.error({ err: (err as Error).message }, 'alerts: notificacion consumo_diario falló'),
-  );
+  entregarNotificacion(ctx, ins.rows[0]!.id, mensaje, 'consumo_diario');
 }
 
 function formatConsumo(valor: number): string {
@@ -701,16 +717,23 @@ async function getConsumoDiarioActual(client: any, alerta: Alerta): Promise<Cons
  * consultarla, y las condiciones DGA la resuelven con un COUNT sobre `dato_dga`
  * que no queremos pagar cada 60s (ADR-6a).
  *
- * Reconocer un evento pasa a significar "ya lo sé": mientras siga abierto y
- * reconocido, las repeticiones se agrupan en él en vez de generar un evento y
- * un correo por cada cooldown. Antes el cooldown solo miraba `triggered_at`
- * sin importar el estado, así que una condición que no se normaliza sola
- * (un totalizador acumulado, por ejemplo) producía un aviso cada 5 minutos
- * indefinidamente.
+ * Un aviso por episodio. Mientras haya un evento ABIERTO para la regla —
+ * reconocido o no — las repeticiones se agrupan en él y no se genera evento
+ * nuevo ni correo. Antes el cooldown solo miraba `triggered_at` sin importar el
+ * estado, así que una condición que no se normaliza sola (un totalizador
+ * acumulado, un slot DGA fallido) producía un aviso cada `cooldown_minutos`
+ * indefinidamente: con el default de 60, un correo por hora por regla hasta que
+ * alguien entrara a la plataforma a reconocer una por una.
  *
- * Rearme: si la condición se normaliza y el evento estaba reconocido, se
- * resuelve solo. Así la próxima vez que ocurra vuelve a avisar de verdad. Un
- * evento NO reconocido no se auto-resuelve: alguien tiene que verlo.
+ * El recordatorio de que algo sigue abierto ya no es ese correo repetido: es la
+ * sección "siguen abiertas" del consolidado (ver `digest.ts`), una vez al día.
+ *
+ * Rearme: si la condición se normaliza, el evento abierto se resuelve solo
+ * (`resuelta_motivo = 'rearme_automatico'`) para que la próxima vez que ocurra
+ * vuelva a avisar de verdad. Esto vale también para un evento sin reconocer: la
+ * alternativa —dejarlo abierto para siempre— deja la regla muda de ahí en
+ * adelante, que es peor que perder el pendiente de la bandeja. El cierre queda
+ * marcado y con las repeticiones que alcanzó a acumular.
  *
  * @returns true si el llamador debe insertar el evento.
  */
@@ -728,10 +751,10 @@ async function debeNotificar(
   )) as { rows: Array<{ id: string; reconocida_at: string | null }> };
   const abierto = abiertoRes.rows[0];
 
-  // Evento reconocido: no hay correo posible en este ciclo, pero sí hay que
+  // Con un evento abierto no hay correo posible en este ciclo, pero sí hay que
   // saber si la condición sigue activa para elegir entre agrupar la repetición
   // y rearmar. El cooldown no aplica acá.
-  if (abierto?.reconocida_at) {
+  if (abierto) {
     if (await evaluar()) {
       await client.query(
         `UPDATE alertas_eventos
@@ -742,19 +765,21 @@ async function debeNotificar(
       return false;
     }
     await client.query(
-      `UPDATE alertas_eventos SET resuelta = TRUE, resuelta_at = NOW() WHERE id = $1`,
+      `UPDATE alertas_eventos
+          SET resuelta = TRUE, resuelta_at = NOW(), resuelta_motivo = 'rearme_automatico'
+        WHERE id = $1`,
       [abierto.id],
     );
     logger.info(
-      { alertaId: alerta.id, eventoId: abierto.id },
-      'alerts: condicion normalizada, evento reconocido se rearma',
+      { alertaId: alerta.id, eventoId: abierto.id, reconocido: Boolean(abierto.reconocida_at) },
+      'alerts: condicion normalizada, el evento se rearma',
     );
     return false;
   }
 
-  // Sin reconocer: rige el cooldown normal para no spamear al operador que
-  // todavía no ha mirado la bandeja. Un evento sin reconocer tampoco se
-  // auto-resuelve, así que no hace falta evaluar para decidir el rearme.
+  // Sin evento abierto rige el cooldown, que acá ya no es un reloj de reenvío
+  // sino un anti-flapping: impide que una condición que entra y sale cada pocos
+  // minutos abra un episodio nuevo (y mande un correo) en cada oscilación.
   const cool = await client.query(
     `SELECT 1 FROM alertas_eventos
       WHERE alerta_id = $1 AND triggered_at > NOW() - ($2 || ' minutes')::INTERVAL
@@ -1008,9 +1033,7 @@ async function insertarEvento(
       alerta.severidad,
     ],
   )) as { rows: Array<{ id: string }> };
-  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
-    logger.error({ err: (err as Error).message }, 'alerts: notificacion falló'),
-  );
+  entregarNotificacion(ctx, ins.rows[0]!.id, mensaje, alerta.condicion);
 }
 
 async function runCycle(): Promise<void> {
@@ -1042,6 +1065,13 @@ async function runCycle(): Promise<void> {
         ),
       );
     }
+
+    // El consolidado va después de evaluar: si el ciclo que cruza las 08:00
+    // acaba de encolar un evento, ese evento sale en el correo de las 08:00 y
+    // no espera hasta las 18:00.
+    await procesarDigestPendiente(client).catch((err) =>
+      logger.error({ err: (err as Error).message }, 'alerts: error en el consolidado'),
+    );
   } catch (err) {
     logger.error({ err: (err as Error).message }, 'alerts: error en ciclo');
   } finally {

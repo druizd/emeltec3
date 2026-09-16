@@ -246,7 +246,9 @@ describe('evaluarAlertaDgaSlotsFallidos — evento reconocido', () => {
     expect(hizoInsert(client)).toBe(false);
   });
 
-  it('abierto SIN reconocer y con fallidos → sigue rigiendo el cooldown, no se auto-resuelve', async () => {
+  it('abierto SIN reconocer y con fallidos → agrupa, no manda otro correo', async () => {
+    // Un slot fallido no se arregla solo: es la condición que más spameaba
+    // antes, un correo por cooldown mientras el backlog siguiera ahí.
     const client = makeClient({
       eventoAbierto: { id: 'EV1', reconocida_at: null },
       dentroDeCooldown: true,
@@ -256,7 +258,7 @@ describe('evaluarAlertaDgaSlotsFallidos — evento reconocido', () => {
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
 
     expect(hizoInsert(client)).toBe(false);
-    expect(hizoUpdate(client, 'repeticiones')).toBe(false);
+    expect(hizoUpdate(client, 'repeticiones')).toBe(true);
     expect(hizoUpdate(client, 'resuelta = TRUE')).toBe(false);
   });
 });

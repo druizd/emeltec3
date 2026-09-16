@@ -50,6 +50,8 @@ interface VariableFormShape {
   bitInvertido: string;
   etiquetaOn: string;
   etiquetaOff: string;
+  vigenteDesde: string;
+  vigenteHasta: string;
 }
 
 function baseForm(overrides: Partial<VariableFormShape> = {}): VariableFormShape {
@@ -80,6 +82,8 @@ function baseForm(overrides: Partial<VariableFormShape> = {}): VariableFormShape
     bitInvertido: 'false',
     etiquetaOn: '',
     etiquetaOff: '',
+    vigenteDesde: '',
+    vigenteHasta: '',
     ...overrides,
   };
 }
@@ -1066,6 +1070,86 @@ describe('SiteVariableSettingsPanelComponent · lógica de transformación', () 
       expect(component.variableForm().conSigno).toBe('true');
       expect(component.variableForm().signoBits).toBe('16');
       expect(component.useSigned()).toBe(true);
+    });
+  });
+
+  /**
+   * Vigencia del mapeo. Un instrumento que cambia de escala a mitad de la serie
+   * se configura con DOS mapeos de ventanas disjuntas sobre el mismo registro:
+   * el viejo se cierra con "vigente hasta" y el nuevo abre con "vigente desde"
+   * en el mismo instante. Antes había un solo factor para toda la historia, y
+   * corregirlo arreglaba un tramo rompiendo el otro (S148, inflado 100x).
+   */
+  describe('vigencia del mapeo', () => {
+    it('sin fechas no hay error ni resumen: es el caso de casi todos los mapeos', () => {
+      component.variableForm.set(baseForm());
+      expect(component.vigenciaError()).toBe('');
+      expect(component.vigenciaResumen()).toBe('');
+    });
+
+    it('rechaza una ventana invertida antes de llegar al backend', () => {
+      component.variableForm.set(
+        baseForm({ vigenteDesde: '2026-08-01T00:00', vigenteHasta: '2026-07-01T00:00' }),
+      );
+      expect(component.vigenciaError()).toContain('anterior al término');
+    });
+
+    it('un solo extremo es válido: deja la ventana abierta por el otro lado', () => {
+      component.variableForm.set(baseForm({ vigenteHasta: '2026-07-12T14:30' }));
+      expect(component.vigenciaError()).toBe('');
+      expect(component.vigenciaResumen()).toContain('hasta');
+    });
+
+    it('el badge resume la ventana y calla cuando no hay', () => {
+      const mapping = {
+        id: 'M9',
+        alias: 'Totalizador',
+        d1: 'REG4',
+        d2: 'REG5',
+        tipo_dato: 'INTEGER',
+        unidad: 'm3',
+        rol_dashboard: 'totalizador',
+        transformacion: 'uint32_registros',
+        parametros: { factor: 1 },
+        sitio_id: 'S148',
+      };
+
+      expect(component.vigenciaBadge(mapping)).toBe('');
+      expect(
+        component.vigenciaBadge({ ...mapping, vigente_hasta: '2026-07-12T18:30:00.000Z' }),
+      ).toContain('Hasta');
+      expect(
+        component.vigenciaBadge({ ...mapping, vigente_desde: '2026-07-12T18:30:00.000Z' }),
+      ).toContain('Desde');
+    });
+
+    it('prepareVariableMap rehidrata la ventana guardada', () => {
+      component.prepareVariableMap({
+        nombre_dato: 'REG4',
+        valor_dato: 60476,
+        timestamp_completo: '2026-09-14 00:00',
+        mapping: {
+          id: 'M9',
+          alias: 'Totalizador',
+          d1: 'REG4',
+          d2: 'REG5',
+          tipo_dato: 'INTEGER',
+          unidad: 'm3',
+          rol_dashboard: 'totalizador',
+          transformacion: 'uint32_registros',
+          parametros: { factor: 1, offset: 0 },
+          sitio_id: 'S148',
+          vigente_desde: '2026-07-12T18:30:00.000Z',
+          vigente_hasta: null,
+        },
+      });
+
+      // El input es hora local, así que se compara el instante, no el texto: el
+      // navegador del técnico puede estar en cualquier zona.
+      const desde = component.variableForm().vigenteDesde;
+      expect(desde).not.toBe('');
+      expect(new Date(desde).toISOString()).toBe('2026-07-12T18:30:00.000Z');
+      expect(component.variableForm().vigenteHasta).toBe('');
     });
   });
 });
