@@ -2,7 +2,9 @@
 aliases: [watchdog, watchdog windows, vm linux caida, talon de aquiles]
 tags: [vault/infrastructure]
 ---
+
 |
+
 # Watchdog Windows — watchdog-windows.ps1
 
 ← [[HOME]] | Ver también: [[monitor-alertas]] · [[arquitectura-general]] · [[incidente-2026-07-10-vm-caida]]

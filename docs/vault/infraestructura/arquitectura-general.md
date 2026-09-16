@@ -319,26 +319,26 @@ Costo: **$0.38/mes** — ver [[azure-blob-storage]].
 
 ## Resiliencia — qué pasa cuando algo falla
 
-| Fallo | Detección | Recuperación automática | Pérdida de datos |
-|---|---|---|---|
-| Container cae | monitor.sh en <5 min → email | Docker restart policy | Ninguna |
-| VM Linux cae | monitor.sh no puede correr | Manual: `docker compose up` | Ninguna (SQLite queue en Win) |
-| ftpprocessor cae | monitor.sh → email | Manual | Datos en FTP server esperan |
-| DB corrupta | monitor.sh → email | Restaurar desde backup | Máximo 24h |
-| Red entre VMs cortada | ftpprocessor → SQLite queue | Auto-reenvío al reconectar | Ninguna |
+| Fallo                 | Detección                    | Recuperación automática     | Pérdida de datos              |
+| --------------------- | ---------------------------- | --------------------------- | ----------------------------- |
+| Container cae         | monitor.sh en <5 min → email | Docker restart policy       | Ninguna                       |
+| VM Linux cae          | monitor.sh no puede correr   | Manual: `docker compose up` | Ninguna (SQLite queue en Win) |
+| ftpprocessor cae      | monitor.sh → email           | Manual                      | Datos en FTP server esperan   |
+| DB corrupta           | monitor.sh → email           | Restaurar desde backup      | Máximo 24h                    |
+| Red entre VMs cortada | ftpprocessor → SQLite queue  | Auto-reenvío al reconectar  | Ninguna                       |
 
 ---
 
 ## Archivos clave
 
-| Archivo | Función |
-|---|---|
-| `scripts/monitor.sh` | Monitor de salud + alertas por email |
-| `scripts/backup-db.sh` | Backup diario a Azure Blob |
-| `docker-compose.yml` | Definición de todos los containers Linux |
-| `infra-db/init-db/01-init-schema.sql` | Schema inicial de la DB |
-| `infra-db/migrations/*.sql` | Cambios incrementales al schema (aplicar en orden) |
-| `ftp-pipeline/ftpprocessor/` | Código Go del procesador FTP (Windows) |
-| `ftp-pipeline/ftpconsumer-rust/` | Código Rust del receptor gRPC (Linux) |
-| `grpc-pipeline/csvconsumer/` | Código Rust del consumer CSV/gRPC |
-| `main-api/` | API principal Node.js + workers DGA |
+| Archivo                               | Función                                            |
+| ------------------------------------- | -------------------------------------------------- |
+| `scripts/monitor.sh`                  | Monitor de salud + alertas por email               |
+| `scripts/backup-db.sh`                | Backup diario a Azure Blob                         |
+| `docker-compose.yml`                  | Definición de todos los containers Linux           |
+| `infra-db/init-db/01-init-schema.sql` | Schema inicial de la DB                            |
+| `infra-db/migrations/*.sql`           | Cambios incrementales al schema (aplicar en orden) |
+| `ftp-pipeline/ftpprocessor/`          | Código Go del procesador FTP (Windows)             |
+| `ftp-pipeline/ftpconsumer-rust/`      | Código Rust del receptor gRPC (Linux)              |
+| `grpc-pipeline/csvconsumer/`          | Código Rust del consumer CSV/gRPC                  |
+| `main-api/`                           | API principal Node.js + workers DGA                |

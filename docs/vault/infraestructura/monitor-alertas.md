@@ -40,13 +40,13 @@ graph LR
     end
 ```
 
-| Estado | Umbral | Color email | Acción sugerida |
-|---|---|---|---|
-| Container down | Inmediato al caer | Rojo | Ver logs en el email, reiniciar |
-| Container missing | Inmediato | Rojo | Verificar docker-compose |
-| Sin datos — alerta | 5 minutos | Amarillo | Revisar pipeline, puede auto-resolver |
-| Sin datos — crítico | 10 minutos | Rojo | Revisar container + red + FTP server |
-| Recuperado | Al volver a OK | Verde | Informativo, no requiere acción |
+| Estado              | Umbral            | Color email | Acción sugerida                       |
+| ------------------- | ----------------- | ----------- | ------------------------------------- |
+| Container down      | Inmediato al caer | Rojo        | Ver logs en el email, reiniciar       |
+| Container missing   | Inmediato         | Rojo        | Verificar docker-compose              |
+| Sin datos — alerta  | 5 minutos         | Amarillo    | Revisar pipeline, puede auto-resolver |
+| Sin datos — crítico | 10 minutos        | Rojo        | Revisar container + red + FTP server  |
+| Recuperado          | Al volver a OK    | Verde       | Informativo, no requiere acción       |
 
 ---
 
@@ -69,10 +69,10 @@ emeltec-ftpconsumer gRPC consumer FTP
 
 Ambas guardan datos en la tabla `equipo`, pero con una diferencia:
 
-| Pipeline | Query de monitoreo | Campo clave |
-|---|---|---|
+| Pipeline | Query de monitoreo              | Campo clave        |
+| -------- | ------------------------------- | ------------------ |
 | gRPC/CSV | `WHERE received_at IS NOT NULL` | `MAX(received_at)` |
-| FTP | `WHERE received_at IS NULL` | `MAX(time)` |
+| FTP      | `WHERE received_at IS NULL`     | `MAX(time)`        |
 
 Si la DB está caída, omite los checks de flujo (ya se alertó por el container).
 
@@ -109,12 +109,12 @@ heartbeat anterior. Si detecta que se perdió el estado, manda **un email
 resumen inmediato** con el estado de los 8 containers + las 2 pipelines,
 y la razón detectada:
 
-| Señal detectada | Razón en el email |
-|---|---|
-| Sin heartbeat previo (primer arranque tras boot) | "Sin heartbeat de la corrida anterior..." |
-| Heartbeat con contenido corrupto | "Heartbeat de la corrida anterior corrupto..." |
+| Señal detectada                                                            | Razón en el email                                      |
+| -------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Sin heartbeat previo (primer arranque tras boot)                           | "Sin heartbeat de la corrida anterior..."              |
+| Heartbeat con contenido corrupto                                           | "Heartbeat de la corrida anterior corrupto..."         |
 | Heartbeat viejo — hueco > 15 min entre corridas (3x el intervalo del cron) | "monitor.sh no corrió por N min (última corrida: ...)" |
-| Además, si `uptime -s` muestra boot < 20 min | Se agrega: "VM reinició hace N min (boot: ...)" |
+| Además, si `uptime -s` muestra boot < 20 min                               | Se agrega: "VM reinició hace N min (boot: ...)"        |
 
 **Asunto:** `🔵 [MONITOR] monitor.sh arrancó — resumen de estado`
 
@@ -141,18 +141,22 @@ TO_EMAILS=("mcid@emeltec.cl")
 ## Cómo se ve un email de alerta
 
 ### 🔴 Container caído
+
 - Asunto: `🔴 [CAÍDO] emeltec-api — exit 1`
 - Contenido: nombre, estado, exit code, últimas 30 líneas de log
 
 ### 🟡 Datos lentos
+
 - Asunto: `⚠️ [ALERTA] ftpconsumer (FTP pipeline) — sin datos 7 min`
 - Contenido: cuánto lleva sin datos, timestamp del último dato, en cuántos minutos llega alerta roja
 
 ### 🔴 Datos críticos
+
 - Asunto: `🔴 [CRÍTICO] csvconsumer (gRPC pipeline) — sin datos 12 min`
 - Contenido: ídem + instrucción de acción
 
 ### ✅ Recuperado
+
 - Asunto: `✅ [RECUPERADO] emeltec-api — running`
 - Contenido: confirmación de que volvió a funcionar
 
@@ -201,6 +205,7 @@ Si `RESEND_API_KEY` está vacío, el script simula el envío y loguea el asunto 
 ```
 
 **Tras un reinicio de VM** (heartbeat perdido):
+
 ```
 [2026-07-24 09:00:01] === Monitor Emeltec — inicio ===
 [2026-07-24 09:00:01] REINICIO DETECTADO: Sin heartbeat de la corrida anterior (perdido por reinicio de VM o primera corrida de monitor.sh). VM reinició hace 3 min (boot: 2026-07-24 08:57:02).

@@ -15,14 +15,14 @@ Los contenedores levantaron con los volúmenes vacíos → DB sin usuarios → l
 
 ## Errores observados
 
-| Error | Causa |
-|-------|-------|
-| `POST /api/auth/start → 500` | Faltaba columna `activo` en tabla `usuario` (migración no aplicada) |
-| `POST /api/auth/login → 401` | DB vacía, usuario no existía |
-| `column "coord_norte" does not exist` | Migraciones pendientes desde mayo/junio |
-| `column "dga_activo" does not exist` | Ídem |
-| `relation "cold_room_alarm_rule" does not exist` | Ídem |
-| `relation "audit_log" does not exist` | Ídem |
+| Error                                            | Causa                                                               |
+| ------------------------------------------------ | ------------------------------------------------------------------- |
+| `POST /api/auth/start → 500`                     | Faltaba columna `activo` en tabla `usuario` (migración no aplicada) |
+| `POST /api/auth/login → 401`                     | DB vacía, usuario no existía                                        |
+| `column "coord_norte" does not exist`            | Migraciones pendientes desde mayo/junio                             |
+| `column "dga_activo" does not exist`             | Ídem                                                                |
+| `relation "cold_room_alarm_rule" does not exist` | Ídem                                                                |
+| `relation "audit_log" does not exist`            | Ídem                                                                |
 
 ## Solución aplicada
 

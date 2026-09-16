@@ -1573,7 +1573,9 @@ type OperationMode = 'realtime' | 'turnos';
                       <app-table-skeleton [rows]="6" [columns]="5" [showHeader]="false" />
                     </div>
                   } @else {
-                    <table class="responsive-table w-full table-fixed text-left text-body-sm md:min-w-[960px]">
+                    <table
+                      class="responsive-table w-full table-fixed text-left text-body-sm md:min-w-[960px]"
+                    >
                       <colgroup>
                         <col class="w-[23%]" />
                         <col class="w-[19%]" />

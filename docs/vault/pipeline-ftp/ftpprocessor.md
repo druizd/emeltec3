@@ -35,14 +35,14 @@ graph TD
 
 ## Archivos clave
 
-| Archivo | Función |
-|---|---|
-| `cmd/ftpprocessor/main.go` | Entry point, watcher, workers, retry loop |
-| `internal/parser/parser.go` | Parsea CSV, extrae serial, filtra sentinels |
-| `internal/ftpreader/reader.go` | Lee CSV 6 columnas semicolón |
-| `internal/localdb/store.go` | SQLite: dedup_log, telemetry_records, batch ops |
-| `internal/sender/sender.go` | gRPC: `Dial()` (persistente) + `SendRecords()` |
-| `data/incoming_ftp/` | Drop zone — watcher monitorea esta carpeta |
+| Archivo                        | Función                                         |
+| ------------------------------ | ----------------------------------------------- |
+| `cmd/ftpprocessor/main.go`     | Entry point, watcher, workers, retry loop       |
+| `internal/parser/parser.go`    | Parsea CSV, extrae serial, filtra sentinels     |
+| `internal/ftpreader/reader.go` | Lee CSV 6 columnas semicolón                    |
+| `internal/localdb/store.go`    | SQLite: dedup_log, telemetry_records, batch ops |
+| `internal/sender/sender.go`    | gRPC: `Dial()` (persistente) + `SendRecords()`  |
+| `data/incoming_ftp/`           | Drop zone — watcher monitorea esta carpeta      |
 
 ---
 
@@ -78,12 +78,13 @@ graph TD
 
 Dos tablas:
 
-| Tabla | Propósito |
-|---|---|
-| `telemetry_records` | Cola WAL: pending → synced. Permite retry si gRPC falla |
-| `dedup_log` | Evita reenvíos: registra (id_serial, fecha, hora) de todo lo que se envió exitosamente. Retención 90 días. |
+| Tabla               | Propósito                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `telemetry_records` | Cola WAL: pending → synced. Permite retry si gRPC falla                                                    |
+| `dedup_log`         | Evita reenvíos: registra (id_serial, fecha, hora) de todo lo que se envió exitosamente. Retención 90 días. |
 
 `FilterDuplicates` usa **row-value constructor** para aprovechar el PRIMARY KEY composite `(id_serial, fecha, hora)`:
+
 ```sql
 WHERE (id_serial, fecha, hora) IN ((?,?,?),(?,?,?),...)  -- O(log n) con índice
 -- NO: id_serial || '|' || fecha || '|' || hora IN (?)   -- O(n) full scan

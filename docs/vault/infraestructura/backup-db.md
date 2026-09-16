@@ -55,6 +55,7 @@ flowchart TD
 `pg_dump -Fc --compress=9` diario a las 3 AM → Azure Blob Storage (Hot tier) → lifecycle policy borra automático a los 14 días.
 
 **Por qué esta estrategia:**
+
 - TimescaleDB es PostgreSQL-compatible, `pg_dump` funciona sin cambios
 - `-Fc` comprime internamente con zlib (~5-10x para datos time-series) — no se necesita gzip externo
 - Hot tier: sin mínimo de retención (Archive requiere 180 días mínimo, incompatible con 14 días)
@@ -70,8 +71,9 @@ RPO no-ingest resultante: **24 h** (aceptado como trade-off por evitar impacto e
 Si en el futuro el negocio necesita RPO menor sin impactar horario productivo, la única salida sana es **PITR con `wal-g`** (ver alternativa futura al final de este doc): WAL streaming es continuo pero incremental — cada segmento son pocos MB, sin spike concentrado.
 
 **Endurecimiento (2026-07-27):**
+
 - **Sanity check pre-dump de la DB fuente**: antes de correr `pg_dump`, valida `pg_isready` + cuenta tablas (`information_schema.tables`) y hypertables (`timescaledb_information.hypertables`) en la DB viva. Si hay 0 tablas o 0 hypertables → aborta, no dumpea. Además compara contra `table_count`/`hypertable_count` del último heartbeat exitoso: si bajaron, aborta (señal de `DROP TABLE`/borrado accidental) — así no se sube un backup que "confirma" un borrado.
-- **Verify post-dump**: `pg_restore --list` sobre el archivo antes de subir. Si falla, aborta y notifica. (Esto valida que el *archivo* esté bien armado, no reemplaza el check anterior — una DB rota igual puede producir un dump estructuralmente válido).
+- **Verify post-dump**: `pg_restore --list` sobre el archivo antes de subir. Si falla, aborta y notifica. (Esto valida que el _archivo_ esté bien armado, no reemplaza el check anterior — una DB rota igual puede producir un dump estructuralmente válido).
 - **Tamaño mínimo**: rechaza dumps < 1 MiB (proxy contra fallo mid-stream).
 - **Checksum SHA-256**: calculado local, guardado como metadata del blob (`sha256`, `size_bytes`, `source_host`). Restore puede verificar integridad.
 - **Heartbeat blob**: al terminar OK, escribe `heartbeat/last-success.json` con timestamp, tamaño, hash, duración. Alerta externa: si último heartbeat > 26 h → backup roto.
@@ -175,6 +177,7 @@ BACKUP_GPG_PASSPHRASE_FILE=/etc/emeltec/backup-gpg.pass
 ```
 
 **Payload webhook**:
+
 ```json
 {
   "service": "backup-db",
@@ -207,6 +210,7 @@ curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 En Azure Portal → Storage Account → Access keys → Connection string
 
 Agregar al `.env` del servidor:
+
 ```bash
 AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=emeltec..."
 ```
@@ -215,8 +219,8 @@ AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=emel
 
 La regla vive en `deployment/azure/lifecycle-policy.json` (fuente de verdad). Aplica una acción sobre los blobs `db-backups/backup_*`:
 
-| Edad | Acción |
-|---|---|
+| Edad    | Acción |
+| ------- | ------ |
 | 14 días | Borrar |
 
 **Por qué no usamos Cool tier**: Cool tier tiene retención mínima de 30 días. Con nuestra política de 14 días, mover a Cool a los 7 días genera un cargo de "early deletion" por los 23 días restantes, que en la práctica sale **más caro** que dejar todo en Hot. Cool solo tiene sentido si se extiende la retención a ≥ 30 días.
@@ -271,12 +275,14 @@ crontab -e
 ```
 
 **Fallo — dump mal formado**:
+
 ```
 [2026-07-27 03:01:31] ERROR: pg_restore --list falló. Dump corrupto — abortando upload.
 [2026-07-27 03:01:31] FALLO en línea 128 (exit=1)
 ```
 
 **Fallo — DB fuente rota/borrada (no llega a dumpear)**:
+
 ```
 [2026-07-27 03:00:01] DB fuente: 3 tablas, 3 hypertables.
 [2026-07-27 03:00:01] ERROR: tablas bajaron de 42 a 3 vs. último backup exitoso. Posible borrado accidental — abortando.
@@ -368,6 +374,7 @@ az storage blob download \
 ```
 
 Salida:
+
 ```json
 {
   "last_success_utc": "2026-07-27T06:02:48Z",
@@ -401,12 +408,12 @@ Con cifrado el blob es basura AES-256 sin la passphrase.
 
 ### Trade-offs
 
-| Aspecto | Sin cifrado | Con GPG AES-256 |
-|---|---|---|
-| Restore | 1 paso | 2 pasos (descargar + `gpg --decrypt`) |
-| Overhead cifrado | 0 | ~30 s sobre dump de 1.5 GB |
-| Overhead tamaño | 0 | ~0 % (dump ya comprimido; `--compress-algo none`) |
-| Riesgo perder passphrase | N/A | **Backup irrecuperable** — sin recovery |
+| Aspecto                  | Sin cifrado | Con GPG AES-256                                   |
+| ------------------------ | ----------- | ------------------------------------------------- |
+| Restore                  | 1 paso      | 2 pasos (descargar + `gpg --decrypt`)             |
+| Overhead cifrado         | 0           | ~30 s sobre dump de 1.5 GB                        |
+| Overhead tamaño          | 0           | ~0 % (dump ya comprimido; `--compress-algo none`) |
+| Riesgo perder passphrase | N/A         | **Backup irrecuperable** — sin recovery           |
 
 > [!danger] Si perdés la passphrase, perdés el backup. GPG no tiene "olvidé mi clave". Guardala en al menos dos lugares independientes.
 
@@ -518,6 +525,7 @@ Cuando se activa por primera vez:
 **Script**: `scripts/verify-backup.sh`
 
 **Cron sugerido** (domingos 04:00, después del backup diario):
+
 ```bash
 0 4 * * 0 /home/azureuser/emeltec3/scripts/verify-backup.sh >> /var/log/emeltec-verify.log 2>&1
 ```
@@ -556,14 +564,14 @@ flowchart TD
 
 ### Qué valida
 
-| Check | Cómo |
-|---|---|
-| Blob descargable | `az storage blob download` |
-| Integridad del dump | `sha256sum` vs metadata `sha256` del blob |
-| `pg_restore` no rompe | ejecuta contra Postgres+TimescaleDB efímero, exit code 0 |
-| TimescaleDB carga | `SELECT count(*) FROM pg_extension WHERE extname='timescaledb'` = 1 |
-| Estructura sobrevive | `information_schema.tables` con al menos 1 tabla en `public` |
-| Hypertables presentes | `SELECT count(*) FROM timescaledb_information.hypertables` |
+| Check                         | Cómo                                                                                                                 |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Blob descargable              | `az storage blob download`                                                                                           |
+| Integridad del dump           | `sha256sum` vs metadata `sha256` del blob                                                                            |
+| `pg_restore` no rompe         | ejecuta contra Postgres+TimescaleDB efímero, exit code 0                                                             |
+| TimescaleDB carga             | `SELECT count(*) FROM pg_extension WHERE extname='timescaledb'` = 1                                                  |
+| Estructura sobrevive          | `information_schema.tables` con al menos 1 tabla en `public`                                                         |
+| Hypertables presentes         | `SELECT count(*) FROM timescaledb_information.hypertables`                                                           |
 | Datos recientes (best-effort) | intenta contar filas de las últimas 48 h en la primera hypertable, buscando col `created_at`/`time`/`ts`/`timestamp` |
 
 ### Aislamiento
@@ -623,22 +631,24 @@ En Azure Portal → Storage Account → **Data management → Lifecycle manageme
 
 ```json
 {
-  "rules": [{
-    "name": "delete-old-backups",
-    "enabled": true,
-    "type": "Lifecycle",
-    "definition": {
-      "filters": {
-        "blobTypes": ["blockBlob"],
-        "prefixMatch": ["db-backups/backup_"]
-      },
-      "actions": {
-        "baseBlob": {
-          "delete": { "daysAfterModificationGreaterThan": 14 }
+  "rules": [
+    {
+      "name": "delete-old-backups",
+      "enabled": true,
+      "type": "Lifecycle",
+      "definition": {
+        "filters": {
+          "blobTypes": ["blockBlob"],
+          "prefixMatch": ["db-backups/backup_"]
+        },
+        "actions": {
+          "baseBlob": {
+            "delete": { "daysAfterModificationGreaterThan": 14 }
+          }
         }
       }
     }
-  }]
+  ]
 }
 ```
 
@@ -661,11 +671,13 @@ Actualmente Azure Lifecycle no soporta `NOT` en filtros — el filtro por prefij
 Si querés recibir avisos:
 
 **Slack**:
+
 1. Slack → App → Incoming Webhooks → crear webhook para el canal `#emeltec-ops`.
 2. Copiar URL (formato `https://hooks.slack.com/services/T.../B.../...`).
 3. Agregar al `.env` del server: `BACKUP_WEBHOOK_URL=<url>`.
 
 **Discord**:
+
 1. Server settings → Integrations → Webhooks → New Webhook.
 2. Copiar URL. Adaptar el JSON de payload si Discord rechaza el formato (Discord espera `content` o `embeds`; para eso hay que ajustar `notify()` en los scripts).
 
@@ -698,19 +710,20 @@ Sin webhook propio, se puede alertar directo desde Azure:
 
 ## Costo estimado
 
-| Concepto | Volumen | Precio | Subtotal |
-|---|---|---|---|
-| Dumps en Hot tier (14 días × 1/día × 1.5 GB) | ~21 GB | $0.018/GB/mes | $0.38/mes |
-| Heartbeat blob | < 1 KB | — | ~$0 |
-| Ops subida (`backup-db.sh`, PutBlob, 30/mes) | 30 ops | despreciable | ~$0 |
-| Ops bajada/restore (`verify-backup.sh` semanal + restore manual) | ~5/mes | despreciable | ~$0 |
-| Egress restore (descarga dump ~1.5 GB) | 1.5 GB/restore | $0 (VM y Storage Account en misma región Azure) | ~$0 |
-| **Costo mensual** | | | **~$0.38/mes** |
-| **Costo anual** | | | **~$4.56/año** |
+| Concepto                                                         | Volumen        | Precio                                          | Subtotal       |
+| ---------------------------------------------------------------- | -------------- | ----------------------------------------------- | -------------- |
+| Dumps en Hot tier (14 días × 1/día × 1.5 GB)                     | ~21 GB         | $0.018/GB/mes                                   | $0.38/mes      |
+| Heartbeat blob                                                   | < 1 KB         | —                                               | ~$0            |
+| Ops subida (`backup-db.sh`, PutBlob, 30/mes)                     | 30 ops         | despreciable                                    | ~$0            |
+| Ops bajada/restore (`verify-backup.sh` semanal + restore manual) | ~5/mes         | despreciable                                    | ~$0            |
+| Egress restore (descarga dump ~1.5 GB)                           | 1.5 GB/restore | $0 (VM y Storage Account en misma región Azure) | ~$0            |
+| **Costo mensual**                                                |                |                                                 | **~$0.38/mes** |
+| **Costo anual**                                                  |                |                                                 | **~$4.56/año** |
 
 ### Por qué cada valor
 
 **Dumps en Hot tier — $0.38/mes**
+
 - `pg_dump -Fc --compress=9` corre 1 vez al día → 30 dumps/mes generados, pero la lifecycle policy borra automático a los 14 días, así que en cualquier momento hay **14 dumps vivos** en el Storage Account, no 30.
 - Cada dump comprimido pesa ~1.5 GB (tamaño real observado en los logs, ver sección "Logs esperados" más arriba — TimescaleDB comprime bien datos time-series con zlib, ~5-10x).
 - 14 dumps × 1.5 GB = **21 GB** promedio guardados en Hot tier en todo momento (el volumen sube y baja un poco día a día porque el dump de hoy entra antes de que el de hace 15 días se borre, pero 21 GB es el estable).
@@ -718,19 +731,23 @@ Sin webhook propio, se puede alertar directo desde Azure:
 - 21 GB × $0.018/GB = **$0.378/mes ≈ $0.38/mes**.
 
 **Heartbeat blob — ~$0**
+
 - `heartbeat/last-success.json` es un archivo de texto con timestamp, tamaño, hash — pesa menos de 1 KB.
 - 1 KB es 0.000001 GB: a $0.018/GB eso es un costo indetectable, Azure ni lo factura por separado (todo el Storage Account se cobra junto).
 
 **Ops subida — ~$0**
+
 - `backup-db.sh` hace 1 `PutBlob` (subir el dump) + 1 `PutBlob` (actualizar el heartbeat) por corrida = 2 operaciones de escritura por día → ~30-60 ops/mes (redondeado a 30 porque el heartbeat es liviano y algunas herramientas lo cuentan distinto).
 - Azure cobra operaciones de escritura en bloques de 10.000: ~$0.05 por cada 10k `PutBlob`. Con 30-60 ops/mes ni se acerca a completar un bloque de 10k → **$0 real, no solo redondeo**.
 
 **Ops bajada/restore — ~$0**
+
 - `verify-backup.sh` corre 1 vez por semana (4-5/mes) y hace `GetBlob` (descargar el último dump) + `blob show` (leer metadata) = ~2 ops por corrida → ~8-10 ops/mes.
 - Sumale una restauración manual de emergencia ocasional (no todos los meses) → total realista **~5 ops/mes** contando ambos casos.
 - Igual que la subida: Azure cobra `GetBlob` en bloques de 10.000 a ~$0.004/10k — con un puñado de ops al mes, el costo es indetectable.
 
 **Egress restore — $0 (condicional)**
+
 - "Egress" es lo que Azure cobra por sacar datos **fuera** de su red (a internet o a otra región). Tráfico **dentro de la misma región** (VM Linux ↔ Storage Account, ambos en la misma región Azure) es gratis — por eso $0 acá.
 - Si el día de mañana restaurás desde tu notebook, desde otra nube, o el Storage Account está en otra región que la VM: ahí sí aplica egress a internet, ~$0.087/GB (tarifa estándar Azure para los primeros GB salientes por mes, sube en tramos altos de volumen — irrelevante acá porque son pocos GB/mes).
 - Un restore de emergencia baja 1 dump de 1.5 GB → 1.5 GB × $0.087/GB ≈ **$0.13 esa vez**, no mensual — es costo puntual solo si restaurás fuera de la región.
@@ -758,21 +775,22 @@ RPO baja de **6 h → segundos**. RTO similar al actual (bajarse el basebackup +
 
 **Diferencias con el sistema actual**:
 
-| Aspecto | Hoy (`pg_dump`) | Con `wal-g` |
-|---|---|---|
-| Tipo | Lógico (portable, cross-version) | Físico (mismo Postgres, misma arch) |
-| Frecuencia | Cada 6 h | Basebackup semanal + WAL continuo |
-| RPO no-ingest | 6 h | Segundos |
-| Restore | `pg_restore -Fc` | `wal-g backup-fetch` + `postgres` replay |
-| Almacena en | `db-backups/backup_*.dump` | `db-backups-wal/basebackups_005/`, `wal_005/` |
-| Costo storage | $1.51/mo | ~$1.90/mo (basebackup 4×/mes + WAL 14d) |
-| Cambio en Postgres | Ninguno | `wal_level=replica`, `archive_mode=on`, `archive_command`, **restart requerido** |
+| Aspecto            | Hoy (`pg_dump`)                  | Con `wal-g`                                                                      |
+| ------------------ | -------------------------------- | -------------------------------------------------------------------------------- |
+| Tipo               | Lógico (portable, cross-version) | Físico (mismo Postgres, misma arch)                                              |
+| Frecuencia         | Cada 6 h                         | Basebackup semanal + WAL continuo                                                |
+| RPO no-ingest      | 6 h                              | Segundos                                                                         |
+| Restore            | `pg_restore -Fc`                 | `wal-g backup-fetch` + `postgres` replay                                         |
+| Almacena en        | `db-backups/backup_*.dump`       | `db-backups-wal/basebackups_005/`, `wal_005/`                                    |
+| Costo storage      | $1.51/mo                         | ~$1.90/mo (basebackup 4×/mes + WAL 14d)                                          |
+| Cambio en Postgres | Ninguno                          | `wal_level=replica`, `archive_mode=on`, `archive_command`, **restart requerido** |
 
 > [!warning] `wal-g` es físico: el backup solo restaura en un Postgres con la **misma versión mayor** (16) y arquitectura (x86_64). No es portable entre versiones. Por eso conviene mantener `pg_dump` como backup lógico "de emergencia portable" incluso si se agrega wal-g.
 
 ### Cambios que requiere
 
 1. **Extender imagen de la DB** (nuevo `infra-db/Dockerfile`):
+
    ```dockerfile
    FROM timescale/timescaledb:latest-pg16
    RUN apt-get update && apt-get install -y wget && \
@@ -784,6 +802,7 @@ RPO baja de **6 h → segundos**. RTO similar al actual (bajarse el basebackup +
    ```
 
 2. **Modificar `docker-compose.yml`** — build local en vez de imagen upstream, montar dir de config wal-g, exponer env vars:
+
    ```yaml
    timescaledb:
      build: ./infra-db
@@ -799,16 +818,19 @@ RPO baja de **6 h → segundos**. RTO similar al actual (bajarse el basebackup +
        -c archive_timeout=60
        ... (resto igual)
    ```
+
    **Restart obligatorio** (`archive_mode` requiere restart, no reload).
 
 3. **Nuevo container blob**: `db-backups-wal` con lifecycle policy separada (14 días también, aplica a WAL segments y basebackups).
 
 4. **Nuevo cron semanal** para basebackup:
+
    ```bash
    0 2 * * 0 docker exec emeltec-db wal-g backup-push /var/lib/postgresql/data >> /var/log/emeltec-basebackup.log 2>&1
    ```
 
 5. **Retention job diario** para limpiar WAL viejos:
+
    ```bash
    0 5 * * * docker exec emeltec-db wal-g delete retain FIND_FULL 2 --confirm
    ```
@@ -819,14 +841,14 @@ RPO baja de **6 h → segundos**. RTO similar al actual (bajarse el basebackup +
 
 ### Costo estimado
 
-| Concepto | Volumen | Precio | Subtotal |
-|---|---|---|---|
-| Basebackups (2 × 1.5 GB, retención 14 d) | 3 GB | $0.018/GB/mes | $0.05/mo |
-| WAL segments (~150 MB/día × 14 d) | ~2.1 GB | $0.018/GB/mes | $0.04/mo |
-| pg_dump cada 6h (mantiene coexistir) | 84 GB | $0.018/GB/mes | $1.51/mo |
-| Ops (WAL push cada 60 s) | ~40 k/mes | $0.005 / 10 k | $0.02/mo |
-| Ops list/get durante restore | — | despreciable | ~$0 |
-| **Total** | | | **~$1.62/mo** |
+| Concepto                                 | Volumen   | Precio        | Subtotal      |
+| ---------------------------------------- | --------- | ------------- | ------------- |
+| Basebackups (2 × 1.5 GB, retención 14 d) | 3 GB      | $0.018/GB/mes | $0.05/mo      |
+| WAL segments (~150 MB/día × 14 d)        | ~2.1 GB   | $0.018/GB/mes | $0.04/mo      |
+| pg_dump cada 6h (mantiene coexistir)     | 84 GB     | $0.018/GB/mes | $1.51/mo      |
+| Ops (WAL push cada 60 s)                 | ~40 k/mes | $0.005 / 10 k | $0.02/mo      |
+| Ops list/get durante restore             | —         | despreciable  | ~$0           |
+| **Total**                                |           |               | **~$1.62/mo** |
 
 Diferencia real vs. actual: +$0.11/mo por RPO segundos + PITR.
 
@@ -844,45 +866,48 @@ Diferencia real vs. actual: +$0.11/mo por RPO segundos + PITR.
 
 ```json
 {
-  "rules": [{
-    "name": "db-backups-lifecycle",
-    "enabled": true,
-    "type": "Lifecycle",
-    "definition": {
-      "filters": {
-        "blobTypes": ["blockBlob"],
-        "prefixMatch": ["db-backups/backup_"]
-      },
-      "actions": {
-        "baseBlob": {
-          "tierToCool": { "daysAfterModificationGreaterThan": 7 },
-          "delete":     { "daysAfterModificationGreaterThan": 30 }
+  "rules": [
+    {
+      "name": "db-backups-lifecycle",
+      "enabled": true,
+      "type": "Lifecycle",
+      "definition": {
+        "filters": {
+          "blobTypes": ["blockBlob"],
+          "prefixMatch": ["db-backups/backup_"]
+        },
+        "actions": {
+          "baseBlob": {
+            "tierToCool": { "daysAfterModificationGreaterThan": 7 },
+            "delete": { "daysAfterModificationGreaterThan": 30 }
+          }
         }
       }
     }
-  }]
+  ]
 }
 ```
 
 **Costo estimado** (30 días de historia):
 
-| Concepto | Volumen | Precio | Subtotal |
-|---|---|---|---|
-| Dumps Hot (7 días × 1.5 GB) | 10.5 GB | $0.018/GB/mes | $0.19/mes |
-| Dumps Cool (23 días × 1.5 GB) | 34.5 GB | $0.010/GB/mes | $0.35/mes |
-| **Costo mensual** | | | **~$0.54/mes** |
-| **Costo anual** | | | **~$6.48/año** |
+| Concepto                      | Volumen | Precio        | Subtotal       |
+| ----------------------------- | ------- | ------------- | -------------- |
+| Dumps Hot (7 días × 1.5 GB)   | 10.5 GB | $0.018/GB/mes | $0.19/mes      |
+| Dumps Cool (23 días × 1.5 GB) | 34.5 GB | $0.010/GB/mes | $0.35/mes      |
+| **Costo mensual**             |         |               | **~$0.54/mes** |
+| **Costo anual**               |         |               | **~$6.48/año** |
 
 **Trade-off**: +$0.16/mes (+42%) por **el doble de cobertura de recuperación** (30 días vs. 14).
 
 **Impacto operativo**:
+
 - Restore de dumps en Cool tier tarda un par de segundos más (rehidratación instantánea, no como Archive).
 - `verify-backup.sh` toca solo el último dump → siempre en Hot → sin impacto.
 - El costo de reads en Cool (por restore) es despreciable (< $0.01 por corrida).
 
 **Cambios que requiere**:
+
 1. Editar `deployment/azure/lifecycle-policy.json` con el bloque de arriba.
 2. Re-aplicar la policy vía `az storage account management-policy create ...`.
 3. Actualizar la sección de costo estimado.
 4. Sin cambios en `backup-db.sh` ni `verify-backup.sh`.
-

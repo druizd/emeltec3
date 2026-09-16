@@ -845,7 +845,13 @@ export async function computeJornadasForVariable(opts: {
     } else {
       const result = await query<JornadaRow>(
         JORNADA_ROWS_SQL,
-        [idSerial, queryStart.toISOString(), queryEnd.toISOString(), mapping.d1, mapping.d2 ?? null],
+        [
+          idSerial,
+          queryStart.toISOString(),
+          queryEnd.toISOString(),
+          mapping.d1,
+          mapping.d2 ?? null,
+        ],
         { label: 'contadores__jornada_rows' },
       );
       rows = result.rows;

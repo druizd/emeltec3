@@ -20,6 +20,7 @@ ok ftp (REGADIO) REGADIO_20260723084630.csv | attempt 1/3 | records: 2 | 12193ms
 ```
 
 Comparado con csvprocessor (mismo servidor, mismo gRPC):
+
 ```
 ok log (151.21.35.27--1) 2026_07_23_08_43_58.csv | attempt 1/3 | records: 1 | 7ms
 ```
@@ -49,6 +50,7 @@ s.db.Exec(`UPDATE telemetry_records SET sync_status = 'synced' WHERE local_id IN
 ### Causa 2 — Archivos `_log_` explotando la latencia a 12000ms
 
 **Síntoma:**
+
 ```
 warn ftp (REGADIO) REGADIO_log_20260501_20260531.csv | gRPC: message length too large: 8587388 bytes, limit: 4194304 bytes
 ok ftp (REGADIO) ... | 12193ms   ← workers bloqueados
@@ -159,6 +161,7 @@ insert_records(&mut *client, &parsed).await
 ```
 
 **Dependency agregada en Cargo.toml:**
+
 ```toml
 deadpool-postgres = { version = "0.12", features = ["rt_tokio_1"] }
 ```
@@ -169,12 +172,12 @@ deadpool-postgres = { version = "0.12", features = ["rt_tokio_1"] }
 
 ## Beneficios esperados
 
-| Métrica | Antes | Esperado |
-|---|---|---|
-| `ok ftp` baseline | ~640ms | ~20–100ms |
-| `ok ftp` con retry activo | 1400–4000ms | similar al baseline |
-| `ok ftp` con archivo `_log_` | 12000ms | eliminado (hold_corrupt) |
-| `sqlite sync ok` frecuencia | constante, bloquea | sin cambio en frecuencia, sin bloqueo |
+| Métrica                      | Antes              | Esperado                              |
+| ---------------------------- | ------------------ | ------------------------------------- |
+| `ok ftp` baseline            | ~640ms             | ~20–100ms                             |
+| `ok ftp` con retry activo    | 1400–4000ms        | similar al baseline                   |
+| `ok ftp` con archivo `_log_` | 12000ms            | eliminado (hold_corrupt)              |
+| `sqlite sync ok` frecuencia  | constante, bloquea | sin cambio en frecuencia, sin bloqueo |
 
 ---
 

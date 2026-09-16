@@ -4,8 +4,8 @@ Archivos JSON con la configuración de Azure que debe vivir en git, no solo en e
 
 ## Archivos
 
-| Archivo | Recurso | Cuándo aplicar |
-|---|---|---|
+| Archivo                 | Recurso                                     | Cuándo aplicar                                                     |
+| ----------------------- | ------------------------------------------- | ------------------------------------------------------------------ |
 | `lifecycle-policy.json` | Storage Account → Blob lifecycle management | Cuando cambia la política de retención o de tiering de los backups |
 
 ## Aplicar / actualizar

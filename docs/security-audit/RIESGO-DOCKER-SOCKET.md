@@ -17,6 +17,7 @@ volumes:
 ```
 
 **Archivos involucrados:**
+
 - `main-api/src/controllers/dockerController.js` — lee eventos del daemon Docker via dockerode
 - `main-api/src/routes/dockerRoutes.js` — GET `/api/docker/events`, requiere auth
 - `main-api/src/app.js` — monta las rutas en `/api/docker`
@@ -47,11 +48,11 @@ Esto convierte una vulnerabilidad en main-api en un compromiso total del servido
 
 ## Mitigaciones en lugar
 
-| Mitigación | Detalle |
-|-----------|---------|
-| Auth obligatoria | El endpoint requiere token JWT válido + rol `SuperAdmin` o `Admin` |
-| Red interna | El endpoint no está expuesto directamente al exterior, pasa por el proxy |
-| Cache 60s | El controlador cachea la respuesta — limita las llamadas reales al daemon |
+| Mitigación                   | Detalle                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| Auth obligatoria             | El endpoint requiere token JWT válido + rol `SuperAdmin` o `Admin`             |
+| Red interna                  | El endpoint no está expuesto directamente al exterior, pasa por el proxy       |
+| Cache 60s                    | El controlador cachea la respuesta — limita las llamadas reales al daemon      |
 | Sin operaciones de escritura | El código solo llama a `docker.getEvents()` — no crea ni modifica contenedores |
 
 ---
@@ -59,18 +60,21 @@ Esto convierte una vulnerabilidad en main-api en un compromiso total del servido
 ## Cómo eliminarlo si se decide revertir
 
 1. Eliminar la línea del socket en `docker-compose.yml`:
+
    ```yaml
    # Borrar esta línea:
    - /var/run/docker.sock:/var/run/docker.sock:ro
    ```
 
 2. Eliminar los archivos del backend:
+
    ```
    main-api/src/controllers/dockerController.js
    main-api/src/routes/dockerRoutes.js
    ```
 
 3. Remover el import y mount en `main-api/src/app.js`:
+
    ```js
    // Borrar:
    const dockerRoutes = require('./routes/dockerRoutes');
@@ -78,6 +82,7 @@ Esto convierte una vulnerabilidad en main-api en un compromiso total del servido
    ```
 
 4. Desinstalar dependencia:
+
    ```bash
    cd main-api && pnpm remove dockerode
    ```
