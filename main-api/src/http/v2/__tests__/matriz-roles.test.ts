@@ -144,6 +144,7 @@ const ESPERADO: Record<string, readonly Rol[]> = {
   'DELETE /dga/informantes/:rut': ['SuperAdmin'],
   'GET /health-digest/destinatarios': ['SuperAdmin'],
   'PUT /health-digest/destinatarios': ['SuperAdmin'],
+  'PUT /health-digest/config': ['SuperAdmin'],
   'POST /health-digest/prueba': ['SuperAdmin'],
 };
 

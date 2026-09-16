@@ -11,6 +11,7 @@ export interface DataLagRaw {
   descripcion: string;
   empresa_nombre: string | null;
   id_serial: string;
+  tipo_sitio: string | null;
   last_received_at: string | null;
 }
 
@@ -19,6 +20,7 @@ export interface DgaUserRaw {
   site_id: string;
   descripcion: string;
   empresa_nombre: string | null;
+  tipo_sitio: string | null;
   periodicidad: 'hora' | 'dia' | 'semana' | 'mes';
   last_run_at: string | null;
   fecha_inicio: string;
@@ -52,6 +54,7 @@ export async function getDataTransmissionLag(): Promise<DataLagRaw[]> {
             s.descripcion,
             e.nombre AS empresa_nombre,
             s.id_serial,
+            s.tipo_sitio,
             (SELECT MAX(received_at) FROM equipo
               WHERE id_serial = s.id_serial
                 AND time > NOW() - INTERVAL '${LAG_WINDOW_DAYS} days') AS last_received_at
@@ -80,6 +83,7 @@ export async function getDgaUsersForMonitoring(): Promise<DgaUserRaw[]> {
             pc.sitio_id                                AS site_id,
             s.descripcion,
             e.nombre                                   AS empresa_nombre,
+            s.tipo_sitio,
             pc.dga_periodicidad                        AS periodicidad,
             pc.dga_last_run_at                         AS last_run_at,
             to_char(pc.dga_fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio,

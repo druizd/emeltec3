@@ -5,7 +5,6 @@ import {
   HealthDigestService,
   type DigestDestinatario,
   type DigestMeta,
-  type UmbralEvento,
 } from '../../../services/health-digest.service';
 import { UserService } from '../../../services/user.service';
 import { ToastService } from '../../../services/toast.service';
@@ -50,12 +49,12 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
     <header class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0">
         <p class="text-caption text-slate-500">
-          Quién recibe el monitoreo interno: el resumen de sitios sin transmitir y reportes DGA
-          atrasados, y los avisos inmediatos cuando una instalación se queda muda.
+          Quién recibe el monitoreo interno y a qué hora: un correo con los equipos sin transmitir y
+          los reportes DGA atrasados.
         </p>
         <p class="mt-1 text-caption-xs text-slate-400">
-          Resumen a las {{ horariosTexto() }} (hora de Chile). Escalación en tres niveles: 3 h, 6 h
-          y 12 h sin reportar.
+          Hora de Chile, con horario de verano. Los avisos inmediatos por instalación se retiraron:
+          este resumen los reemplaza.
         </p>
       </div>
       <button
@@ -78,8 +77,8 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
           El worker de monitoreo está apagado en este servidor (<code
             class="font-mono text-caption-xs"
             >ENABLE_HEALTH_DIGEST_WORKER</code
-          >), así que <strong>el resumen diario y las escalaciones</strong> no se enviarán hasta
-          activarlo. La configuración se guarda igual.
+          >), así que <strong>el resumen no se enviará</strong> hasta activarlo. La configuración se
+          guarda igual.
           @if (meta().worker_seguridad_activo) {
             Las alertas de seguridad no dependen de este worker y sí se están enviando.
           }
@@ -93,10 +92,82 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
       >
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">warning</span>
         <span>
-          Nadie está suscrito al resumen diario. Mientras siga así, el resumen se envía solo a
+          Nadie está suscrito al resumen. Mientras siga así, se envía solo a
           <strong>{{ meta().fallback_email }}</strong> (buzón de respaldo).
         </span>
       </div>
+    }
+
+    <!-- Programación del resumen. Antes vivía en variables de entorno de la VM:
+         cambiar una hora obligaba a editar el .env y recrear el container. -->
+    @if (!loading()) {
+      <section class="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+        <p class="mb-3 flex items-center gap-2 text-body-sm font-semibold text-slate-700">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">schedule</span>
+          Programación del resumen
+        </p>
+        <div class="flex flex-wrap items-end gap-5">
+          <div>
+            <label
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+              >Horas de envío</label
+            >
+            <div class="flex flex-wrap gap-1.5">
+              @for (h of horasDelDia; track h) {
+                <button
+                  type="button"
+                  (click)="toggleHora(h)"
+                  [attr.aria-pressed]="horas().includes(h)"
+                  [class]="
+                    horas().includes(h)
+                      ? 'bg-primary text-white'
+                      : 'bg-white text-slate-500 hover:bg-slate-100'
+                  "
+                  class="w-11 rounded-lg border border-slate-200 px-1 py-1 font-mono text-caption-xs font-bold transition-colors active:scale-95"
+                >
+                  {{ h < 10 ? '0' + h : h }}
+                </button>
+              }
+            </div>
+            <p class="mt-1 text-caption-xs text-slate-500">
+              Hora de Chile. Se recomiendan dos: una antes de que llegue el cliente y otra a media
+              tarde.
+            </p>
+          </div>
+          <div>
+            <label
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+              >Equipo sin datos desde</label
+            >
+            <div class="relative w-32">
+              <input
+                type="number"
+                min="0.5"
+                step="0.5"
+                [ngModel]="umbralHoras()"
+                (ngModelChange)="umbralHoras.set($event)"
+                name="umbral-horas"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-9 text-center font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+              />
+              <span
+                class="pointer-events-none absolute inset-y-0 right-3 flex items-center font-mono text-caption-xs text-slate-400"
+                >h</span
+              >
+            </div>
+            <p class="mt-1 text-caption-xs text-slate-500">
+              Mismo umbral para las dos secciones del correo.
+            </p>
+          </div>
+          <button
+            type="button"
+            (click)="guardarConfig()"
+            [disabled]="!configDirty() || savingConfig()"
+            class="rounded-xl bg-primary px-4 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-primary-tint-90 active:scale-95 disabled:opacity-40"
+          >
+            {{ savingConfig() ? 'Guardando…' : 'Guardar horario' }}
+          </button>
+        </div>
+      </section>
     }
 
     @if (!meta().worker_seguridad_activo && !loading()) {
@@ -137,9 +208,7 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
           <thead class="bg-surface-subtle">
             <tr>
               <th class="dga-table-header">Destinatario</th>
-              <th class="dga-table-header">Resumen diario</th>
-              <th class="dga-table-header">Escalaciones</th>
-              <th class="dga-table-header">Desde</th>
+              <th class="dga-table-header">Resumen</th>
               <th class="dga-table-header">Seguridad</th>
               <th class="dga-table-header">Estado</th>
               <th class="dga-table-header"></th>
@@ -161,38 +230,8 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
                       [name]="'resumen-' + d.email"
                       class="h-4 w-4 accent-primary"
                     />
-                    <span class="text-caption-xs text-slate-500">07:00 y 16:00</span>
+                    <span class="text-caption-xs text-slate-500">{{ horariosTexto() }}</span>
                   </label>
-                </td>
-                <td class="px-4 py-2">
-                  <label class="inline-flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      [ngModel]="d.recibe_eventos"
-                      (ngModelChange)="setCampo(d.email, 'recibe_eventos', $event)"
-                      [name]="'eventos-' + d.email"
-                      class="h-4 w-4 accent-primary"
-                    />
-                    <span class="text-caption-xs text-slate-500">Aviso inmediato</span>
-                  </label>
-                </td>
-                <td class="px-4 py-2">
-                  <select
-                    [ngModel]="d.umbral_evento"
-                    (ngModelChange)="setUmbral(d.email, $event)"
-                    [name]="'umbral-' + d.email"
-                    [disabled]="!d.recibe_eventos"
-                    [title]="
-                      d.recibe_eventos
-                        ? 'Tier mínimo para recibir el aviso inmediato'
-                        : 'Solo aplica con escalaciones activadas'
-                    "
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-caption-xs outline-none focus:border-primary-tint-35 disabled:bg-slate-50 disabled:text-slate-400"
-                  >
-                    <option value="t3">Desde 3 h</option>
-                    <option value="t6">Desde 6 h</option>
-                    <option value="t12">Solo 12 h+</option>
-                  </select>
                 </td>
                 <td class="px-4 py-2">
                   <label class="inline-flex cursor-pointer items-center gap-2">
@@ -389,6 +428,7 @@ export class AlertasCorreoSectionComponent {
   private readonly original = signal<DigestDestinatario[]>([]);
   readonly meta = signal<DigestMeta>({
     horarios_resumen: [7, 16],
+    umbral_horas: 6,
     zona_horaria: CHILE_TIME_ZONE,
     fallback_email: '',
     worker_activo: false,
@@ -398,10 +438,24 @@ export class AlertasCorreoSectionComponent {
   /** Miembros del equipo interno que aún no están en la lista. */
   private readonly equipo = signal<CandidatoEquipo[]>([]);
 
+  /** Programación en edición. Se guarda aparte de la lista de destinatarios. */
+  readonly horas = signal<number[]>([7, 16]);
+  readonly umbralHoras = signal<number>(6);
+  readonly savingConfig = signal(false);
+  readonly horasDelDia = Array.from({ length: 24 }, (_, i) => i);
+
   nuevoEmail = '';
   nuevoNombre = '';
 
   readonly dirty = computed(() => JSON.stringify(this.filas()) !== JSON.stringify(this.original()));
+
+  readonly configDirty = computed(() => {
+    const m = this.meta();
+    return (
+      JSON.stringify(this.horas()) !== JSON.stringify(m.horarios_resumen) ||
+      Number(this.umbralHoras()) !== Number(m.umbral_horas)
+    );
+  });
 
   readonly sinResumen = computed(
     () => this.filas().filter((d) => d.activo && d.recibe_resumen).length === 0,
@@ -424,6 +478,41 @@ export class AlertasCorreoSectionComponent {
       .join(' y '),
   );
 
+  /** Una hora que ya está seleccionada se saca; nunca se deja la lista vacía. */
+  toggleHora(h: number): void {
+    this.horas.update((hs) => {
+      if (hs.includes(h)) return hs.length === 1 ? hs : hs.filter((x) => x !== h);
+      return [...hs, h].sort((a, b) => a - b);
+    });
+  }
+
+  guardarConfig(): void {
+    const umbral = Number(this.umbralHoras());
+    if (!Number.isFinite(umbral) || umbral < 0.5) {
+      this.error.set('El umbral debe ser de al menos 0,5 horas.');
+      return;
+    }
+    this.savingConfig.set(true);
+    this.error.set('');
+    this.service.saveConfig(this.horas(), umbral).subscribe({
+      next: (r) => {
+        this.savingConfig.set(false);
+        this.meta.update((m) => ({
+          ...m,
+          horarios_resumen: r.data.horarios_resumen,
+          umbral_horas: r.data.umbral_horas,
+        }));
+        this.horas.set(r.data.horarios_resumen);
+        this.umbralHoras.set(r.data.umbral_horas);
+        this.toast.success('Programación guardada.');
+      },
+      error: (err) => {
+        this.savingConfig.set(false);
+        this.error.set(err?.error?.error?.message || 'No se pudo guardar la programación.');
+      },
+    });
+  }
+
   readonly candidatos = computed(() => {
     const yaEstan = new Set(this.filas().map((d) => d.email));
     return this.equipo().filter((c) => !yaEstan.has(c.email));
@@ -441,7 +530,11 @@ export class AlertasCorreoSectionComponent {
       next: (res) => {
         this.filas.set(clonar(res.data ?? []));
         this.original.set(clonar(res.data ?? []));
-        if (res.meta) this.meta.set(res.meta);
+        if (res.meta) {
+          this.meta.set(res.meta);
+          this.horas.set(res.meta.horarios_resumen);
+          this.umbralHoras.set(res.meta.umbral_horas);
+        }
         this.loading.set(false);
       },
       error: (err) => {
@@ -475,19 +568,9 @@ export class AlertasCorreoSectionComponent {
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
   }
 
-  setCampo(
-    email: string,
-    campo: 'recibe_resumen' | 'recibe_eventos' | 'recibe_seguridad',
-    valor: boolean,
-  ): void {
+  setCampo(email: string, campo: 'recibe_resumen' | 'recibe_seguridad', valor: boolean): void {
     this.filas.update((rows) =>
       rows.map((r) => (r.email === email ? { ...r, [campo]: valor } : r)),
-    );
-  }
-
-  setUmbral(email: string, umbral: UmbralEvento): void {
-    this.filas.update((rows) =>
-      rows.map((r) => (r.email === email ? { ...r, umbral_evento: umbral } : r)),
     );
   }
 
@@ -528,11 +611,9 @@ export class AlertasCorreoSectionComponent {
         email: normalizado,
         nombre: nombre.trim() || null,
         recibe_resumen: true,
-        recibe_eventos: true,
         // Las de seguridad no se heredan al sumar a alguien al monitoreo: hay que
         // marcarlas a mano. Un cambio de rol es dato sensible, no operación.
         recibe_seguridad: false,
-        umbral_evento: 't3',
         activo: true,
         updated_at: null,
       },
@@ -585,8 +666,8 @@ export class AlertasCorreoSectionComponent {
   resumenActivos(): string {
     const rows = this.filas().filter((d) => d.activo);
     const resumen = rows.filter((d) => d.recibe_resumen).length;
-    const eventos = rows.filter((d) => d.recibe_eventos).length;
+
     const seguridad = rows.filter((d) => d.recibe_seguridad).length;
-    return `${resumen} en el resumen diario · ${eventos} en escalaciones · ${seguridad} en seguridad.`;
+    return `${resumen} en el resumen · ${seguridad} en seguridad.`;
   }
 }

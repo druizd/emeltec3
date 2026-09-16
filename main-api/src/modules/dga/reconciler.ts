@@ -14,7 +14,6 @@ import {
   listEnviadoSinAudit,
   listNoDataStaleConDatoTardio,
   listNoDataStaleVencidos,
-  listSitiosDesconectados,
   listStuckEnviando,
   listVacioSlotsStale,
   markSlotEnviadoSinReenvio,
@@ -372,50 +371,12 @@ async function reportVacioStale(): Promise<AlertPart> {
   };
 }
 
-const DESCONEXION_HORAS = Number(process.env.DGA_DESCONEXION_HORAS ?? STALE_VACIO_HOURS);
-
-/** Sitios que dejaron de enviar datos hace > DESCONEXION_HORAS. */
-async function reportSitiosDesconectados(): Promise<AlertPart> {
-  const sitios = await listSitiosDesconectados(DESCONEXION_HORAS);
-  if (sitios.length === 0) return { count: 0, block: null, html: null, sig: '' };
-  logger.warn({ total: sitios.length }, 'reconciler (F): sitios desconectados');
-  const lines = sitios.slice(0, 50).map((s) => {
-    const scope = [s.empresa, s.sub_empresa].filter(Boolean).join(' / ') || '—';
-    return (
-      `  - ${s.descripcion} (${scope}) — ${Number(s.horas).toFixed(1)}h sin datos\n` +
-      `    ${siteUrl(s.id, s.tipo_sitio)}`
-    );
-  });
-  const block =
-    `▸ ${sitios.length} sitio(s) DESCONECTADO(s) (> ${DESCONEXION_HORAS}h sin enviar datos):\n` +
-    lines.join('\n');
-  const rows = sitios
-    .slice(0, 50)
-    .map((s) => {
-      const scope = [s.empresa, s.sub_empresa].filter(Boolean).join(' / ') || '—';
-      return (
-        `<tr>` +
-        `<td style="padding:7px 8px;border-bottom:1px solid #E2E8F0;font-size:13px;color:#1E293B;font-weight:600;">${esc(s.descripcion)}</td>` +
-        `<td style="padding:7px 8px;border-bottom:1px solid #E2E8F0;font-size:12px;color:#64748B;">${esc(scope)}</td>` +
-        `<td style="padding:7px 8px;border-bottom:1px solid #E2E8F0;font-size:13px;color:#DC2626;font-weight:700;white-space:nowrap;">${Number(s.horas).toFixed(1)}h</td>` +
-        `<td style="padding:7px 8px;border-bottom:1px solid #E2E8F0;text-align:right;">${siteBtn(siteUrl(s.id, s.tipo_sitio))}</td>` +
-        `</tr>`
-      );
-    })
-    .join('');
-  const html = cardHtml(
-    `${sitios.length} sitio(s) desconectado(s) (> ${DESCONEXION_HORAS}h sin datos)`,
-    '#DC2626',
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">` +
-      `<tr>` +
-      `<th align="left" style="padding:0 8px 6px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Sitio</th>` +
-      `<th align="left" style="padding:0 8px 6px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Empresa / Sub</th>` +
-      `<th align="left" style="padding:0 8px 6px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Sin datos</th>` +
-      `<th></th>` +
-      `</tr>${rows}</table>`,
-  );
-  return { count: sitios.length, block, html, sig: `F:${sitios.map((s) => s.id).join(',')}` };
-}
+// El check F —"sitios desconectados hace más de N horas"— se retiró el
+// 16-09-2026. Informaba lo mismo que el resumen de monitoreo
+// (modules/healthDigest), con otro umbral, en otros tres horarios y a la misma
+// casilla: un pozo caído avisaba por tres caminos distintos. La desconexión de
+// equipos es del resumen; este reconciler se queda con lo suyo, el ciclo de
+// envío a SNIA.
 
 // Días que un slot 'no_data_stale' espera por su dato antes de la baja
 // definitiva. La ventana de backfill de los equipos es de horas: pasado un mes
@@ -543,7 +504,7 @@ export async function runReconcilerCycle(): Promise<void> {
     const sinAudit = await reportEnviadoSinAudit();
     const doubles = await reportDoubleSubmission();
     const stale = await reportVacioStale();
-    const desconectados = await reportSitiosDesconectados();
+
     // G antes que H: un slot cuyo dato llegó tarde se rescata en vez de darse
     // de baja. Las consultas ya son excluyentes (una exige bucket, la otra su
     // ausencia), pero el orden deja la intención explícita.
@@ -554,13 +515,12 @@ export async function runReconcilerCycle(): Promise<void> {
     // horarios fijos (DIGEST_HOURS, hora Chile) → por defecto 3 veces al día.
     // Los sitios traen link clickeable. Si no hay hallazgos en el horario, no
     // se manda "todo OK" (evita ruido).
-    const parts = [desconectados, stale, sinAudit, doubles, bajas].filter((p) => p.block);
+    const parts = [stale, sinAudit, doubles, bajas].filter((p) => p.block);
     const { hour, slot } = chileSlot();
     const enHorario = DIGEST_HOURS.includes(hour);
     if (parts.length > 0 && enHorario && slot !== lastDigestSlot) {
       lastDigestSlot = slot;
-      const total =
-        desconectados.count + stale.count + sinAudit.count + doubles.count + bajas.count;
+      const total = stale.count + sinAudit.count + doubles.count + bajas.count;
       const horarios = DIGEST_HOURS.map((h) => `${String(h).padStart(2, '0')}:00`).join(', ');
       const text =
         `Resumen de monitoreo (envío DGA + reconciler + desconexión de sitios). ` +
@@ -595,7 +555,6 @@ export async function runReconcilerCycle(): Promise<void> {
       sinAudit.count > 0 ||
       doubles.count > 0 ||
       stale.count > 0 ||
-      desconectados.count > 0 ||
       rescatados > 0 ||
       bajas.count > 0
     ) {
@@ -606,7 +565,6 @@ export async function runReconcilerCycle(): Promise<void> {
           enviado_sin_audit: sinAudit.count,
           double_submission: doubles.count,
           vacio_stale: stale.count,
-          sitios_desconectados: desconectados.count,
           no_data_rescatados: rescatados,
           no_data_baja_definitiva: bajas.count,
         },

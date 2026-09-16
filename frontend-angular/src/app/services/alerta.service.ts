@@ -177,12 +177,17 @@ export interface EventoRow {
   resuelta: boolean;
   reconocida_at: string | null;
   /**
-   * Veces que la condición volvió a cumplirse mientras el evento estaba
-   * reconocido. Reconocer significa "ya lo sé": el worker agrupa acá en vez de
-   * generar un evento y un correo por cada cooldown.
+   * Veces que la condición volvió a cumplirse dentro de este mismo episodio.
+   * El correo sale una sola vez por incidencia: las repeticiones se acumulan
+   * acá y se leen en la plataforma, no en la bandeja de entrada.
    */
   repeticiones?: number;
   ultima_repeticion_at?: string | null;
+  /**
+   * Desde cuándo la condición dejó de cumplirse, en un episodio que sigue
+   * abierto porque nadie lo dio por recibido. `null` = sigue activa.
+   */
+  normalizada_at?: string | null;
   reconocida_por: string | null;
   asignado_a: string | null;
   asignado_at: string | null;

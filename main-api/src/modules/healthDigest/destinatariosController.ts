@@ -19,14 +19,8 @@ import {
   replaceDestinatarios,
   type DigestDestinatarioInput,
 } from './destinatariosRepo';
-import {
-  DIGEST_HOURS,
-  MONITOR_PRIMARY,
-  WORKER_ENABLED,
-  buildSnapshot,
-  sendDigestTo,
-} from './worker';
-import { CHILE_TIME_ZONE } from '../../shared/time';
+import { DIGEST_TZ, MONITOR_PRIMARY, WORKER_ENABLED, buildSnapshot, sendDigestTo } from './worker';
+import { getConfig, normalizarHoras, normalizarUmbral, saveConfig } from './configRepo';
 
 /** Tope defensivo: la lista es de equipo interno, no una lista de difusión. */
 const MAX_DESTINATARIOS = 25;
@@ -35,10 +29,18 @@ const DestinatarioSchema = z.object({
   email: z.string().trim().min(5).max(150).email('email inválido'),
   nombre: z.string().trim().max(120).nullish(),
   recibe_resumen: z.boolean(),
-  recibe_eventos: z.boolean(),
   recibe_seguridad: z.boolean(),
-  umbral_evento: z.enum(['t3', 't6', 't12']),
   activo: z.boolean(),
+  // Sin uso desde el 16-09-2026 (se retiraron las escalaciones inmediatas). Se
+  // siguen aceptando para no romper a un cliente viejo que todavía los mande.
+  recibe_eventos: z.boolean().optional(),
+  umbral_evento: z.enum(['t3', 't6', 't12']).optional(),
+});
+
+/** Programación del resumen: horas de envío y umbral de horas sin transmitir. */
+const ConfigBody = z.object({
+  horas: z.array(z.number().int().min(0).max(23)).min(1).max(6),
+  umbral_horas: z.number().positive().max(720),
 });
 
 const ReplaceBody = z.object({
@@ -94,13 +96,14 @@ export async function listDigestDestinatariosHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const destinatarios = await listDestinatarios();
+    const [destinatarios, cfg] = await Promise.all([listDestinatarios(), getConfig()]);
     res.json(
       ok(destinatarios, {
         // La UI muestra estos datos como contexto: horarios del resumen, buzón
         // de respaldo si la lista queda vacía, y si el worker está encendido.
-        horarios_resumen: DIGEST_HOURS,
-        zona_horaria: CHILE_TIME_ZONE,
+        horarios_resumen: cfg.horas,
+        umbral_horas: cfg.umbralHoras,
+        zona_horaria: DIGEST_TZ,
         fallback_email: MONITOR_PRIMARY,
         worker_activo: WORKER_ENABLED,
         // Las alertas de seguridad las manda `auditAlerts`, que corre bajo el
@@ -141,9 +144,9 @@ export async function replaceDigestDestinatariosHandler(
         email,
         nombre: d.nombre ?? null,
         recibe_resumen: d.recibe_resumen,
-        recibe_eventos: d.recibe_eventos,
+        recibe_eventos: d.recibe_eventos ?? false,
         recibe_seguridad: d.recibe_seguridad,
-        umbral_evento: d.umbral_evento,
+        umbral_evento: d.umbral_evento ?? 't12',
         activo: d.activo,
       });
     }
@@ -158,6 +161,32 @@ export async function replaceDigestDestinatariosHandler(
         fallback_email: MONITOR_PRIMARY,
       }),
     );
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Guarda la programación del resumen. No pide 2FA: cambiar la hora a la que
+ * llega un correo que ya reciben no saca datos hacia afuera, que es el criterio
+ * que usa el PUT de destinatarios.
+ */
+export async function saveDigestConfigHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const parsed = ConfigBody.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Body inválido', { details: parsed.error.issues });
+    }
+    const cfg = await saveConfig(
+      normalizarHoras(parsed.data.horas),
+      normalizarUmbral(parsed.data.umbral_horas),
+      actorId(req),
+    );
+    res.json(ok({ horarios_resumen: cfg.horas, umbral_horas: cfg.umbralHoras }));
   } catch (err) {
     next(err);
   }
@@ -179,15 +208,14 @@ export async function sendDigestPruebaHandler(
       throw new ValidationError('Body inválido', { details: parsed.error.issues });
     }
     const email = normalizeEmail(parsed.data.email);
-    const snap = await buildSnapshot();
-    const dataIssues = snap.data.filter((r) => r.tier !== 'ok');
-    const dgaIssues = snap.dga.filter((r) => r.tier !== 'ok');
-    await sendDigestTo(email, dataIssues, dgaIssues);
+    const cfg = await getConfig();
+    const snap = await buildSnapshot(cfg.umbralHoras);
+    await sendDigestTo(email, snap.data, snap.dga, cfg.umbralHoras);
     res.json(
       ok({
         email,
-        incidencias_data: dataIssues.length,
-        incidencias_dga: dgaIssues.length,
+        incidencias_data: snap.data.length,
+        incidencias_dga: snap.dga.length,
       }),
     );
   } catch (err) {
