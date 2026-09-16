@@ -52,41 +52,6 @@ const Schema = z.object({
     .default('true')
     .transform((v) => v === 'true' || v === '1'),
 
-  // Consolidado de alertas: a qué hora (de pared, Chile) sale el correo con
-  // todo lo acumulado. Lista de horas separadas por comas.
-  ALERT_DIGEST_HOURS: z
-    .string()
-    .default('8,18')
-    .transform((v) =>
-      v
-        .split(',')
-        .map((s) => Number(s.trim()))
-        .filter((n) => Number.isInteger(n) && n >= 0 && n <= 23),
-    ),
-
-  // Kill switch del consolidado. En false se vuelve al correo inmediato por
-  // evento (pero sin la repetición por cooldown, que ya no existe).
-  ENABLE_ALERT_DIGEST: z
-    .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
-    .default('true')
-    .transform((v) => v === 'true' || v === '1'),
-
-  // Severidades que NO esperan al consolidado y mandan correo al instante.
-  ALERT_DIGEST_INMEDIATO: z
-    .string()
-    .default('critica')
-    .transform((v) =>
-      v
-        .split(',')
-        .map((s) => s.trim().toLowerCase())
-        .filter((s) => s.length > 0),
-    ),
-
-  // Horas sin aviso antes de que un evento abierto vuelva a salir en el
-  // consolidado. 20h y no 24h: con slots a las 08:00 y 18:00, un umbral de 24h
-  // se saltaría un día entero por unos minutos de desfase del ciclo.
-  ALERT_DIGEST_REPEAT_HOURS: z.coerce.number().positive().default(20),
-
   // Guardia de alertas de Emeltec: a quién le llega el correo cuando una regla
   // marca "avisar al equipo Emeltec". Antes era a TODOS los SuperAdmin (13
   // activos), y eso es ruido, no una guardia. Lista de correos separada por
@@ -270,13 +235,6 @@ export const config = {
   alertas: {
     /** Correos (minúsculas) de la guardia Emeltec para reglas con `notificar_superadmins`. */
     emeltecEmails: env.ALERT_EMELTEC_EMAILS,
-    /** Consolidado por correo: horas de pared (Chile), severidades inmediatas y re-aviso. */
-    digest: {
-      enabled: env.ENABLE_ALERT_DIGEST,
-      hours: env.ALERT_DIGEST_HOURS,
-      inmediato: env.ALERT_DIGEST_INMEDIATO,
-      repeatHours: env.ALERT_DIGEST_REPEAT_HOURS,
-    },
   },
   dga: {
     encryptionKey: env.DGA_ENCRYPTION_KEY,

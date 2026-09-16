@@ -106,6 +106,20 @@ function esSinVariable(c: AlertaCondicion): boolean {
   return CONDICIONES_SIN_VARIABLE.includes(c);
 }
 
+/** Ventana por defecto de la alerta de desconexión, en horas. */
+const HORAS_SIN_DATOS_POR_DEFECTO = 12;
+
+/**
+ * Horas sin transmitir de una regla `sin_datos`. Viven en `umbral_bajo`; una
+ * regla anterior al cambio no lo tiene y usaba el cooldown como ventana, así
+ * que se lee de ahí igual que hace el worker (`horasSinDatos`).
+ */
+function horasSinDatosDe(r: { umbral_bajo?: number | null; cooldown_minutos: number }): number {
+  const h = Number(r.umbral_bajo);
+  if (Number.isFinite(h) && h > 0) return h;
+  return Math.round((Math.max(r.cooldown_minutos, 1) / 60) * 100) / 100;
+}
+
 /** `variable_key` que se guarda para las condiciones sin variable (el backend la exige). */
 function variableKeyImplicita(c: AlertaCondicion): string {
   return c === 'sobre_derecho_dga' ? 'caudal' : 'dga';
@@ -650,7 +664,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             >
             <select
               [(ngModel)]="draft.condicion"
-              (ngModelChange)="resetSimulacion()"
+              (ngModelChange)="onCondicionChange(draft)"
               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             >
               @for (c of condicionesDisponibles; track c) {
@@ -756,6 +770,34 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   Se evalúa durante el día, no al cierre.
                 </p>
               }
+            </div>
+          }
+          @if (draft.condicion === 'sin_datos') {
+            <div>
+              <label
+                class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >Horas sin transmitir</label
+              >
+              <div class="relative w-40">
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0.05"
+                  [(ngModel)]="draft.umbral_bajo"
+                  (ngModelChange)="resetSimulacion()"
+                  (wheel)="onWheelNumber($event)"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-10 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                />
+                <span
+                  class="pointer-events-none absolute inset-y-0 right-3 flex items-center font-mono text-caption-xs text-slate-400"
+                  >h</span
+                >
+              </div>
+              <p class="mt-1 text-caption-xs text-slate-500">
+                Tiempo que el equipo puede pasar sin transmitir antes de dar el sitio por
+                desconectado. Se mide sobre la hora de llegada del paquete, no sobre el reloj del
+                equipo.
+              </p>
             </div>
           }
           @if (draft.condicion === 'fuera_rango') {
@@ -880,6 +922,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
               >Cooldown (minutos)</label
             >
+            <!-- Anti-flapping: no reenvía el mismo aviso, evita que una
+                 condición que entra y sale abra un episodio nuevo cada vez. -->
             <input
               type="number"
               min="1"
@@ -889,7 +933,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
             <span class="ml-2 text-caption-xs text-slate-500"
-              >tiempo mínimo entre notificaciones</span
+              >tiempo mínimo antes de volver a abrir un aviso</span
             >
           </div>
 
@@ -1617,7 +1661,9 @@ export class AlertasConfiguracionComponent {
   }
 
   private numOrNull(val: UmbralValue, condicion: AlertaCondicion): number | null {
-    if (condicion === 'sin_datos' || esSinVariable(condicion)) return null;
+    // `sin_datos` sí usa umbral: son las horas sin transmitir (antes la ventana
+    // era el cooldown, en minutos, y acá se descartaba el valor).
+    if (esSinVariable(condicion)) return null;
     if (umbralVacio(val)) return null;
     const n = Number(val);
     return Number.isFinite(n) ? n : null;
@@ -1689,7 +1735,7 @@ export class AlertasConfiguracionComponent {
       case 'fuera_rango':
         return `fuera de ${bajo} – ${alto}${sufijo}`;
       case 'sin_datos':
-        return `Sin datos > ${r.cooldown_minutos} min`;
+        return `Sin transmitir > ${horasSinDatosDe(r)} h`;
       case 'dga_atrasado':
         return 'Sin comprobante SNIA (24/48/72h)';
       case 'sobre_derecho_dga': {
@@ -1726,6 +1772,26 @@ export class AlertasConfiguracionComponent {
   }
 
   /**
+   * Al elegir "Sin datos" se propone la ventana por defecto (12 h) si el campo
+   * viene vacío: sin eso el umbral caería al cooldown, que en un borrador nuevo
+   * son 5 minutos.
+   */
+  onCondicionChange(draft: DraftAlerta): void {
+    if (draft.condicion === 'sin_datos' && umbralVacio(draft.umbral_bajo)) {
+      draft.umbral_bajo = String(HORAS_SIN_DATOS_POR_DEFECTO);
+    }
+    this.resetSimulacion();
+  }
+
+  /** Horas de la ventana `sin_datos` que está editando el formulario. */
+  horasSinDatosDraft(draft: DraftAlerta): number {
+    return horasSinDatosDe({
+      umbral_bajo: umbralVacio(draft.umbral_bajo) ? null : Number(draft.umbral_bajo),
+      cooldown_minutos: Number(draft.cooldown_minutos) || 60,
+    });
+  }
+
+  /**
    * Una regla es "simulable" cuando tiene los inputs mínimos: condicion
    * simulable + variable_key + umbrales válidos según condición.
    */
@@ -1733,7 +1799,7 @@ export class AlertasConfiguracionComponent {
     if (!this.esCondicionSimulable(draft.condicion)) return false;
     if (!this.sitioId()) return false;
     if (draft.condicion === 'sin_datos') {
-      return draft.cooldown_minutos > 0;
+      return this.horasSinDatosDraft(draft) > 0;
     }
     if (!draft.variable_key) return false;
     if (draft.condicion === 'consumo_diario') {
@@ -1942,12 +2008,13 @@ export class AlertasConfiguracionComponent {
     const total = sorted.length - fueraDeDias;
 
     if (draft.condicion === 'sin_datos') {
-      // Gap detection: marcar como match cada gap > cooldown_minutos entre
-      // entries consecutivas (de más reciente a más antigua), o lecturas con
-      // valor null/undefined para el variable_key. Los gaps se miden sobre
-      // TODAS las lecturas (un hueco es un hueco aunque cruce un día
-      // inactivo), pero solo cuentan si la lectura cae en un día activo.
-      const gapMs = draft.cooldown_minutos * 60_000;
+      // Gap detection: marcar como match cada gap mayor que la ventana de la
+      // regla (horas sin transmitir) entre entries consecutivas (de más
+      // reciente a más antigua), o lecturas con valor null/undefined para el
+      // variable_key. Los gaps se miden sobre TODAS las lecturas (un hueco es
+      // un hueco aunque cruce un día inactivo), pero solo cuentan si la lectura
+      // cae en un día activo.
+      const gapMs = this.horasSinDatosDraft(draft) * 3_600_000;
       const rows: SimulationResultRow[] = [];
       let matchedCount = 0;
       let withValueCount = 0;

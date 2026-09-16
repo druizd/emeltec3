@@ -177,25 +177,51 @@ type FiltroEstado = EventoEstado | 'todos';
                     </div>
                   }
 
-                  @if (ev.repeticiones && ev.repeticiones > 0) {
-                    <p
-                      class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-caption-xs text-slate-600"
-                      [title]="
-                        'La condicion volvio a cumplirse ' +
-                        ev.repeticiones +
-                        ' veces desde que se reconocio. Se agrupan aca en vez de generar un aviso nuevo cada vez.'
-                      "
-                    >
-                      <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
-                        >repeat</span
+                  <!-- Una sola alerta por incidencia: el correo salió una vez y
+                       acá se ve cuánto lleva sin resolverse y cuánto se repitió. -->
+                  <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                    @if (ev.estado !== 'resuelta') {
+                      <p
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-caption-xs font-semibold text-amber-800"
+                        title="Tiempo desde que se abrio la incidencia. El correo se envio una sola vez."
                       >
-                      Se repitió <strong>{{ ev.repeticiones }}</strong>
-                      {{ ev.repeticiones === 1 ? 'vez' : 'veces' }} sin volver a avisar
-                      @if (ev.ultima_repeticion_at) {
-                        · ultima {{ formatFecha(ev.ultima_repeticion_at) }}
-                      }
-                    </p>
-                  }
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                          >hourglass_top</span
+                        >
+                        {{ sinResolverTexto(ev.triggered_at) }} sin resolver
+                      </p>
+                    }
+                    @if (ev.repeticiones && ev.repeticiones > 0) {
+                      <p
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-caption-xs text-slate-600"
+                        [title]="
+                          'La condicion volvio a cumplirse ' +
+                          ev.repeticiones +
+                          ' veces dentro de esta misma incidencia. Se agrupan aca en vez de mandar un correo cada vez.'
+                        "
+                      >
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                          >repeat</span
+                        >
+                        Se repitió <strong>{{ ev.repeticiones }}</strong>
+                        {{ ev.repeticiones === 1 ? 'vez' : 'veces' }} sin volver a avisar
+                        @if (ev.ultima_repeticion_at) {
+                          · ultima {{ formatFecha(ev.ultima_repeticion_at) }}
+                        }
+                      </p>
+                    }
+                    @if (ev.normalizada_at && ev.estado !== 'resuelta') {
+                      <p
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-caption-xs text-emerald-700"
+                        title="La condicion ya no se cumple, pero la incidencia sigue abierta hasta que alguien la de por recibida."
+                      >
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                          >check_circle</span
+                        >
+                        Ya no ocurre desde {{ formatFecha(ev.normalizada_at) }}
+                      </p>
+                    }
+                  </div>
 
                   <!-- Acciones -->
                   @if (canOperateAlerts() && ev.estado !== 'resuelta' && asignandoId() !== ev.id) {
@@ -476,6 +502,22 @@ export class AlertasBandejaComponent {
     if (horas < 24) return `Hace ${horas} h`;
     const dias = Math.floor(horas / 24);
     return `Hace ${dias} día${dias === 1 ? '' : 's'}`;
+  }
+
+  /**
+   * Cuánto lleva abierta la incidencia, en horas. Es el dato que reemplaza al
+   * correo repetido: el aviso sale una sola vez y acá se ve el tiempo que
+   * lleva sin que nadie la dé por resuelta.
+   */
+  sinResolverTexto(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const min = Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
+    if (min < 60) return `${min} min`;
+    const horas = Math.floor(min / 60);
+    if (horas < 48) return `${horas} h`;
+    const dias = Math.floor(horas / 24);
+    return `${dias} días (${horas} h)`;
   }
 
   tarjetaBorde(severidad: AlertaSeveridad, estado: EventoEstado): string {

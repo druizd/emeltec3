@@ -116,10 +116,10 @@ describe('rearme cuando la condición se normaliza', () => {
     expect(hizoInsert(c)).toBe(false);
   });
 
-  it('un evento SIN reconocer también se rearma: si no, la regla queda muda', async () => {
-    // Dejarlo abierto para siempre significaba que la próxima vez que la
-    // condición ocurriera de verdad ya no habría aviso. Se cierra marcado como
-    // rearme automático, con las repeticiones que alcanzó a acumular.
+  it('un evento SIN reconocer NO se cierra: se marca normalizado y sigue abierto', async () => {
+    // Cerrarlo era la causa real del correo por hora: al volver la condición ya
+    // no había episodio abierto, así que lo único que frenaba el aviso era el
+    // cooldown. Sin acuse, el episodio sigue siendo el mismo.
     const c = makeClient({
       eventoAbierto: { id: 'EV1', reconocida_at: null },
       valorCrudo: 100,
@@ -127,9 +127,24 @@ describe('rearme cuando la condición se normaliza', () => {
 
     await evaluarAlerta(c, alerta);
 
-    expect(hizoUpdate(c, 'resuelta = TRUE')).toBe(true);
-    expect(hizoUpdate(c, "resuelta_motivo = 'rearme_automatico'")).toBe(true);
+    expect(hizoUpdate(c, 'resuelta = TRUE')).toBe(false);
+    expect(hizoUpdate(c, 'normalizada_at')).toBe(true);
     expect(hizoInsert(c)).toBe(false);
+  });
+
+  it('la condición que vuelve sobre un episodio sin acuse no manda otro correo', async () => {
+    // El caso que reportó el usuario: el equipo transmite irregular, cruza y
+    // descruza el umbral todo el día. Un correo, no uno por oscilación.
+    const c = makeClient({
+      eventoAbierto: { id: 'EV1', reconocida_at: null, normalizada_at: '2026-09-16T10:00:00Z' },
+      valorCrudo: 500,
+    });
+
+    await evaluarAlerta(c, alerta);
+
+    expect(hizoInsert(c)).toBe(false);
+    // Y el episodio deja de figurar como normalizado: la condición está activa.
+    expect(hizoUpdate(c, 'normalizada_at = NULL')).toBe(true);
   });
 });
 

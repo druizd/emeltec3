@@ -384,6 +384,7 @@ import {
   listDigestDestinatariosHandler,
   replaceDigestDestinatariosHandler,
   require2faIfNuevoDestinatario,
+  saveDigestConfigHandler,
   sendDigestPruebaHandler,
 } from '../../modules/healthDigest/destinatariosController';
 
@@ -408,6 +409,19 @@ router.put(
   require2faIfNuevoDestinatario,
   auditDigestMutations,
   replaceDigestDestinatariosHandler,
+);
+// Programación del resumen: horas de envío y umbral de horas sin transmitir.
+// Sin 2FA — cambiar la hora de un correo que ya reciben no saca datos afuera.
+router.put(
+  '/health-digest/config',
+  protect,
+  authorizeRoles('SuperAdmin'),
+  auditMutations(() => ({
+    action: 'health_digest.config.update',
+    targetType: 'health_digest_config',
+    targetId: 'global',
+  })),
+  saveDigestConfigHandler,
 );
 router.post(
   '/health-digest/prueba',

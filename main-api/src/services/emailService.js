@@ -682,172 +682,14 @@ ${securityNoteHtml('Esta es una notificación automática del sistema de monitor
   }
 };
 
-/** Fila del consolidado: una tarjeta compacta, no una tabla de seis columnas. */
-function digestFilaHtml(fila) {
-  const color = SEVERIDAD_COLOR[fila.severidad] || '#64748b';
-  const valor = fila.valor
-    ? `<span style="font-family:'SF Mono','JetBrains Mono',Consolas,monospace;color:${color};font-weight:600;">${escapeHtml(fila.valor)}</span> &middot; `
-    : '';
-  const repes =
-    fila.repeticiones > 0
-      ? ` &middot; se repitió ${fila.repeticiones} ${fila.repeticiones === 1 ? 'vez' : 'veces'}`
-      : '';
-  const reconocida = fila.reconocida ? ' &middot; reconocida' : '';
-  const normalizada = fila.normalizada ? ' &middot; ya normalizada' : '';
-  return `
-                <tr>
-                  <td style="padding:14px 16px;border-bottom:1px solid #E2E8F0;">
-                    <p style="margin:0 0 6px;">
-                      <span style="display:inline-block;padding:3px 9px;background-color:${color};color:#FFFFFF;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;border-radius:9999px;">${escapeHtml(labelSeveridad(fila.severidad))}</span>
-                      <span style="font-size:14px;color:#1E293B;font-weight:600;padding-left:8px;">${escapeHtml(fila.sitio)}</span>
-                    </p>
-                    <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:#475569;">${escapeHtml(fila.mensaje)}</p>
-                    <p style="margin:0;font-size:11px;color:#94A3B8;">${valor}desde ${escapeHtml(fila.desde)}${repes}${reconocida}${normalizada} &middot; <a href="${fila.url}" style="color:#0899A5;text-decoration:none;">Ver el sitio</a></p>
-                  </td>
-                </tr>`;
-}
+// ───────────────────────── Resumen interno de monitoreo ─────────────────────
+//
+// Un correo, dos veces al día, para el equipo Emeltec. Dos secciones con el
+// mismo formato de tabla: equipos sin transmitir y reportes DGA atrasados.
+// Reemplaza a los correos de escalación por instalación, que con una caída
+// transversal llenaban la bandeja.
 
-function digestSeccionHtml(titulo, filas, omitidas, accentColor) {
-  if (filas.length === 0) return '';
-  const extra =
-    omitidas > 0
-      ? `
-                <tr>
-                  <td style="padding:12px 16px;font-size:12px;color:#64748B;">y ${omitidas} más en la plataforma.</td>
-                </tr>`
-      : '';
-  return `          <tr>
-            <td style="padding:20px 40px 0;">
-              <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(titulo)} (${filas.length + omitidas})</p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;border-left:3px solid ${accentColor};overflow:hidden;">
-                ${filas.map(digestFilaHtml).join('')}${extra}
-              </table>
-            </td>
-          </tr>`;
-}
-
-function digestFilaTexto(fila) {
-  const partes = [
-    `[${labelSeveridad(fila.severidad)}] ${fila.sitio}`,
-    `  ${fila.mensaje}`,
-    `  desde ${fila.desde}${fila.repeticiones > 0 ? ` · se repitió ${fila.repeticiones} veces` : ''}${fila.reconocida ? ' · reconocida' : ''}${fila.normalizada ? ' · ya normalizada' : ''}`,
-    `  ${fila.url}`,
-  ];
-  return partes.join('\n');
-}
-
-/**
- * Consolidado de alertas: un correo por destinatario con todo lo acumulado
- * desde el envío anterior, en vez de un correo por evento cada cooldown.
- *
- * `nuevas` son alertas que aparecieron desde el último consolidado; `reaviso`
- * son las que siguen abiertas y ya se avisaron antes (el recordatorio diario).
- * Las críticas no pasan por acá: se mandan al instante con `sendAlertEmail`.
- */
-exports.sendAlertDigestEmail = async ({
-  to,
-  nombre,
-  slotLabel,
-  nuevas = [],
-  reaviso = [],
-  omitidasNuevas = 0,
-  omitidasReaviso = 0,
-}) => {
-  try {
-    if (!to) {
-      console.warn('[emailService] sendAlertDigestEmail: "to" vacío, email omitido');
-      return;
-    }
-    const saludo = (nombre || '').trim() || 'usuario';
-    const totalNuevas = nuevas.length + omitidasNuevas;
-    const totalReaviso = reaviso.length + omitidasReaviso;
-    if (totalNuevas === 0 && totalReaviso === 0) return;
-
-    // El acento del correo lo pone la peor severidad que trae dentro.
-    const rank = { critica: 4, alta: 3, media: 2, baja: 1 };
-    const peor = [...nuevas, ...reaviso].reduce(
-      (acc, f) => ((rank[f.severidad] || 0) > (rank[acc] || 0) ? f.severidad : acc),
-      'baja',
-    );
-    const accentColor = SEVERIDAD_COLOR[peor] || '#0DAFBD';
-    const accentGradient = SEVERIDAD_GRADIENT[peor] || TEAL_GRADIENT;
-
-    const resumen = [
-      totalNuevas > 0
-        ? `${totalNuevas} ${totalNuevas === 1 ? 'alerta nueva' : 'alertas nuevas'}`
-        : '',
-      totalReaviso > 0
-        ? `${totalReaviso} que ${totalReaviso === 1 ? 'sigue abierta' : 'siguen abiertas'}`
-        : '',
-    ]
-      .filter(Boolean)
-      .join(' y ');
-
-    const contentHtml = `          <tr>
-            <td style="padding:36px 40px 4px;">
-              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">Resumen de alertas</h1>
-              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">Hola <strong style="color:#1E293B;">${escapeHtml(saludo)}</strong>, al ${escapeHtml(slotLabel)} hay ${escapeHtml(resumen)}.</p>
-            </td>
-          </tr>
-${digestSeccionHtml('Nuevas', nuevas, omitidasNuevas, accentColor)}
-${digestSeccionHtml('Siguen abiertas', reaviso, omitidasReaviso, '#94A3B8')}
-${ctaButtonHtml(ACCESS_URL, 'Ver todas en la plataforma', accentColor)}
-${securityNoteHtml('Este resumen se envía dos veces al día. Una alerta se avisa una sola vez: si la condición sigue activa vuelve a aparecer acá una vez al día, y si se normaliza la alerta se cierra sola. Las alertas críticas llegan al instante, en su propio correo.')}`;
-
-    const html = renderShell({
-      title: `Resumen de alertas · Emeltec`,
-      preheader: resumen,
-      accentColor,
-      accentGradient,
-      contentHtml,
-    });
-
-    const texto = [`Hola ${saludo},`, '', `Resumen de alertas al ${slotLabel}: ${resumen}.`];
-    if (nuevas.length > 0) {
-      texto.push('', `NUEVAS (${totalNuevas})`, '', ...nuevas.map(digestFilaTexto));
-      if (omitidasNuevas > 0) texto.push(`y ${omitidasNuevas} más en la plataforma.`);
-    }
-    if (reaviso.length > 0) {
-      texto.push('', `SIGUEN ABIERTAS (${totalReaviso})`, '', ...reaviso.map(digestFilaTexto));
-      if (omitidasReaviso > 0) texto.push(`y ${omitidasReaviso} más en la plataforma.`);
-    }
-    texto.push('', `Ver todas en la plataforma: ${ACCESS_URL}`);
-
-    await enviar({
-      to,
-      subject: `Resumen de alertas · ${totalNuevas} ${totalNuevas === 1 ? 'nueva' : 'nuevas'} · ${slotLabel}`,
-      text: texto.join('\n'),
-      html,
-    });
-  } catch (error) {
-    console.error('[emailService] Error enviando consolidado a', to, ':', error.message);
-  }
-};
-
-const TIER_META = {
-  t12: {
-    color: '#dc2626',
-    gradient: SEVERIDAD_GRADIENT.critica,
-    label: '12 horas o más',
-    short: '12h+',
-    tone: 'crítico',
-  },
-  t6: {
-    color: '#ea580c',
-    gradient: SEVERIDAD_GRADIENT.alta,
-    label: 'Entre 6 y 12 horas',
-    short: '6-12h',
-    tone: 'alarma',
-  },
-  t3: {
-    color: '#d97706',
-    gradient: SEVERIDAD_GRADIENT.media,
-    label: 'Entre 3 y 6 horas',
-    short: '3-6h',
-    tone: 'atención',
-  },
-};
-
+/** "3d 4h", "7h 20m", "45m". El dato que se lee primero en cada fila. */
 function formatLagMs(lagMs) {
   if (lagMs === null || lagMs === undefined || lagMs > Number.MAX_SAFE_INTEGER / 2) {
     return 'sin transmisiones registradas';
@@ -878,162 +720,100 @@ function formatChile(iso) {
   }
 }
 
-function renderIssuesGroup(items, tier) {
-  if (items.length === 0) return '';
-  const meta = TIER_META[tier];
-  const rows = items
-    .map(
-      (r) => `
-                <tr>
-                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;color:#1E293B;font-weight:500;vertical-align:top;">
-                    <div style="font-weight:600;">${escapeHtml(r.descripcion)}</div>
-                    <div style="margin-top:2px;font-size:11px;color:#94A3B8;">${escapeHtml(r.empresa || '—')}</div>
-                  </td>
-                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:12px;color:#475569;vertical-align:top;white-space:nowrap;">${escapeHtml(formatChile(r.lastAt))}</td>
-                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;color:${meta.color};font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;font-weight:600;vertical-align:top;white-space:nowrap;text-align:right;">${escapeHtml(formatLagMs(r.lagMs))}</td>
-                </tr>`,
-    )
-    .join('');
-  return `              <p style="margin:18px 0 8px;">
-                <span style="display:inline-block;padding:4px 12px;background-color:${meta.color};color:#FFFFFF;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;border-radius:9999px;">&bull; ${escapeHtml(meta.short)} &middot; ${escapeHtml(meta.tone)}</span>
-                <span style="display:inline-block;margin-left:8px;font-size:11px;color:#94A3B8;letter-spacing:0.05em;">${items.length} ${items.length === 1 ? 'instalación' : 'instalaciones'} &middot; ${escapeHtml(meta.label)}</span>
-              </p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;border-left:3px solid ${meta.color};overflow:hidden;">
-                <tr>
-                  <td style="padding:9px 14px;background-color:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Instalación</td>
-                  <td style="padding:9px 14px;background-color:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Último dato</td>
-                  <td style="padding:9px 14px;background-color:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;text-align:right;">Sin reportar</td>
-                </tr>
-                ${rows}
-              </table>`;
+/** El color lo pone el tiempo sin reportar, no un tramo configurable. */
+function colorPorLag(lagMs) {
+  if (lagMs > Number.MAX_SAFE_INTEGER / 2 || lagMs >= 24 * 3600000) return '#dc2626';
+  if (lagMs >= 12 * 3600000) return '#ea580c';
+  return '#d97706';
 }
 
-function renderSection(title, eyebrow, items) {
-  const byTier = { t12: [], t6: [], t3: [] };
-  for (const it of items) {
-    if (byTier[it.tier]) byTier[it.tier].push(it);
+/**
+ * Una sección del resumen. Las dos tienen la misma forma —instalación, empresa,
+ * tiempo sin reportar y link— para que se lean igual sin volver a aprenderlas.
+ */
+function seccionResumenHtml(titulo, eyebrow, items, columnaTiempo) {
+  if (items.length === 0) {
+    return `          <tr>
+            <td style="padding:24px 40px 0;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(eyebrow)}</p>
+              <h2 style="margin:0;font-size:18px;line-height:1.3;color:#1E293B;font-weight:600;">${escapeHtml(titulo)}</h2>
+              <p style="margin:14px 0 0;padding:14px;background-color:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;color:#16a34a;font-size:13px;">&#10003; Sin incidencias en esta sección.</p>
+            </td>
+          </tr>`;
   }
-  const groups = ['t12', 't6', 't3'].map((t) => renderIssuesGroup(byTier[t], t)).join('');
-  const empty =
-    items.length === 0
-      ? `              <p style="margin:14px 0 0;padding:14px;background-color:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;color:#16a34a;font-size:13px;">&#10003; Sin incidencias en esta sección.</p>`
-      : groups;
+  const rows = items
+    .map((r) => {
+      const color = colorPorLag(r.lagMs);
+      return `
+                <tr>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;color:#1E293B;font-weight:600;vertical-align:top;">${escapeHtml(r.descripcion)}</td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:12px;color:#64748B;vertical-align:top;">${escapeHtml(r.empresa || '—')}</td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;color:${color};font-family:'SF Mono','JetBrains Mono',Consolas,Menlo,monospace;font-weight:700;vertical-align:top;white-space:nowrap;">${escapeHtml(formatLagMs(r.lagMs))}</td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:12px;color:#64748B;vertical-align:top;white-space:nowrap;">${escapeHtml(formatChile(r.lastAt))}</td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;text-align:right;vertical-align:top;"><a href="${r.url || ACCESS_URL}" style="display:inline-block;padding:5px 12px;background-color:#0DAFBD;color:#FFFFFF;font-size:11px;font-weight:700;border-radius:9999px;text-decoration:none;">Ver</a></td>
+                </tr>`;
+    })
+    .join('');
+  const th = (t, align) =>
+    `<td style="padding:9px 14px;background-color:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;${align ? `text-align:${align};` : ''}">${t}</td>`;
   return `          <tr>
             <td style="padding:24px 40px 0;">
               <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(eyebrow)}</p>
-              <h2 style="margin:0;font-size:18px;line-height:1.3;color:#1E293B;font-weight:600;">${escapeHtml(title)}</h2>
-${empty}
+              <h2 style="margin:0 0 10px;font-size:18px;line-height:1.3;color:#1E293B;font-weight:600;">${escapeHtml(titulo)}
+                <span style="font-weight:400;color:#94A3B8;font-size:14px;">&middot; ${items.length}</span>
+              </h2>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
+                <tr>
+                  ${th('Instalación')}${th('Empresa')}${th(escapeHtml(columnaTiempo))}${th('Último dato')}${th('', 'right')}
+                </tr>
+                ${rows}
+              </table>
             </td>
           </tr>`;
 }
 
-function buildDigestHtml({ generatedAt, dataIssues, dgaIssues }) {
+function buildResumenHtml({ generatedAt, umbralHoras, dataIssues, dgaIssues }) {
   const total = dataIssues.length + dgaIssues.length;
-  const hasCritical = [...dataIssues, ...dgaIssues].some((r) => r.tier === 't12');
-  const accentColor = total === 0 ? '#22C55E' : hasCritical ? '#dc2626' : '#ea580c';
+  const accentColor = total === 0 ? '#22C55E' : '#dc2626';
   const accentGradient =
-    total === 0
-      ? 'linear-gradient(90deg,#22C55E 0%,#15803D 100%)'
-      : hasCritical
-        ? SEVERIDAD_GRADIENT.critica
-        : SEVERIDAD_GRADIENT.alta;
-  const generatedHuman = formatChile(generatedAt || new Date().toISOString());
-  const heroEyebrow =
-    total === 0
-      ? 'Resumen de salud'
-      : `${total} ${total === 1 ? 'incidencia detectada' : 'incidencias detectadas'}`;
-  const heroTitle = total === 0 ? 'Todo en orden' : 'Resumen de salud de la plataforma';
-  const heroSubtitle =
-    total === 0
-      ? 'Todas las instalaciones reportan dentro de los umbrales esperados.'
-      : 'Las siguientes instalaciones requieren tu atención.';
-
-  const okBanner =
-    total === 0
-      ? `          <tr>
-            <td style="padding:24px 40px 0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;">
-                <tr>
-                  <td style="padding:18px 20px;text-align:center;">
-                    <p style="margin:0;font-size:14px;color:#16a34a;font-weight:600;">&#10003; No hay instalaciones con transmisión retrasada ni reportes DGA pendientes.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>`
-      : '';
+    total === 0 ? 'linear-gradient(90deg,#22C55E 0%,#15803D 100%)' : SEVERIDAD_GRADIENT.critica;
+  const umbralTexto = String(Math.round(Number(umbralHoras) * 10) / 10).replace('.', ',');
 
   const contentHtml = `          <tr>
             <td style="padding:36px 40px 4px;">
-              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(heroEyebrow)}</p>
-              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">${escapeHtml(heroTitle)}</h1>
-              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">${escapeHtml(heroSubtitle)}</p>
-              <p style="margin:8px 0 0;font-size:12px;color:#94A3B8;">Generado el ${escapeHtml(generatedHuman)}</p>
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${
+                total === 0
+                  ? 'Resumen de monitoreo'
+                  : `${total} ${total === 1 ? 'instalación requiere atención' : 'instalaciones requieren atención'}`
+              }</p>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">${total === 0 ? 'Todo en orden' : 'Resumen de monitoreo'}</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">${
+                total === 0
+                  ? `Ningún equipo lleva más de ${escapeHtml(umbralTexto)} h sin transmitir y no hay reportes DGA atrasados.`
+                  : `Se informa todo equipo con más de <strong style="color:#1E293B;">${escapeHtml(umbralTexto)} horas</strong> sin transmitir, y los reportes DGA con retraso.`
+              }</p>
+              <p style="margin:8px 0 0;font-size:12px;color:#94A3B8;">Generado el ${escapeHtml(formatChile(generatedAt || new Date().toISOString()))}</p>
             </td>
           </tr>
-${okBanner}
-${renderSection('Transmisión de datos', 'Equipos y telemetría', dataIssues)}
-${renderSection('Reportes DGA', 'Cumplimiento regulatorio', dgaIssues)}
+${seccionResumenHtml('Equipos sin datos', 'Transmisión', dataIssues, 'Sin transmitir')}
+${seccionResumenHtml('Reportes DGA atrasados', 'Cumplimiento regulatorio', dgaIssues, 'Atraso')}
 ${ctaButtonHtml(ACCESS_URL, 'Ir a la plataforma', accentColor)}
-${securityNoteHtml('Reporte automático del sistema de monitoreo Emeltec. Los siguientes resúmenes se envían a las 07:00 y 16:00 hora Santiago.')}`;
+${securityNoteHtml('Reporte automático del monitoreo Emeltec. Los horarios de envío y el umbral de horas se administran en Administración → Alertas por correo.')}`;
 
   return renderShell({
-    title: 'Resumen de salud · Emeltec',
+    title: 'Resumen de monitoreo · Emeltec',
     preheader:
       total === 0
-        ? 'Todo en orden — sin instalaciones con retraso de transmisión ni DGA.'
-        : `${total} instalación(es) con incidencias · revisa el detalle.`,
+        ? 'Todo en orden — sin equipos sin datos ni DGA atrasado.'
+        : `${dataIssues.length} sin transmitir · ${dgaIssues.length} DGA atrasado.`,
     accentColor,
     accentGradient,
     contentHtml,
   });
 }
 
-function buildEventHtml({ eventDetail }) {
-  const r = eventDetail;
-  const meta = TIER_META[r.tier] || TIER_META.t3;
-  const kindLabel = r.kind === 'data' ? 'Sin transmisión de datos' : 'Reporte DGA atrasado';
-  const eyebrow = r.kind === 'data' ? 'Transmisión de datos' : 'Cumplimiento DGA';
-  const rows = [
-    ['Instalación', escapeHtml(r.descripcion)],
-    ['Empresa', escapeHtml(r.empresa || '—')],
-    [
-      'Tiempo sin reportar',
-      `<span style="font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;color:${meta.color};font-weight:600;">${escapeHtml(formatLagMs(r.lagMs))}</span>`,
-    ],
-    ['Último dato', escapeHtml(formatChile(r.lastAt))],
-  ];
-  if (r.kind === 'dga') {
-    rows.push(['Periodicidad', escapeHtml(r.periodicidad || '—')]);
-    rows.push(['Próximo esperado', escapeHtml(formatChile(r.expectedAt))]);
-  }
-
-  const contentHtml = `          <tr>
-            <td style="padding:36px 40px 4px;">
-              <p style="margin:0 0 10px;">
-                <span style="display:inline-block;padding:4px 12px;background-color:${meta.color};color:#FFFFFF;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;border-radius:9999px;">&bull; ${escapeHtml(meta.short)} &middot; ${escapeHtml(meta.tone)}</span>
-                <span style="display:inline-block;margin-left:8px;font-size:11px;color:#94A3B8;letter-spacing:0.05em;">${escapeHtml(eyebrow)}</span>
-              </p>
-              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">${escapeHtml(kindLabel)}</h1>
-              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">La instalación <strong style="color:#1E293B;">${escapeHtml(r.descripcion)}</strong> cruzó el umbral de ${escapeHtml(meta.label.toLowerCase())} sin reportar.</p>
-            </td>
-          </tr>
-${infoTableHtml(rows, meta.color)}
-${ctaButtonHtml(ACCESS_URL, 'Ver en la plataforma', meta.color)}
-${securityNoteHtml('Notificación automática del sistema de monitoreo Emeltec. Se enviará al subir de umbral (3h → 6h → 12h+).')}`;
-
-  return renderShell({
-    title: `${kindLabel} · Emeltec`,
-    preheader: `${r.descripcion} · ${formatLagMs(r.lagMs)} sin reportar.`,
-    accentColor: meta.color,
-    accentGradient: meta.gradient,
-    contentHtml,
-  });
-}
-
-// Internal — usados por scripts de preview/render. No estable.
-exports._renderHealthDigestHtml = (input) => buildDigestHtml(input);
-exports._renderHealthEventHtml = (input) => buildEventHtml(input);
+// Internal — usado por scripts de preview/render. No estable.
+exports._renderHealthDigestHtml = (input) => buildResumenHtml(input);
 
 // Renders del ciclo de contraseña, expuestos para poder asertar el HTML: en modo
 // simulado `enviar` solo loguea asunto y texto, así que el HTML —lo que el
@@ -1045,76 +825,63 @@ exports._renderPasswordChangedEmail = (nombre, opciones) =>
   buildPasswordChangedEmail(nombre, opciones);
 exports._renderAccountAccessEmail = (nombre, opciones) => buildAccountAccessEmail(nombre, opciones);
 
+/**
+ * Resumen interno de monitoreo. Dos secciones, un correo por destinatario.
+ * Manda igual cuando no hay nada: saber que el monitoreo está vivo vale tanto
+ * como la lista de problemas.
+ */
 exports.sendHealthDigest = async ({
   to,
-  mode,
   generatedAt,
-  dataIssues,
-  dgaIssues,
-  eventDetail,
+  umbralHoras = 6,
+  dataIssues = [],
+  dgaIssues = [],
 }) => {
   try {
-    let subject;
-    let html;
-    let text;
-
-    if (mode === 'event') {
-      if (!eventDetail) throw new Error('eventDetail requerido en mode=event');
-      const meta = TIER_META[eventDetail.tier] || TIER_META.t3;
-      const kindLabel = eventDetail.kind === 'data' ? 'Sin transmisión' : 'DGA atrasado';
-      subject = `[${meta.short}] ${kindLabel} · ${eventDetail.descripcion}`;
-      html = buildEventHtml({ eventDetail });
-      text = [
-        `${kindLabel} — ${eventDetail.descripcion}`,
-        `Empresa: ${eventDetail.empresa || '—'}`,
-        `Tiempo sin reportar: ${formatLagMs(eventDetail.lagMs)}`,
-        `Último dato: ${formatChile(eventDetail.lastAt)}`,
-        eventDetail.kind === 'dga'
-          ? `Periodicidad: ${eventDetail.periodicidad || '—'} · Próximo esperado: ${formatChile(eventDetail.expectedAt)}`
-          : '',
-        '',
-        `Plataforma: ${ACCESS_URL}`,
-      ]
-        .filter(Boolean)
-        .join('\n');
-    } else {
-      const data = dataIssues || [];
-      const dga = dgaIssues || [];
-      const total = data.length + dga.length;
-      subject =
-        total === 0
-          ? `Resumen Emeltec — Todo en orden`
-          : `Resumen Emeltec — ${total} ${total === 1 ? 'incidencia' : 'incidencias'}`;
-      html = buildDigestHtml({ generatedAt, dataIssues: data, dgaIssues: dga });
-      const textLines = [
-        `Resumen Emeltec — ${formatChile(generatedAt || new Date().toISOString())}`,
-        '',
-      ];
-      if (total === 0) {
-        textLines.push('Todo en orden. Sin incidencias.');
-      } else {
-        textLines.push(`Transmisión de datos: ${data.length} instalación(es)`);
-        for (const r of data) {
-          textLines.push(
-            `  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)}`,
-          );
-        }
-        textLines.push('');
-        textLines.push(`Reportes DGA: ${dga.length} informante(s)`);
-        for (const r of dga) {
-          textLines.push(
-            `  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)}`,
-          );
-        }
-      }
-      textLines.push('');
-      textLines.push(`Plataforma: ${ACCESS_URL}`);
-      text = textLines.join('\n');
+    if (!to) {
+      console.warn('[emailService] sendHealthDigest: "to" vacío, email omitido');
+      return;
     }
+    const total = dataIssues.length + dgaIssues.length;
+    const subject =
+      total === 0
+        ? 'Resumen Emeltec — Todo en orden'
+        : `Resumen Emeltec — ${dataIssues.length} sin datos · ${dgaIssues.length} DGA atrasado`;
 
-    await enviar({ to, subject, html, text });
+    const lineas = [
+      `Resumen de monitoreo — ${formatChile(generatedAt || new Date().toISOString())}`,
+      '',
+    ];
+    if (total === 0) {
+      lineas.push(`Todo en orden. Ningún equipo con más de ${umbralHoras} h sin transmitir.`);
+    } else {
+      lineas.push(`EQUIPOS SIN DATOS (más de ${umbralHoras} h) — ${dataIssues.length}`);
+      for (const r of dataIssues) {
+        lineas.push(
+          `  - ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)} sin transmitir`,
+        );
+        lineas.push(`    ${r.url || ACCESS_URL}`);
+      }
+      lineas.push('');
+      lineas.push(`REPORTES DGA ATRASADOS — ${dgaIssues.length}`);
+      for (const r of dgaIssues) {
+        lineas.push(
+          `  - ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)} de atraso`,
+        );
+        lineas.push(`    ${r.url || ACCESS_URL}`);
+      }
+    }
+    lineas.push('');
+    lineas.push(`Plataforma: ${ACCESS_URL}`);
+
+    await enviar({
+      to,
+      subject,
+      text: lineas.join('\n'),
+      html: buildResumenHtml({ generatedAt, umbralHoras, dataIssues, dgaIssues }),
+    });
   } catch (error) {
-    console.error('[emailService] Error enviando health digest:', error.message);
+    console.error('[emailService] Error enviando el resumen de monitoreo:', error.message);
   }
 };
 

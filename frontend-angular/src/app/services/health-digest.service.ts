@@ -2,27 +2,25 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 
-/** Tier mínimo de escalación desde el que un destinatario recibe correos. */
-export type UmbralEvento = 't3' | 't6' | 't12';
-
 export interface DigestDestinatario {
   email: string;
   nombre: string | null;
   recibe_resumen: boolean;
-  recibe_eventos: boolean;
   /** Alertas de auditoría: cambios de rol y ráfagas de logins fallidos. */
   recibe_seguridad: boolean;
-  umbral_evento: UmbralEvento;
   activo: boolean;
   updated_at: string | null;
 }
 
 /** Contexto del worker que la pantalla muestra como referencia. */
 export interface DigestMeta {
+  /** Horas de envío del resumen, en hora de pared de Chile. Editables acá. */
   horarios_resumen: number[];
+  /** Horas sin transmitir desde las que un equipo entra al resumen. Editable. */
+  umbral_horas: number;
   zona_horaria: string;
   fallback_email: string;
-  /** Worker healthDigest: resumen diario y escalaciones. */
+  /** Worker healthDigest: el resumen de dos veces al día. */
   worker_activo: boolean;
   /** Worker auditAlerts (bajo retención): alertas de seguridad. Switch aparte. */
   worker_seguridad_activo: boolean;
@@ -46,11 +44,15 @@ export interface DigestPruebaResponse {
   data: { email: string; incidencias_data: number; incidencias_dga: number };
 }
 
+export interface DigestConfigResponse {
+  ok: boolean;
+  data: { horarios_resumen: number[]; umbral_horas: number };
+}
+
 /**
- * Destinatarios del monitoreo interno: resumen diario 07:00/16:00 y correos
- * inmediatos de escalación (worker `healthDigest`), más las alertas de auditoría
- * de seguridad (worker `auditAlerts`). Solo SuperAdmin — el backend rechaza
- * cualquier otro rol.
+ * Monitoreo interno: el resumen de dos veces al día (worker `healthDigest`) y
+ * las alertas de auditoría de seguridad (worker `auditAlerts`, switch aparte).
+ * Solo SuperAdmin — el backend rechaza cualquier otro rol.
  */
 @Injectable({ providedIn: 'root' })
 export class HealthDigestService {
@@ -67,11 +69,17 @@ export class HealthDigestService {
         email: d.email,
         nombre: d.nombre,
         recibe_resumen: d.recibe_resumen,
-        recibe_eventos: d.recibe_eventos,
         recibe_seguridad: d.recibe_seguridad,
-        umbral_evento: d.umbral_evento,
         activo: d.activo,
       })),
+    });
+  }
+
+  /** Programación del resumen: horas de envío y umbral de horas sin transmitir. */
+  saveConfig(horas: number[], umbralHoras: number): Observable<DigestConfigResponse> {
+    return this.http.put<DigestConfigResponse>('/api/v2/health-digest/config', {
+      horas,
+      umbral_horas: umbralHoras,
     });
   }
 
