@@ -792,11 +792,19 @@ async function loadPasteurizadorHistory(site, options) {
             last(e.id_serial, e.time)         AS id_serial,
             last(e.data, e.time)              AS data
           FROM equipo e
-          CROSS JOIN latest_cagg lc
           WHERE e.id_serial = $1
-            AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            -- Sin CROSS JOIN: latest_cagg como subquery escalar para que
+            -- Postgres empuje el bound al Index Cond del scan, en vez de
+            -- filtrar fila por fila tras traer todo el rango crudo. Mismo
+            -- fix que companyController.js getSiteDashboardHistory.
+            AND e.time >= GREATEST(
+                  ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
+                  COALESCE(
+                    (SELECT max_bucket FROM latest_cagg) + $6::interval,
+                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+                  )
+                )
             AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $6::interval)
           GROUP BY 1
         ),
         materialized AS (
@@ -832,9 +840,14 @@ async function loadPasteurizadorHistory(site, options) {
             last(e.id_serial, e.time)         AS id_serial,
             last(e.data, e.time)              AS data
           FROM equipo e
-          CROSS JOIN latest_cagg lc
           WHERE e.id_serial = $1
-            AND e.time >= COALESCE(lc.max_bucket + $4::interval, now() - INTERVAL '2 hours')
+            -- Mismo fix que useRange arriba: sin CROSS JOIN, latest_cagg
+            -- como subquery escalar para que Postgres empuje el bound al
+            -- Index Cond en vez de filtrar fila por fila tras un join.
+            AND e.time >= COALESCE(
+                  (SELECT max_bucket FROM latest_cagg) + $4::interval,
+                  now() - INTERVAL '2 hours'
+                )
           GROUP BY 1
         ),
         materialized AS (
@@ -868,11 +881,16 @@ async function loadPasteurizadorHistory(site, options) {
         recent_raw AS (
           SELECT time_bucket($4::interval, e.time) AS time
           FROM equipo e
-          CROSS JOIN latest_cagg lc
           WHERE e.id_serial = $1
-            AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            -- Mismo fix: sin CROSS JOIN, latest_cagg como subquery escalar.
+            AND e.time >= GREATEST(
+                  ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
+                  COALESCE(
+                    (SELECT max_bucket FROM latest_cagg) + $4::interval,
+                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+                  )
+                )
             AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $4::interval)
           GROUP BY 1
         ),
         materialized AS (
@@ -972,11 +990,17 @@ async function loadPasteurizadorDailyKpis(site, options) {
           last(e.id_serial, e.time)         AS id_serial,
           last(e.data, e.time)              AS data
         FROM equipo e
-        CROSS JOIN latest_cagg lc
         WHERE e.id_serial = $1
-          AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          -- Sin CROSS JOIN: latest_cagg como subquery escalar (ver fix en
+          -- loadPasteurizadorHistory / companyController.js).
+          AND e.time >= GREATEST(
+                ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
+                COALESCE(
+                  (SELECT max_bucket FROM latest_cagg) + $3::interval,
+                  ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+                )
+              )
           AND e.time <  (($2::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $3::interval)
         GROUP BY 1
       ),
       materialized AS (

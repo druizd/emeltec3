@@ -1,4 +1,11 @@
+---
+aliases: [auth, autenticacion, permisos, roles]
+tags: [vault/backend]
+---
+
 # Autenticación y Permisos
+
+← [[../HOME]] | Ver también: [[overview]] · [[../base-de-datos/schema#Grupo: Entidades base]]
 
 ---
 
@@ -123,4 +130,4 @@ Implementación: `shared/stepUp2fa.js` + `routes/twoFactorRoutes.js` + `modules/
 ## Ver también
 
 - [[overview]] — estructura general de main-api
-- [[../db/empresa-sitio]] — jerarquía empresa → sub_empresa → sitio
+- [[../base-de-datos/schema#Grupo: Entidades base]] — jerarquía empresa → sub_empresa → sitio

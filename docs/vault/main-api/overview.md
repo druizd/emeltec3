@@ -1,4 +1,11 @@
+---
+aliases: [main-api, backend, api]
+tags: [vault/backend]
+---
+
 # main-api — Overview
+
+← [[../HOME]] | Ver también: [[auth]] · [[dga-pipeline]] · [[../base-de-datos/schema]] · [[../frontend/overview]]
 
 API principal de Emeltec Cloud. Monolito Express con módulos TypeScript y workers de background.
 
@@ -123,5 +130,5 @@ ENABLE_DGA_WORKER=true
 
 - [[dga-pipeline]] — pipeline DGA completo
 - [[auth]] — autenticación y permisos
-- [[../db/overview]] — base de datos
+- [[../base-de-datos/schema]] — base de datos
 - [[../grpc-pipeline/csvconsumer]] — quién envía datos por gRPC

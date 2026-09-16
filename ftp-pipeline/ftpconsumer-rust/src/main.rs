@@ -1,11 +1,10 @@
 use std::env;
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use chrono::{NaiveDate, NaiveTime};
+use deadpool_postgres::{Config as PoolConfig, Pool, Runtime};
 use serde_json::Value;
-use tokio::sync::Mutex;
-use tokio_postgres::{Client, NoTls};
+use tokio_postgres::NoTls;
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::{error, info};
 
@@ -24,28 +23,15 @@ fn get_env(key: &str, default: &str) -> String {
     }
 }
 
-async fn connect_db() -> Result<Client, Box<dyn std::error::Error>> {
-    let host = get_env("DB_HOST", "localhost");
-    let port = get_env("DB_PORT", "5433");
-    let name = get_env("DB_NAME", "telemetry_platform");
-    let user = get_env("DB_USER", "postgres");
-    let password = get_env("DB_PASSWORD", "");
+fn create_pool() -> Result<Pool, Box<dyn std::error::Error>> {
+    let mut cfg = PoolConfig::new();
+    cfg.host = Some(get_env("DB_HOST", "localhost"));
+    cfg.port = Some(get_env("DB_PORT", "5433").parse::<u16>()?);
+    cfg.dbname = Some(get_env("DB_NAME", "telemetry_platform"));
+    cfg.user = Some(get_env("DB_USER", "postgres"));
+    cfg.password = Some(get_env("DB_PASSWORD", ""));
 
-    let conn_str = format!(
-        "host={} port={} dbname={} user={} password={} sslmode=disable",
-        host, port, name, user, password
-    );
-
-    let (client, connection) = tokio_postgres::connect(&conn_str, NoTls).await?;
-
-    tokio::spawn(async move {
-        if let Err(err) = connection.await {
-            error!("conexion PostgreSQL terminada: {}", err);
-        }
-    });
-
-    info!("conexion a PostgreSQL exitosa");
-    Ok(client)
+    Ok(cfg.create_pool(Some(Runtime::Tokio1), NoTls)?)
 }
 
 struct InsertRecord {
@@ -81,7 +67,7 @@ fn validate_record(idx: usize, record: &TelemetryRecord) -> Result<InsertRecord,
 }
 
 async fn insert_records(
-    client: &mut Client,
+    client: &mut tokio_postgres::Client,
     records: &[InsertRecord],
 ) -> Result<u64, tokio_postgres::Error> {
     let transaction = client.transaction().await?;
@@ -114,7 +100,7 @@ async fn insert_records(
 }
 
 struct ConsumerService {
-    db: Arc<Mutex<Client>>,
+    pool: Pool,
 }
 
 #[tonic::async_trait]
@@ -154,8 +140,12 @@ impl LogIngestion for ConsumerService {
             }
         }
 
-        let mut client = self.db.lock().await;
-        let inserted = match insert_records(&mut client, &parsed).await {
+        let mut client = self.pool.get().await.map_err(|e| {
+            error!("pool error [{}]: {}", req.filename, e);
+            Status::internal(format!("pool: {}", e))
+        })?;
+
+        let inserted = match insert_records(&mut *client, &parsed).await {
             Ok(count) => count,
             Err(err) => {
                 error!("insert error [{}]: {}", req.filename, err);
@@ -186,10 +176,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let port = get_env("FTP_CONSUMER_PORT", "50061");
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
-    let db = connect_db().await?;
-    let service = ConsumerService {
-        db: Arc::new(Mutex::new(db)),
-    };
+    let pool = create_pool()?;
+    let service = ConsumerService { pool };
 
     info!("ftpconsumer gRPC escuchando en {}", addr);
 

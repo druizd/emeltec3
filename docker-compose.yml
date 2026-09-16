@@ -240,33 +240,6 @@ services:
       retries: 5
       start_period: 15s
 
-  metrics-page:
-    build: ./metrics-page
-    image: ghcr.io/druizd/emeltec3/metrics-page:${IMAGE_TAG:-latest}
-    container_name: emeltec-metrics-page
-    ports:
-      - '127.0.0.1:${METRICS_HOST_PORT:-8081}:80'
-    depends_on:
-      main-api:
-        condition: service_healthy
-      auth-api:
-        condition: service_healthy
-    mem_limit: 32m
-    mem_reservation: 16m
-    pids_limit: 20
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-    restart: unless-stopped
-    healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:80/ >/dev/null 2>&1 || exit 1']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-
   landing-emeltec:
     build: ./landing-emeltec
     image: ghcr.io/druizd/emeltec3/landing-emeltec:${IMAGE_TAG:-latest}

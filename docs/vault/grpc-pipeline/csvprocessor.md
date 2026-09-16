@@ -1,4 +1,11 @@
+---
+aliases: [csvprocessor, go, modbus, windows]
+tags: [vault/telemetry]
+---
+
 # csvprocessor — Cliente Windows
+
+← [[../HOME]] | Ver también: [[csvconsumer]] · [[../pipeline-ftp/ftpprocessor]] (pipeline hermano, REGADIO/CASINO)
 
 Servicio Windows que captura telemetría de dispositivos Modbus/IP y la envía a csvconsumer en Linux por gRPC.
 
@@ -145,4 +152,4 @@ Ver: [[../infraestructura/incidente-2026-07-13-csvconsumer-reconexion]]
 ## Ver también
 
 - [[csvconsumer]] — servidor que recibe los datos
-- [[../db/equipo]] — tabla donde llegan los datos en Linux
+- [[../base-de-datos/schema#Grupo: Telemetría (series temporales)]] — tabla `equipo`, donde llegan los datos en Linux
