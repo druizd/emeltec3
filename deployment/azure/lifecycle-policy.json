@@ -1,0 +1,22 @@
+{
+  "rules": [
+    {
+      "name": "db-backups-lifecycle",
+      "enabled": true,
+      "type": "Lifecycle",
+      "definition": {
+        "filters": {
+          "blobTypes": ["blockBlob"],
+          "prefixMatch": ["db-backups/backup_"]
+        },
+        "actions": {
+          "baseBlob": {
+            "delete": {
+              "daysAfterModificationGreaterThan": 14
+            }
+          }
+        }
+      }
+    }
+  ]
+}

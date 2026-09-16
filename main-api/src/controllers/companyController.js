@@ -1930,11 +1930,21 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
               last(e.data, e.time)              AS data,
               ${utcTimestampSql('time_bucket($6::interval, e.time)')} AS timestamp_completo
             FROM equipo e
-            CROSS JOIN latest_cagg lc
             WHERE e.id_serial = $1
-              AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              -- No CROSS JOIN latest_cagg: un join hace que Postgres evalue
+              -- el bound como Join Filter (fila por fila, tras traer TODO
+              -- el rango crudo). Referenciar latest_cagg como subquery
+              -- escalar deja que Postgres lo resuelva una sola vez y lo
+              -- empuje al Index Cond del scan, arrancando el indice donde
+              -- realmente empieza la cola sin materializar.
+              AND e.time >= GREATEST(
+                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
+                    COALESCE(
+                      (SELECT max_bucket FROM latest_cagg) + $6::interval,
+                      ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+                    )
+                  )
               AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-              AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $6::interval)
             GROUP BY 1
           ),
           materialized AS (
@@ -1982,9 +1992,14 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
               last(e.data, e.time)              AS data,
               ${utcTimestampSql('time_bucket($4::interval, e.time)')} AS timestamp_completo
             FROM equipo e
-            CROSS JOIN latest_cagg lc
             WHERE e.id_serial = $1
-              AND e.time >= COALESCE(lc.max_bucket + $4::interval, now() - INTERVAL '2 hours')
+              -- Mismo fix que useRange arriba: sin CROSS JOIN, latest_cagg
+              -- como subquery escalar para que Postgres empuje el bound al
+              -- Index Cond en vez de filtrar fila por fila tras un join.
+              AND e.time >= COALESCE(
+                    (SELECT max_bucket FROM latest_cagg) + $4::interval,
+                    now() - INTERVAL '2 hours'
+                  )
             GROUP BY 1
           ),
           materialized AS (
@@ -2032,11 +2047,18 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
           recent_raw AS (
             SELECT time_bucket($4::interval, e.time) AS time
             FROM equipo e
-            CROSS JOIN latest_cagg lc
             WHERE e.id_serial = $1
-              AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              -- Mismo fix que en historyQuery: sin CROSS JOIN, latest_cagg
+              -- como subquery escalar para que Postgres empuje el bound al
+              -- Index Cond en vez de filtrar fila por fila tras un join.
+              AND e.time >= GREATEST(
+                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
+                    COALESCE(
+                      (SELECT max_bucket FROM latest_cagg) + $4::interval,
+                      ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+                    )
+                  )
               AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-              AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $4::interval)
             GROUP BY 1
           ),
           materialized AS (

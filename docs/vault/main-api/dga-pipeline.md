@@ -1,4 +1,11 @@
+---
+aliases: [dga-pipeline, dga workers, snia]
+tags: [vault/backend, vault/dga]
+---
+
 # DGA Pipeline
+
+← [[../HOME]] | Ver también: [[overview]] · [[../pipeline-dga/dga-workers]] · [[../pipeline-dga/dga-setup]]
 
 Pipeline completo para generar y enviar reportes DGA a SNIA (Dirección General de Aguas).
 
@@ -152,7 +159,6 @@ FROM dato_dga WHERE fecha = CURRENT_DATE AND estatus = 'enviado';
 
 ## Ver también
 
-- [[../db/dato-dga]] — schema de `dato_dga`
-- [[../db/empresa-sitio]] — schema de `pozo_config`
-- [[../db/reg-map]] — cómo se mapean los valores de telemetría
+- [[../base-de-datos/schema#Grupo: DGA regulatorio]] — schema de `dato_dga`
+- [[../base-de-datos/schema#Grupo: Configuración de pozos]] — schema de `pozo_config` y `reg_map`
 - [[auth]] — permisos para gestionar DGA

@@ -75,9 +75,25 @@ func main() {
 	select {}
 }
 
+func initLogging(exeDir string) {
+	logDir := filepath.Join(exeDir, "logs")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return
+	}
+	logPath := filepath.Join(logDir, "csvprocessor.log")
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return
+	}
+	os.Stdout = file
+	os.Stderr = file
+	log.SetOutput(file)
+}
+
 func startApp() {
 	exePath, _ := os.Executable()
 	exeDir := filepath.Dir(exePath)
+	initLogging(exeDir)
 
 	_ = godotenv.Load(filepath.Join(exeDir, "csvprocessor", ".env"))
 	_ = godotenv.Load(filepath.Join(exeDir, ".env"))
