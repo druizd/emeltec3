@@ -39,7 +39,7 @@ jobs:
     env:
       REGISTRY: ghcr.io/druizd/emeltec3
       SERVICES: >-
-        main-api auth-api linux-db-api frontend-angular metrics-page
+        main-api auth-api linux-db-api frontend-angular
         landing-emeltec csvconsumer ftpconsumer
 
     steps:
