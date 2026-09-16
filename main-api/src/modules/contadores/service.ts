@@ -20,6 +20,26 @@ import { cache } from '../../config/redis';
 // suman gradual y el chart muestra horizonte de 30/90 dias.
 const JORNADA_CACHE_TTL_S = 900;
 import { applyMappingTransform, isMappingVigenteAt } from '../sites/transforms';
+
+// Proyecta solo d1/d2 del mapping ($4/$5) en vez del `data` completo — mismo
+// motivo y mismo guard `?` que en computeMonthDeltaForVariable.
+const JORNADA_ROWS_SQL = `
+  SELECT
+    bucket AS time,
+    CASE WHEN data ? $4::text
+           THEN jsonb_build_object($4::text, data -> $4::text)
+           ELSE '{}'::jsonb
+    END
+    || CASE WHEN $5::text IS NOT NULL AND data ? $5::text
+              THEN jsonb_build_object($5::text, data -> $5::text)
+              ELSE '{}'::jsonb
+       END AS data
+  FROM equipo_5min
+  WHERE id_serial = $1
+    AND bucket >= $2::timestamptz
+    AND bucket <  $3::timestamptz
+  ORDER BY bucket ASC
+`;
 import { getPozoConfigBySiteId } from '../sites/repo';
 import type { PozoConfig, RegMap } from '../sites/types';
 import {
@@ -180,19 +200,25 @@ export function getMonthRangeChile(ref: Date): { start: Date; end: Date; mesIso:
   return { start, end, mesIso };
 }
 
+// Crear un Intl.DateTimeFormat es caro (carga datos de locale/ICU). Esta
+// funcion se llama una vez POR MUESTRA en los loops de delta diario/jornada
+// (miles de veces por request) — reusar una sola instancia de modulo en vez
+// de instanciar una por llamada es lo que evita que ese costo se multiplique.
+// formatToParts() no guarda estado entre llamadas, reusarlo es seguro.
+const CHILE_DAY_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: CHILE_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 /**
  * Devuelve `[start, end)` del dia que contiene a `ref` en zona Chile, como
  * Date UTC. start = 00:00 del dia; end = 00:00 del dia siguiente. diaIso
  * = 'YYYY-MM-DD' en zona Chile.
  */
 export function getDayRangeChile(ref: Date): { start: Date; end: Date; diaIso: string } {
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: CHILE_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const parts = fmt.formatToParts(ref);
+  const parts = CHILE_DAY_FMT.formatToParts(ref);
   const year = Number(parts.find((p) => p.type === 'year')?.value);
   const month = Number(parts.find((p) => p.type === 'month')?.value);
   const day = Number(parts.find((p) => p.type === 'day')?.value);
@@ -542,16 +568,27 @@ export async function computeDailyDeltasForVariable(opts: {
 }): Promise<Map<string, MonthDeltaResult>> {
   const { idSerial, mapping, pozoConfig, start, end } = opts;
 
+  // Proyecta solo d1/d2 del mapping en vez del `data` completo — mismo motivo
+  // y mismo guard `?` que en computeMonthDeltaForVariable (ver comentario ahi).
   const result = await query<{ time: string; data: Record<string, unknown> }>(
     `
-    SELECT bucket AS time, data
+    SELECT
+      bucket AS time,
+      CASE WHEN data ? $4::text
+             THEN jsonb_build_object($4::text, data -> $4::text)
+             ELSE '{}'::jsonb
+      END
+      || CASE WHEN $5::text IS NOT NULL AND data ? $5::text
+                THEN jsonb_build_object($5::text, data -> $5::text)
+                ELSE '{}'::jsonb
+         END AS data
     FROM equipo_5min
     WHERE id_serial = $1
       AND bucket >= $2::timestamptz
       AND bucket <  $3::timestamptz
     ORDER BY bucket ASC
     `,
-    [idSerial, start.toISOString(), end.toISOString()],
+    [idSerial, start.toISOString(), end.toISOString(), mapping.d1, mapping.d2 ?? null],
     { label: 'contadores__day_rows' },
   );
 
@@ -684,21 +721,29 @@ export async function getDailySeries(opts: {
     const site = await getSiteById(sitioId);
     const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
 
-    for (const { counter, missingDays } of pendientes) {
-      const mapping = mappings.find((m) => m.id === counter.variable_id);
-      if (!mapping) continue;
-      const start = getDayRangeChile(missingDays[0]!).start;
-      const end = getDayRangeChile(missingDays[missingDays.length - 1]!).end;
-      onDemand.push({
-        counter,
-        byDay: await computeDailyDeltasForVariable({
-          idSerial: counter.id_serial!,
-          mapping,
-          pozoConfig,
-          start,
-          end,
-        }),
-      });
+    // Una query por variable pendiente, en paralelo en vez de una atras de
+    // otra: con varias variables (equipo vigente + retirado) el loop
+    // secuencial sumaba sus tiempos uno a uno.
+    const resultados = await Promise.all(
+      pendientes.map(async ({ counter, missingDays }) => {
+        const mapping = mappings.find((m) => m.id === counter.variable_id);
+        if (!mapping) return null;
+        const start = getDayRangeChile(missingDays[0]!).start;
+        const end = getDayRangeChile(missingDays[missingDays.length - 1]!).end;
+        return {
+          counter,
+          byDay: await computeDailyDeltasForVariable({
+            idSerial: counter.id_serial!,
+            mapping,
+            pozoConfig,
+            start,
+            end,
+          }),
+        };
+      }),
+    );
+    for (const r of resultados) {
+      if (r) onDemand.push(r);
     }
   }
 
@@ -799,15 +844,8 @@ export async function computeJornadasForVariable(opts: {
       }
     } else {
       const result = await query<JornadaRow>(
-        `
-        SELECT bucket AS time, data
-        FROM equipo_5min
-        WHERE id_serial = $1
-          AND bucket >= $2::timestamptz
-          AND bucket <  $3::timestamptz
-        ORDER BY bucket ASC
-        `,
-        [idSerial, queryStart.toISOString(), queryEnd.toISOString()],
+        JORNADA_ROWS_SQL,
+        [idSerial, queryStart.toISOString(), queryEnd.toISOString(), mapping.d1, mapping.d2 ?? null],
         { label: 'contadores__jornada_rows' },
       );
       rows = result.rows;
@@ -815,15 +853,8 @@ export async function computeJornadasForVariable(opts: {
     }
   } else {
     const result = await query<JornadaRow>(
-      `
-      SELECT bucket AS time, data
-      FROM equipo_5min
-      WHERE id_serial = $1
-        AND bucket >= $2::timestamptz
-        AND bucket <  $3::timestamptz
-      ORDER BY bucket ASC
-      `,
-      [idSerial, queryStart.toISOString(), queryEnd.toISOString()],
+      JORNADA_ROWS_SQL,
+      [idSerial, queryStart.toISOString(), queryEnd.toISOString(), mapping.d1, mapping.d2 ?? null],
       { label: 'contadores__jornada_rows' },
     );
     rows = result.rows;
@@ -956,20 +987,26 @@ export async function getJornadaSeries(opts: {
     const site = await getSiteById(sitioId);
     const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
 
-    for (const { counter, missingDays } of pendientes) {
-      const mapping = mappings.find((m) => m.id === counter.variable_id);
-      if (!mapping) continue;
-      onDemand.push({
-        counter,
-        byDay: await computeJornadasForVariable({
-          idSerial: counter.id_serial!,
-          mapping,
-          pozoConfig,
-          days: missingDays,
-          inicio,
-          fin,
-        }),
-      });
+    // Mismo motivo que en getDailySeries: en paralelo, no una atras de otra.
+    const resultados = await Promise.all(
+      pendientes.map(async ({ counter, missingDays }) => {
+        const mapping = mappings.find((m) => m.id === counter.variable_id);
+        if (!mapping) return null;
+        return {
+          counter,
+          byDay: await computeJornadasForVariable({
+            idSerial: counter.id_serial!,
+            mapping,
+            pozoConfig,
+            days: missingDays,
+            inicio,
+            fin,
+          }),
+        };
+      }),
+    );
+    for (const r of resultados) {
+      if (r) onDemand.push(r);
     }
   }
 

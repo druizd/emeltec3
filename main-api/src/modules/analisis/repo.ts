@@ -106,12 +106,37 @@ export async function getSalud(siteId: string): Promise<SaludData> {
   // 4. Gaps en últimos 30 días — buckets de 5min y agrupa intervalos sin data
   //    usando window functions sobre time_bucket TimescaleDB.
   const gapsRes = await query<{ desde: string; hasta: string; duracion_min: number }>(
-    `WITH buckets AS (
+    `WITH window_start AS (
+       SELECT NOW() - ($2 || ' days')::interval AS ts
+     ),
+     latest_cagg AS (
+       SELECT max(bucket) AS max_bucket
+         FROM equipo_5min
+        WHERE id_serial = $1
+          AND bucket >= (SELECT ts FROM window_start)
+     ),
+     materialized AS (
+       SELECT bucket
+         FROM equipo_5min
+        WHERE id_serial = $1
+          AND bucket >= (SELECT ts FROM window_start)
+     ),
+     recent_raw AS (
        SELECT time_bucket('5 minutes', time) AS bucket
          FROM equipo
         WHERE id_serial = $1
-          AND time >= NOW() - ($2 || ' days')::interval
+          -- Sin CROSS JOIN: latest_cagg como subquery escalar (ver fix en
+          -- companyController.js / pasteurizadorTelemetryService.js).
+          AND time >= GREATEST(
+                (SELECT ts FROM window_start),
+                COALESCE((SELECT max_bucket FROM latest_cagg) + INTERVAL '5 minutes', (SELECT ts FROM window_start))
+              )
         GROUP BY 1
+     ),
+     buckets AS (
+       SELECT bucket FROM materialized
+       UNION
+       SELECT bucket FROM recent_raw
      ),
      ordered AS (
        SELECT bucket,
