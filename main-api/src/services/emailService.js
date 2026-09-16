@@ -707,6 +707,33 @@ function digestFilaHtml(fila) {
                 </tr>`;
 }
 
+/**
+ * Filas consecutivas del mismo tipo, en el orden en que vienen. El orden ya lo
+ * decidió `ordenarFilas` en digest.ts; acá solo se corta en bloques, así el
+ * correo y la plataforma cuentan la misma historia.
+ */
+function agruparPorTipo(filas) {
+  const grupos = [];
+  for (const fila of filas) {
+    const tipo = fila.tipo || fila.alerta || 'Alertas';
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.tipo === tipo) ultimo.filas.push(fila);
+    else grupos.push({ tipo, filas: [fila] });
+  }
+  return grupos;
+}
+
+/** Una tabla por tipo de alerta, con el conteo de sitios en el encabezado. */
+function digestGrupoHtml(grupo, accentColor, extra) {
+  const n = grupo.filas.length;
+  return `              <p style="margin:16px 0 8px;font-size:13px;color:#1E293B;font-weight:600;">${escapeHtml(grupo.tipo)}
+                <span style="font-weight:400;color:#94A3B8;">&middot; ${n} ${n === 1 ? 'sitio' : 'sitios'}</span>
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;border-left:3px solid ${accentColor};overflow:hidden;">
+                ${grupo.filas.map(digestFilaHtml).join('')}${extra}
+              </table>`;
+}
+
 function digestSeccionHtml(titulo, filas, omitidas, accentColor) {
   if (filas.length === 0) return '';
   const extra =
@@ -716,14 +743,29 @@ function digestSeccionHtml(titulo, filas, omitidas, accentColor) {
                   <td style="padding:12px 16px;font-size:12px;color:#64748B;">y ${omitidas} más en la plataforma.</td>
                 </tr>`
       : '';
+  const grupos = agruparPorTipo(filas);
+  // El "y N más" cuelga del último bloque, que es donde se cortó la lista.
+  const bloques = grupos
+    .map((g, i) => digestGrupoHtml(g, accentColor, i === grupos.length - 1 ? extra : ''))
+    .join('\n');
   return `          <tr>
             <td style="padding:20px 40px 0;">
-              <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(titulo)} (${filas.length + omitidas})</p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;border-left:3px solid ${accentColor};overflow:hidden;">
-                ${filas.map(digestFilaHtml).join('')}${extra}
-              </table>
+              <p style="margin:0;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(titulo)} (${filas.length + omitidas})</p>
+${bloques}
             </td>
           </tr>`;
+}
+
+/** Mismo agrupado que el HTML, en texto plano. */
+function digestSeccionTexto(filas) {
+  const lineas = [];
+  for (const grupo of agruparPorTipo(filas)) {
+    const n = grupo.filas.length;
+    lineas.push(`${grupo.tipo} · ${n} ${n === 1 ? 'sitio' : 'sitios'}`);
+    lineas.push(...grupo.filas.map(digestFilaTexto));
+    lineas.push('');
+  }
+  return lineas;
 }
 
 function digestFilaTexto(fila) {
@@ -804,11 +846,11 @@ ${securityNoteHtml('Este resumen se envía dos veces al día. Una alerta se avis
 
     const texto = [`Hola ${saludo},`, '', `Resumen de alertas al ${slotLabel}: ${resumen}.`];
     if (nuevas.length > 0) {
-      texto.push('', `NUEVAS (${totalNuevas})`, '', ...nuevas.map(digestFilaTexto));
+      texto.push('', `NUEVAS (${totalNuevas})`, '', ...digestSeccionTexto(nuevas));
       if (omitidasNuevas > 0) texto.push(`y ${omitidasNuevas} más en la plataforma.`);
     }
     if (reaviso.length > 0) {
-      texto.push('', `SIGUEN ABIERTAS (${totalReaviso})`, '', ...reaviso.map(digestFilaTexto));
+      texto.push('', `SIGUEN ABIERTAS (${totalReaviso})`, '', ...digestSeccionTexto(reaviso));
       if (omitidasReaviso > 0) texto.push(`y ${omitidasReaviso} más en la plataforma.`);
     }
     texto.push('', `Ver todas en la plataforma: ${ACCESS_URL}`);
@@ -989,6 +1031,47 @@ ${securityNoteHtml('Reporte automático del sistema de monitoreo Emeltec. Los si
   });
 }
 
+/**
+ * Varias instalaciones escalaron de tramo en el mismo ciclo: un solo correo,
+ * agrupado por tipo (transmisión / DGA) y dentro de cada tipo por tramo de
+ * horas. Reemplaza la ráfaga de un correo por instalación, que con una caída
+ * transversal llenaba la bandeja.
+ */
+function buildEscalacionesHtml({ generatedAt, dataIssues, dgaIssues }) {
+  const total = dataIssues.length + dgaIssues.length;
+  const hasCritical = [...dataIssues, ...dgaIssues].some((r) => r.tier === 't12');
+  const accentColor = hasCritical ? '#dc2626' : '#ea580c';
+  const accentGradient = hasCritical ? SEVERIDAD_GRADIENT.critica : SEVERIDAD_GRADIENT.alta;
+  const detalle =
+    [
+      dataIssues.length > 0 ? `${dataIssues.length} sin transmitir` : '',
+      dgaIssues.length > 0 ? `${dgaIssues.length} con el reporte DGA atrasado` : '',
+    ]
+      .filter(Boolean)
+      .join(' y ') || 'Sin detalle';
+
+  const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Monitoreo &middot; escalaciones</p>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">${total} ${total === 1 ? 'instalación cruzó' : 'instalaciones cruzaron'} un umbral</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">${escapeHtml(detalle)}. El detalle va agrupado por tiempo sin reportar.</p>
+              <p style="margin:8px 0 0;font-size:12px;color:#94A3B8;">Detectado el ${escapeHtml(formatChile(generatedAt || new Date().toISOString()))}</p>
+            </td>
+          </tr>
+${dataIssues.length > 0 ? renderSection('Transmisión de datos', 'Equipos y telemetría', dataIssues) : ''}
+${dgaIssues.length > 0 ? renderSection('Reportes DGA', 'Cumplimiento regulatorio', dgaIssues) : ''}
+${ctaButtonHtml(ACCESS_URL, 'Ir a la plataforma', accentColor)}
+${securityNoteHtml('Notificación automática del sistema de monitoreo Emeltec. Se agrupan en un solo correo todas las instalaciones que suben de umbral (3h → 6h → 12h+) en el mismo momento.')}`;
+
+  return renderShell({
+    title: 'Escalaciones de monitoreo · Emeltec',
+    preheader: `${total} instalación(es) cruzaron un umbral sin reportar.`,
+    accentColor,
+    accentGradient,
+    contentHtml,
+  });
+}
+
 function buildEventHtml({ eventDetail }) {
   const r = eventDetail;
   const meta = TIER_META[r.tier] || TIER_META.t3;
@@ -1034,6 +1117,7 @@ ${securityNoteHtml('Notificación automática del sistema de monitoreo Emeltec. 
 // Internal — usados por scripts de preview/render. No estable.
 exports._renderHealthDigestHtml = (input) => buildDigestHtml(input);
 exports._renderHealthEventHtml = (input) => buildEventHtml(input);
+exports._renderHealthEscalacionesHtml = (input) => buildEscalacionesHtml(input);
 
 // Renders del ciclo de contraseña, expuestos para poder asertar el HTML: en modo
 // simulado `enviar` solo loguea asunto y texto, así que el HTML —lo que el
@@ -1077,6 +1161,42 @@ exports.sendHealthDigest = async ({
       ]
         .filter(Boolean)
         .join('\n');
+    } else if (mode === 'escalaciones') {
+      const data = dataIssues || [];
+      const dga = dgaIssues || [];
+      const total = data.length + dga.length;
+      if (total === 0) return;
+      const peor = [...data, ...dga].some((r) => r.tier === 't12')
+        ? TIER_META.t12
+        : [...data, ...dga].some((r) => r.tier === 't6')
+          ? TIER_META.t6
+          : TIER_META.t3;
+      subject = `[${peor.short}] ${total} instalaciones sin reportar`;
+      html = buildEscalacionesHtml({ generatedAt, dataIssues: data, dgaIssues: dga });
+      const textLines = [
+        `Escalaciones de monitoreo — ${formatChile(generatedAt || new Date().toISOString())}`,
+        '',
+      ];
+      if (data.length > 0) {
+        textLines.push(`Sin transmisión de datos: ${data.length} instalación(es)`);
+        for (const r of data) {
+          textLines.push(
+            `  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)} sin reportar`,
+          );
+        }
+        textLines.push('');
+      }
+      if (dga.length > 0) {
+        textLines.push(`Reporte DGA atrasado: ${dga.length} informante(s)`);
+        for (const r of dga) {
+          textLines.push(
+            `  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)} de atraso`,
+          );
+        }
+        textLines.push('');
+      }
+      textLines.push(`Plataforma: ${ACCESS_URL}`);
+      text = textLines.join('\n');
     } else {
       const data = dataIssues || [];
       const dga = dgaIssues || [];

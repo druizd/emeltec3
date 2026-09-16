@@ -40,6 +40,7 @@ function evento(over: Partial<EventoDigest> = {}): EventoDigest {
     id: '1',
     alerta_id: 'A1',
     alerta_nombre: 'Caudal alto',
+    condicion: 'sobre_derecho_dga',
     creado_por: 'SA001',
     notificar_user_ids: null,
     notificar_superadmins: true,
@@ -171,6 +172,45 @@ describe('armado del correo', () => {
       '14/09/2026 08:00',
     );
     expect(correo.nuevas.map((f) => f.severidad)).toEqual(['critica', 'media', 'baja']);
+  });
+
+  it('agrupa por tipo de alerta: un bloque por condición, no una lista plana', () => {
+    const correo = correoDeBandeja(
+      bandejaDe([
+        evento({ id: '1', condicion: 'sin_datos', sitio_id: 'S127', severidad: 'alta' }),
+        evento({ id: '2', condicion: 'sobre_derecho_dga', sitio_id: 'S128', severidad: 'alta' }),
+        evento({ id: '3', condicion: 'sin_datos', sitio_id: 'S129', severidad: 'alta' }),
+        evento({ id: '4', condicion: 'sin_datos', sitio_id: 'S130', severidad: 'alta' }),
+      ]),
+      '16/09/2026 08:00',
+    );
+    // Las tres desconexiones juntas y primero, por ser el grupo más grande.
+    expect(correo.nuevas.map((f) => f.tipo)).toEqual([
+      'Sin comunicación del equipo',
+      'Sin comunicación del equipo',
+      'Sin comunicación del equipo',
+      'Caudal sobre el derecho DGA',
+    ]);
+  });
+
+  it('entre grupos manda la severidad, no el tamaño', () => {
+    const correo = correoDeBandeja(
+      bandejaDe([
+        evento({ id: '1', condicion: 'sin_datos', severidad: 'media' }),
+        evento({ id: '2', condicion: 'sin_datos', severidad: 'media' }),
+        evento({ id: '3', condicion: 'dga_slots_fallidos', severidad: 'critica' }),
+      ]),
+      '16/09/2026 08:00',
+    );
+    expect(correo.nuevas[0]!.tipo).toBe('Slots DGA fallidos');
+  });
+
+  it('una condición sin nombre conocido se agrupa por el nombre de la regla', () => {
+    const correo = correoDeBandeja(
+      bandejaDe([evento({ condicion: 'condicion_nueva', alerta_nombre: 'Presión de línea' })]),
+      '16/09/2026 08:00',
+    );
+    expect(correo.nuevas[0]!.tipo).toBe('Presión de línea');
   });
 
   it('el backlog no genera un correo de cientos de filas: se corta y se cuenta', () => {

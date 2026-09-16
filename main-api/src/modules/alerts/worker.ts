@@ -243,11 +243,42 @@ function formatLagHorasMinutos(lagMs: number): string {
   return `${h}h ${m}m`;
 }
 
-export function buildMensaje(alerta: Alerta, valor: number | null): string {
+/**
+ * Horas sin transmitir a partir de las cuales `sin_datos` dispara.
+ *
+ * Vive en `umbral_bajo` (el campo no lo usa esta condición para nada más).
+ * Antes la ventana era el `cooldown_minutos` de la regla, que además hace de
+ * anti-flapping: un solo número para dos cosas distintas, y en minutos, así que
+ * el default de 60 gritaba a la hora de no transmitir. Sin `umbral_bajo` se
+ * cae al comportamiento viejo para no cambiarle la ventana a una regla que
+ * alguien afinó a mano.
+ */
+export function horasSinDatos(alerta: Alerta): number {
+  const h = Number(alerta.umbral_bajo);
+  if (Number.isFinite(h) && h > 0) return h;
+  return Math.max(alerta.cooldown_minutos, 1) / 60;
+}
+
+/** "12 h", "1,5 h" — el umbral como se escribe en el correo. */
+function horasTexto(horas: number): string {
+  const redondeado = Math.round(horas * 10) / 10;
+  return `${String(redondeado).replace('.', ',')} h`;
+}
+
+export function buildMensaje(
+  alerta: Alerta,
+  valor: number | null,
+  /** Tiempo real sin transmitir, cuando se pudo calcular (solo `sin_datos`). */
+  detalle: string | null = null,
+): string {
   const sitio = etiquetaSitio(alerta);
   const severidad = alerta.severidad.toUpperCase();
   if (alerta.condicion === 'sin_datos') {
-    return `[${severidad}] Sin datos en ${sitio}. El equipo no reporta información hace más de ${alerta.cooldown_minutos} minutos.`;
+    // Decir el tiempo real y no solo "pasó el umbral": un pozo que lleva tres
+    // días mudo y uno que acaba de cruzar las 12 h no son el mismo problema, y
+    // el mensaje viejo los describía igual.
+    const cuanto = detalle ? `hace ${detalle}` : `hace más de ${horasTexto(horasSinDatos(alerta))}`;
+    return `[${severidad}] Sin comunicación en ${sitio}. El equipo no transmite ${cuanto} (umbral ${horasTexto(horasSinDatos(alerta))}).`;
   }
   if (alerta.condicion === 'dga_slots_fallidos') {
     return `[${severidad}] ${sitio}. ${valor ?? 0} slot(s) DGA en estado fallido requieren intervención.`;
@@ -963,17 +994,18 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
     // Por eso se acota además por `time` con un margen de un día: cae en uno o
     // dos chunks vía idx_equipo_serial_time y tolera cualquier desfase de reloj
     // razonable.
+    const ventanaMin = Math.max(1, Math.round(horasSinDatos(alerta) * 60));
     const r = await client.query(
       `SELECT time FROM equipo
        WHERE id_serial = $1
          AND time > NOW() - ($2 || ' minutes')::INTERVAL - INTERVAL '1 day'
          AND received_at > NOW() - ($2 || ' minutes')::INTERVAL
        LIMIT 1`,
-      [alerta.id_serial, alerta.cooldown_minutos],
+      [alerta.id_serial, String(ventanaMin)],
     );
     const sinDatos = r.rows.length === 0;
     if (await debeNotificar(client, alerta, () => sinDatos)) {
-      await insertarEvento(client, alerta, null, null);
+      await insertarEvento(client, alerta, null, await lagSinDatos(client, alerta));
     }
     return;
   }
@@ -1000,6 +1032,37 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
   }
 }
 
+/**
+ * Cuánto lleva el equipo sin transmitir, para que el correo lo diga en horas.
+ *
+ * Se consulta solo cuando la alerta YA disparó, que es lo raro: la ventana de
+ * 30 días acota los chunks que Timescale tiene que mirar (ver el comentario de
+ * la query de `sin_datos`), y un equipo mudo hace más de un mes se describe
+ * igual de bien sin el número exacto.
+ */
+async function lagSinDatos(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  alerta: Alerta,
+): Promise<string | null> {
+  try {
+    const r = (await client.query(
+      `SELECT MAX(received_at) AS ultimo FROM equipo
+        WHERE id_serial = $1 AND time > NOW() - INTERVAL '30 days'`,
+      [alerta.id_serial],
+    )) as { rows: Array<{ ultimo: string | Date | null }> };
+    const ultimo = r.rows[0]?.ultimo;
+    if (!ultimo) return null;
+    return formatLagHorasMinutos(Date.now() - new Date(ultimo).getTime());
+  } catch (err) {
+    logger.warn(
+      { err: (err as Error).message, alertaId: alerta.id },
+      'alerts: no se pudo calcular el tiempo sin transmitir',
+    );
+    return null;
+  }
+}
+
 async function insertarEvento(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -1007,7 +1070,7 @@ async function insertarEvento(
   valorNum: number | null,
   valorTexto: string | null,
 ): Promise<void> {
-  const mensaje = buildMensaje(alerta, valorNum);
+  const mensaje = buildMensaje(alerta, valorNum, valorTexto);
   const ctx = {
     ...alerta,
     valor_detectado: formatValor(valorNum),

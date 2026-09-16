@@ -83,7 +83,12 @@ describe('crearAlertasPorDefecto', () => {
     expect(db.inserts).toHaveLength(3);
     // sin_datos guarda la primera variable del reg_map; las DGA su clave implicita.
     expect(db.inserts.map((p) => p[5])).toEqual(['AI24', 'dga', 'caudal']);
-    expect(db.inserts.every((p) => p[10] === 'SA001')).toBe(true);
+    expect(db.inserts.every((p) => p[11] === 'SA001')).toBe(true);
+    // La ventana de "sin datos" son 12 horas y viaja en umbral_bajo; las DGA no
+    // usan umbral. Y NO es crítica: si lo fuera se saltaría el consolidado y
+    // mandaría un correo por pozo.
+    expect(db.inserts.map((p) => p[7])).toEqual([12, null, null]);
+    expect(db.inserts.map((p) => p[8])).toEqual(['alta', 'media', 'alta']);
   });
 
   it('con filtro (selector): crea solo las marcadas', async () => {

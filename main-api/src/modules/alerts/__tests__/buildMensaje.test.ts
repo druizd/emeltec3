@@ -46,8 +46,8 @@ describe('alertas · etiqueta del sitio en el mensaje', () => {
   it('nombra empresa, sub-empresa, sitio y obra DGA, sin el serial', () => {
     const msg = buildMensaje(s119, null);
     expect(msg).toBe(
-      '[CRITICA] Sin datos en CCU · Quilicura · Pozo 10 · OB-1306-98. ' +
-        'El equipo no reporta información hace más de 60 minutos.',
+      '[CRITICA] Sin comunicación en CCU · Quilicura · Pozo 10 · OB-1306-98. ' +
+        'El equipo no transmite hace más de 1 h (umbral 1 h).',
     );
     expect(msg).not.toContain('151.20.47.22');
   });

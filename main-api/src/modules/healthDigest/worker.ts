@@ -2,17 +2,25 @@
  * Worker de salud (healthDigest).
  *
  * - Tick cada minuto: snapshot de lag de transmisión + lag DGA.
- * - Event-driven: si un sitio escala de tier (3h → 6h → 12h+), envía correo
- *   inmediato a los destinatarios suscritos a eventos con umbral <= ese tier.
- * - Digest 07:00 y 16:00 hora Santiago: resumen completo. Si todo OK envía
+ * - Event-driven: si un sitio escala de tier (3h → 6h → 12h+), avisa a los
+ *   destinatarios suscritos a eventos con umbral <= ese tier. Las escalaciones
+ *   de un mismo ciclo van en UN correo agrupado por tipo (transmisión / DGA) y
+ *   por tramo de horas, no en un correo por instalación.
+ * - Digest 06:00 y 15:00 hora Santiago: resumen completo. Si todo OK envía
  *   correo "todo en orden".
  *
  * Destinatarios: tabla `health_digest_destinatario`, administrada desde
  * /administration → "Alertas por correo". Si la lista queda vacía o la query
  * falla, cae a `MONITOR_PRIMARY_EMAIL` para no dejar el monitoreo mudo.
  *
- * Estado en memoria. Restart re-notifica una vez por sitio aún en falla
- * (tradeoff aceptable). Cuando un sitio recupera (< 3h) se resetea su tier.
+ * Arranque: el estado de tiers vive en memoria, así que al levantar el proceso
+ * TODO sitio que ya venía caído figura como escalación nueva. El 16-09-2026 eso
+ * fue un correo por instalación de golpe apenas el container tomó
+ * `ENABLE_HEALTH_DIGEST_WORKER=true`. Por eso el primer ciclo solo CEBA el
+ * estado y no notifica: lo que está caído desde antes del arranque ya sale en
+ * el resumen de las 06:00/15:00, y el correo inmediato queda para lo que
+ * empeora con el worker vivo. `HEALTH_DIGEST_NOTIFY_ON_BOOT=true` lo desactiva.
+ * Cuando un sitio recupera (< 3h) se resetea su tier.
  *
  * Activación: env `ENABLE_HEALTH_DIGEST_WORKER=true`.
  */
@@ -31,6 +39,12 @@ export const MONITOR_PRIMARY = process.env.MONITOR_PRIMARY_EMAIL || 'druiz@emelt
 export const WORKER_ENABLED =
   String(process.env.ENABLE_HEALTH_DIGEST_WORKER ?? 'false').toLowerCase() === 'true';
 /**
+ * Si el primer ciclo tras arrancar puede mandar correos. Default `false`: ver
+ * el bloque "Arranque" de la cabecera.
+ */
+export const NOTIFICAR_AL_ARRANCAR =
+  String(process.env.HEALTH_DIGEST_NOTIFY_ON_BOOT ?? 'false').toLowerCase() === 'true';
+/**
  * Horas de envío del resumen, en UTC-4 fijo (la zona de toda la plataforma).
  * Se corrieron una hora hacia atrás el 06-09-2026: con UTC-4 fijo, en horario
  * de verano las 07:00 caían a las 08:00 de reloj de pared, justo cuando el
@@ -44,7 +58,7 @@ const TIER_ORDER: Record<Tier, number> = { ok: 0, t3: 1, t6: 2, t12: 3 };
 
 interface SendInput {
   to: string;
-  mode: 'event' | 'digest';
+  mode: 'event' | 'escalaciones' | 'digest';
   generatedAt?: string;
   dataIssues?: IssueRow[];
   dgaIssues?: IssueRow[];
@@ -72,6 +86,15 @@ export interface IssueRow {
 const tierState = new Map<string, Tier>();
 const sentDigestSlots = new Set<string>();
 let intervalHandle: NodeJS.Timeout | null = null;
+/** Falso hasta que el primer ciclo dejó el estado de tiers cargado. */
+let estadoCebado = false;
+
+/** Solo para tests: vuelve el worker al estado de recién importado. */
+export function _resetEstadoInterno(): void {
+  tierState.clear();
+  sentDigestSlots.clear();
+  estadoCebado = false;
+}
 
 function tierForLag(lagMs: number): Tier {
   if (lagMs >= 12 * H_MS) return 't12';
@@ -142,14 +165,17 @@ export async function resolveDestinatarios(): Promise<DigestDestinatario[]> {
   return [fallbackDestinatario()];
 }
 
+/** ¿Este destinatario quiere enterarse de una escalación a este tramo? */
+export function leToca(d: DigestDestinatario, tier: Tier): boolean {
+  return d.recibe_eventos && TIER_ORDER[tier] >= TIER_ORDER[d.umbral_evento];
+}
+
 /** Destinatarios que deben recibir un evento de este tier. */
 export function destinatariosParaEvento(
   destinatarios: DigestDestinatario[],
   tier: Tier,
 ): DigestDestinatario[] {
-  return destinatarios.filter(
-    (d) => d.recibe_eventos && TIER_ORDER[tier] >= TIER_ORDER[d.umbral_evento],
-  );
+  return destinatarios.filter((d) => leToca(d, tier));
 }
 
 /** Envía el resumen a un correo puntual (lo usa el botón "Enviar prueba"). */
@@ -209,44 +235,101 @@ export async function buildSnapshot(): Promise<{ data: IssueRow[]; dga: IssueRow
   return { data, dga };
 }
 
-async function detectAndEmitEvents(
-  snap: { data: IssueRow[]; dga: IssueRow[] },
-  destinatarios: DigestDestinatario[],
-): Promise<void> {
-  const all = [...snap.data, ...snap.dga];
-  for (const row of all) {
+/**
+ * Instalaciones que subieron de tramo en este ciclo. Marca el estado nuevo
+ * aunque nadie esté suscrito a ese nivel: así el siguiente escalón sigue siendo
+ * un evento nuevo y no se re-notifica el mismo salto en cada ciclo.
+ */
+export function detectarEscalaciones(snap: { data: IssueRow[]; dga: IssueRow[] }): IssueRow[] {
+  const escaladas: IssueRow[] = [];
+  for (const row of [...snap.data, ...snap.dga]) {
     const key = `${row.kind}:${row.id}`;
     const prev = tierState.get(key) ?? 'ok';
     if (TIER_ORDER[row.tier] > TIER_ORDER[prev]) {
-      // El tier se marca aunque nadie esté suscrito a este nivel: así el
-      // siguiente escalón sigue siendo un evento nuevo y no se re-notifica el
-      // mismo salto en cada ciclo.
       tierState.set(key, row.tier);
-      const targets = destinatariosParaEvento(destinatarios, row.tier);
-      logger.info(
-        {
-          kind: row.kind,
-          site: row.descripcion,
-          tier: row.tier,
-          lagH: (row.lagMs / H_MS).toFixed(1),
-          destinatarios: targets.length,
-        },
-        'healthDigest: escalación → email event',
-      );
-      for (const d of targets) {
-        void emailMod
-          .sendHealthDigest({ to: d.email, mode: 'event', eventDetail: row })
-          .catch((err) =>
-            logger.error(
-              { err: (err as Error).message, to: d.email },
-              'healthDigest: fallo email event',
-            ),
-          );
-      }
+      escaladas.push(row);
     } else if (row.tier === 'ok' && prev !== 'ok') {
       tierState.set(key, 'ok');
     }
   }
+  return escaladas;
+}
+
+/**
+ * Manda las escalaciones del ciclo: UN correo por destinatario, con todo lo que
+ * escaló adentro. Antes era un correo por instalación y por destinatario, que
+ * con una caída transversal (o con el worker recién arrancado) significaba
+ * cuarenta correos seguidos.
+ *
+ * Con una sola escalación se manda igual el correo de evento de siempre, que
+ * trae el detalle completo de esa instalación; el agrupado aparece solo cuando
+ * de verdad hay varias.
+ */
+async function emitirEscalaciones(
+  escaladas: IssueRow[],
+  destinatarios: DigestDestinatario[],
+): Promise<void> {
+  for (const d of destinatarios) {
+    const suyas = escaladas.filter((row) => leToca(d, row.tier));
+    if (suyas.length === 0) continue;
+
+    const input: SendInput =
+      suyas.length === 1
+        ? { to: d.email, mode: 'event', eventDetail: suyas[0]! }
+        : {
+            to: d.email,
+            mode: 'escalaciones',
+            generatedAt: new Date().toISOString(),
+            dataIssues: suyas.filter((r) => r.kind === 'data'),
+            dgaIssues: suyas.filter((r) => r.kind === 'dga'),
+          };
+
+    await emailMod
+      .sendHealthDigest(input)
+      .catch((err) =>
+        logger.error(
+          { err: (err as Error).message, to: d.email },
+          'healthDigest: fallo email de escalaciones',
+        ),
+      );
+  }
+}
+
+async function detectAndEmitEvents(
+  snap: { data: IssueRow[]; dga: IssueRow[] },
+  destinatarios: DigestDestinatario[],
+): Promise<void> {
+  const escaladas = detectarEscalaciones(snap);
+
+  // Primer ciclo: el estado en memoria estaba vacío, así que "escaló" todo lo
+  // que ya venía caído desde antes de arrancar. Eso no es noticia — es el
+  // backlog, y sale en el resumen programado.
+  if (!estadoCebado) {
+    estadoCebado = true;
+    if (!NOTIFICAR_AL_ARRANCAR) {
+      logger.info(
+        { instalaciones: escaladas.length },
+        'healthDigest: primer ciclo, estado de tiers cebado sin notificar',
+      );
+      return;
+    }
+  }
+
+  if (escaladas.length === 0) return;
+
+  logger.info(
+    {
+      instalaciones: escaladas.length,
+      data: escaladas.filter((r) => r.kind === 'data').length,
+      dga: escaladas.filter((r) => r.kind === 'dga').length,
+      peorTier: escaladas.reduce<Tier>(
+        (acc, r) => (TIER_ORDER[r.tier] > TIER_ORDER[acc] ? r.tier : acc),
+        'ok',
+      ),
+    },
+    'healthDigest: escalaciones del ciclo → un correo por destinatario',
+  );
+  await emitirEscalaciones(escaladas, destinatarios);
 }
 
 function santiagoSlot(): { hour: number; minute: number; ymd: string } {
@@ -306,7 +389,8 @@ async function maybeSendDigest(
   }
 }
 
-async function runCycle(): Promise<void> {
+/** Un ciclo completo del worker. Exportado para poder testearlo sin timers. */
+export async function runCycle(): Promise<void> {
   beat('healthDigest');
   try {
     const snap = await buildSnapshot();

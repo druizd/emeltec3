@@ -67,6 +67,7 @@ export interface EventoDigest {
   creado_por: string;
   notificar_user_ids: string[] | null;
   notificar_superadmins: boolean | null;
+  condicion: string;
   sitio_id: string;
   sitio_desc: string | null;
   tipo_sitio: string | null;
@@ -85,6 +86,8 @@ export interface EventoDigest {
 
 /** Una fila del correo, ya lista para el template (sin lógica de negocio). */
 export interface FilaDigest {
+  /** Encabezado del grupo al que pertenece la fila ("Sin comunicación", …). */
+  tipo: string;
   severidad: string;
   sitio: string;
   alerta: string;
@@ -220,8 +223,32 @@ export function etiquetaSitioEvento(ev: EventoDigest): string {
     .join(' · ');
 }
 
+/**
+ * Cómo se titula el grupo de una condición en el correo. La clave de
+ * agrupación es la CONDICIÓN, no el nombre de la regla: el nombre lo escribe
+ * quien crea la alerta y dos sitios con el mismo problema pueden tenerlo
+ * distinto, con lo que el agrupado se partiría en dos bloques de uno.
+ */
+const TIPO_POR_CONDICION: Record<string, string> = {
+  sin_datos: 'Sin comunicación del equipo',
+  dga_atrasado: 'Reporte DGA sin comprobante',
+  dga_slots_fallidos: 'Slots DGA fallidos',
+  review_queue_acumulacion: 'Cola de revisión DGA',
+  sobre_derecho_dga: 'Caudal sobre el derecho DGA',
+  consumo_diario: 'Consumo del día sobre el umbral',
+  mayor_que: 'Variable sobre el umbral',
+  menor_que: 'Variable bajo el umbral',
+  igual_a: 'Variable en el valor vigilado',
+  fuera_rango: 'Variable fuera de rango',
+};
+
+export function tipoDeEvento(ev: EventoDigest): string {
+  return TIPO_POR_CONDICION[ev.condicion] ?? ev.alerta_nombre ?? ev.condicion;
+}
+
 export function filaDe(ev: EventoDigest): FilaDigest {
   return {
+    tipo: tipoDeEvento(ev),
     severidad: ev.severidad,
     sitio: etiquetaSitioEvento(ev),
     alerta: ev.alerta_nombre,
@@ -238,9 +265,35 @@ export function filaDe(ev: EventoDigest): FilaDigest {
   };
 }
 
-/** Más grave primero; a igual severidad, lo más antiguo primero. */
+/**
+ * Ordena agrupando por TIPO de alerta: el correo trae un bloque por condición
+ * ("Sin comunicación del equipo — 12 pozos") en vez de una lista plana donde el
+ * mismo problema aparece repetido sitio por sitio.
+ *
+ * Entre bloques manda la peor severidad del bloque, después el tamaño (lo que
+ * afecta a más sitios primero) y por último el nombre, para que el orden sea
+ * estable. Dentro del bloque, lo más grave y lo más antiguo arriba.
+ */
 export function ordenarFilas(evs: EventoDigest[]): EventoDigest[] {
+  const peorPorTipo = new Map<string, number>();
+  const cuentaPorTipo = new Map<string, number>();
+  for (const ev of evs) {
+    const tipo = tipoDeEvento(ev);
+    const rank = SEV_RANK[ev.severidad] ?? 0;
+    peorPorTipo.set(tipo, Math.max(peorPorTipo.get(tipo) ?? 0, rank));
+    cuentaPorTipo.set(tipo, (cuentaPorTipo.get(tipo) ?? 0) + 1);
+  }
+
   return [...evs].sort((a, b) => {
+    const tipoA = tipoDeEvento(a);
+    const tipoB = tipoDeEvento(b);
+    if (tipoA !== tipoB) {
+      const peor = (peorPorTipo.get(tipoB) ?? 0) - (peorPorTipo.get(tipoA) ?? 0);
+      if (peor !== 0) return peor;
+      const cuenta = (cuentaPorTipo.get(tipoB) ?? 0) - (cuentaPorTipo.get(tipoA) ?? 0);
+      if (cuenta !== 0) return cuenta;
+      return tipoA.localeCompare(tipoB, 'es');
+    }
     const rank = (SEV_RANK[b.severidad] ?? 0) - (SEV_RANK[a.severidad] ?? 0);
     if (rank !== 0) return rank;
     return new Date(a.triggered_at).getTime() - new Date(b.triggered_at).getTime();
@@ -316,7 +369,7 @@ const SELECT_EVENTO = `
   SELECT ev.id, ev.alerta_id, ev.sitio_id, ev.variable_key, ev.valor_texto,
          ev.mensaje, ev.severidad, ev.triggered_at, ev.repeticiones, ev.reconocida_at,
          ev.resuelta,
-         a.nombre AS alerta_nombre, a.creado_por,
+         a.nombre AS alerta_nombre, a.condicion, a.creado_por,
          a.notificar_user_ids, a.notificar_superadmins,
          s.descripcion AS sitio_desc, s.tipo_sitio,
          e.nombre AS empresa_nombre, se.nombre AS sub_empresa_nombre,
