@@ -1937,12 +1937,20 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
               -- escalar deja que Postgres lo resuelva una sola vez y lo
               -- empuje al Index Cond del scan, arrancando el indice donde
               -- realmente empieza la cola sin materializar.
-              AND e.time >= GREATEST(
-                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
-                    COALESCE(
-                      (SELECT max_bucket FROM latest_cagg) + $6::interval,
-                      ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-                    )
+              --
+              -- Ojo: el bound va en DOS AND separados, no en un GREATEST().
+              -- GREATEST(const, subquery) no es evaluable en planning time,
+              -- asi que TimescaleDB no puede usarlo para exclusion de chunks
+              -- y termina escaneando TODA la historia comprimida del sitio
+              -- (verificado en prod: 15.5s escaneando chunks de meses atras,
+              -- 500 por statement timeout). El AND simple contra $2 SI es
+              -- constante en planning time y basta para que el chunk
+              -- exclusion pode todo lo anterior al rango pedido; el segundo
+              -- AND (contra el cagg) sigue acotando en runtime como antes.
+              AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND e.time >= COALESCE(
+                    (SELECT max_bucket FROM latest_cagg) + $6::interval,
+                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
                   )
               AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
             GROUP BY 1
@@ -2051,12 +2059,12 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
               -- Mismo fix que en historyQuery: sin CROSS JOIN, latest_cagg
               -- como subquery escalar para que Postgres empuje el bound al
               -- Index Cond en vez de filtrar fila por fila tras un join.
-              AND e.time >= GREATEST(
-                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
-                    COALESCE(
-                      (SELECT max_bucket FROM latest_cagg) + $4::interval,
-                      ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-                    )
+              -- DOS AND, no GREATEST() (ver comentario en historyQuery arriba):
+              -- GREATEST no es planning-time constant, mata la chunk exclusion.
+              AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND e.time >= COALESCE(
+                    (SELECT max_bucket FROM latest_cagg) + $4::interval,
+                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
                   )
               AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
             GROUP BY 1
