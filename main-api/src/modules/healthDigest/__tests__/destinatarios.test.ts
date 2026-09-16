@@ -100,7 +100,8 @@ describe('resolveDestinatarios — fail-open al buzón de respaldo', () => {
         // El respaldo NO se arroga las alertas de seguridad: esas no tienen
         // buzón de fallback, las lee auditAlerts directo de la tabla.
         recibe_seguridad: false,
-        umbral_evento: 't3',
+        // 12 h, igual que el default de la tabla desde el 16-09-2026.
+        umbral_evento: 't12',
         activo: true,
         updated_at: null,
       },

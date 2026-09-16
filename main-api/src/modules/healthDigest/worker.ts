@@ -137,7 +137,9 @@ function fallbackDestinatario(): DigestDestinatario {
     // tabla directamente y una lista vacía significa no enviar. Este fallback es
     // solo del digest, así que no se arroga esa suscripción.
     recibe_seguridad: false,
-    umbral_evento: 't3',
+    // 12 h, igual que el default de la tabla desde el 16-09-2026: un hueco de
+    // 3 h es ruido, y el buzón de respaldo no es lugar para descubrirlo.
+    umbral_evento: 't12',
     activo: true,
     updated_at: null,
   };

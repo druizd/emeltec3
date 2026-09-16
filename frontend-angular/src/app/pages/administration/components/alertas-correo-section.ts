@@ -532,7 +532,10 @@ export class AlertasCorreoSectionComponent {
         // Las de seguridad no se heredan al sumar a alguien al monitoreo: hay que
         // marcarlas a mano. Un cambio de rol es dato sensible, no operación.
         recibe_seguridad: false,
-        umbral_evento: 't3',
+        // 12 h por defecto: el correo inmediato es para el equipo que no
+        // vuelve, no para el hueco de señal de media tarde. Se puede bajar a
+        // 3 h o 6 h en la misma fila.
+        umbral_evento: 't12',
         activo: true,
         updated_at: null,
       },
