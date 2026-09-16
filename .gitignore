@@ -105,3 +105,6 @@ unlighthouse/
 unlighthouse.config.ts
 **/unlighthouse.config.ts
 
+# Scripts de prueba personales — nunca se suben
+grpc-pipeline/test/
+
