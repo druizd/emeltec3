@@ -11,7 +11,9 @@ import {
 import { SkeletonComponent } from '../../components/ui/skeleton';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
 import { RilesBalancePanelComponent } from './riles/riles-balance-panel';
+import { RilesCalidadPanelComponent } from './riles/riles-calidad-panel';
 import { RilesConfigPanelComponent } from './riles/riles-config-panel';
+import { RilesLimitesPanelComponent } from './riles/riles-limites-panel';
 import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
 import { WaterDetailBitacoraComponent } from './components/water-detail-bitacora/water-detail-bitacora';
 import {
@@ -62,7 +64,9 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
     SiteVariableSettingsPanelComponent,
     TelemetryLineChartCardComponent,
     RilesBalancePanelComponent,
+    RilesCalidadPanelComponent,
     RilesConfigPanelComponent,
+    RilesLimitesPanelComponent,
     WaterDetailAlertasComponent,
     WaterDetailBitacoraComponent,
   ],
@@ -156,19 +160,7 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
           @if (activeTab() === 'balance') {
             <app-riles-balance-panel [siteId]="context.site.id" />
           } @else if (activeTab() === 'calidad') {
-            <section
-              class="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center shadow-sm"
-            >
-              <span class="material-symbols-outlined text-[28px] text-slate-300">science</span>
-              <h2 class="mt-3 text-h6 font-semibold text-slate-800">
-                Calidad del efluente: todavía no
-              </h2>
-              <p class="mx-auto mt-1 max-w-xl text-body-sm font-semibold text-slate-500">
-                Acá van los análisis de laboratorio y la carga contaminante en kg, que sale de
-                cruzar la concentración de cada parámetro con el volumen que ya calcula el balance.
-                Falta definir con el cliente la norma, los límites y la frecuencia del autocontrol.
-              </p>
-            </section>
+            <app-riles-calidad-panel [siteId]="context.site.id" />
           } @else if (activeTab() === 'alertas') {
             <app-water-detail-alertas
               [sitioId]="context.site.id"
@@ -185,6 +177,7 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
                 [siteId]="context.site.id"
                 [sitiosHermanos]="context.subCompany.sites || []"
               />
+              <app-riles-limites-panel [siteId]="context.site.id" />
               <app-site-variable-settings-panel
                 [siteId]="context.site.id"
                 [site]="context.site"
