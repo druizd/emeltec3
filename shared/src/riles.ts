@@ -120,3 +120,148 @@ export interface RilesBalancePayload {
   hasta: string;
   puntos: RilesBalancePoint[];
 }
+
+// ── Laboratorio (fase 2) ─────────────────────────────────────────────────────
+
+/** Quién tomó la muestra. Define el peso que tiene el resultado. */
+export type RilesTipoMuestra = 'autocontrol' | 'fiscalizacion' | 'interna';
+
+/** Un límite se escribe en concentración (mg/L) o en carga (kg por período). */
+export type RilesTipoLimite = 'concentracion' | 'carga';
+
+/**
+ * Veredicto de un resultado contra su límite.
+ *
+ * `sin_limite`   = nadie declaró un límite para ese parámetro y esa norma.
+ * `sin_comparar` = hay límite, pero no se puede contrastar: las unidades no son
+ *                  convertibles, o el "< LD" del laboratorio cae por encima del
+ *                  límite y el método no alcanza a resolverlo. Nunca `excede`:
+ *                  el valor real puede estar de los dos lados.
+ */
+export type RilesEstadoResultado = 'ok' | 'excede' | 'bajo_minimo' | 'sin_limite' | 'sin_comparar';
+
+/** Una fila del catálogo global de parámetros. No cuelga del sitio. */
+export interface RilesParametro {
+  codigo: string;
+  nombre: string;
+  /** Unidad canónica. Un resultado en otra unidad se convierte a ésta. */
+  unidad: string;
+  /**
+   * FALSE para lo que no es una concentración másica: pH (logarítmico),
+   * temperatura (intensiva), coliformes (recuento). Multiplicarlos por m³ no
+   * da kg de nada, así que su carga queda en NULL.
+   */
+  aplica_carga: boolean;
+  grupo: string;
+  orden: number;
+  activo: boolean;
+}
+
+export interface RilesLimite {
+  id: string;
+  sitio_id: string;
+  parametro: string;
+  norma: RilesNorma;
+  tipo: RilesTipoLimite;
+  /** Piso. Sólo el pH y la temperatura lo usan en la práctica. */
+  limite_min: number | null;
+  limite_max: number | null;
+  unidad: string;
+  /** `YYYY-MM-DD`. */
+  vigencia_desde: string;
+  /** `YYYY-MM-DD`, o NULL si sigue vigente. */
+  vigencia_hasta: string | null;
+  nota: string | null;
+  /** Poblado por el JOIN con el catálogo; no viaja en el POST. */
+  parametro_nombre?: string | null;
+  created_at?: string;
+}
+
+export interface CreateRilesLimitePayload {
+  parametro: string;
+  norma: RilesNorma;
+  tipo?: RilesTipoLimite;
+  limite_min?: number | null;
+  limite_max?: number | null;
+  unidad: string;
+  vigencia_desde: string;
+  vigencia_hasta?: string | null;
+  nota?: string | null;
+}
+
+export interface RilesResultado {
+  id: string;
+  muestra_id: string;
+  parametro: string;
+  valor: number;
+  unidad: string;
+  /** El laboratorio informó "< LD": `valor` es el límite de detección. */
+  bajo_ld: boolean;
+  nota: string | null;
+}
+
+/** Un resultado ya cruzado con el catálogo, su límite vigente y el volumen. */
+export interface RilesResultadoEvaluado extends RilesResultado {
+  parametro_nombre: string | null;
+  unidad_canonica: string | null;
+  /** `valor` llevado a la unidad canónica. NULL si no fue convertible. */
+  valor_norm: number | null;
+  /** Carga contaminante: mg/L × m³ ÷ 1000. NULL si no aplica o falta volumen. */
+  carga_kg: number | null;
+  /** La carga salió de un "< LD": es una cota superior, no una medición. */
+  carga_es_cota: boolean;
+  estado: RilesEstadoResultado;
+  /** El límite ya convertido a la unidad canónica del parámetro. */
+  limite_min: number | null;
+  limite_max: number | null;
+  /** Unidad en que se declaró el límite, antes de convertir. */
+  limite_unidad: string | null;
+  /** Cuánto del techo ocupa el valor, en %. Alimenta la barra de la vista. */
+  uso_limite_pct: number | null;
+}
+
+export interface RilesMuestra {
+  id: string;
+  sitio_id: string;
+  /** Fecha de la TOMA, no la del informe. `YYYY-MM-DD`. */
+  fecha_muestra: string;
+  tipo: RilesTipoMuestra;
+  laboratorio: string | null;
+  n_informe: string | null;
+  punto: string | null;
+  /** Id en `documentos` del PDF del laboratorio. */
+  documento_id: string | null;
+  nota: string | null;
+  created_at?: string;
+  created_by?: string | null;
+  resultados: RilesResultado[];
+}
+
+export interface RilesMuestraEvaluada extends Omit<RilesMuestra, 'resultados'> {
+  /** Volumen descargado el día de la muestra. NULL si no hay balance ese día. */
+  volumen_dia_m3: number | null;
+  /** El volumen vino del coeficiente declarado, no de un medidor. */
+  volumen_estimado: boolean;
+  /** La norma del sitio al momento de evaluar. NULL si no está configurada. */
+  norma: RilesNorma | null;
+  resultados: RilesResultadoEvaluado[];
+  /** Cuántos resultados se pasan del límite, por arriba o por abajo. */
+  n_excede: number;
+}
+
+export interface CreateRilesMuestraPayload {
+  fecha_muestra: string;
+  tipo?: RilesTipoMuestra;
+  laboratorio?: string | null;
+  n_informe?: string | null;
+  punto?: string | null;
+  documento_id?: string | null;
+  nota?: string | null;
+  resultados: {
+    parametro: string;
+    valor: number;
+    unidad: string;
+    bajo_ld?: boolean;
+    nota?: string | null;
+  }[];
+}

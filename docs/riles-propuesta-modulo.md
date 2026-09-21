@@ -7,7 +7,7 @@
 convertido en un módulo real, con el **balance hídrico pozo→ril** como primer
 entregable y el espacio ya reservado para los parámetros de laboratorio.
 
-**Estado:** fases 0 y 1 implementadas (ver [§10 Plan](#10-plan)). Falta la
+**Estado:** fases 0, 1 y 2 implementadas (ver [§10 Plan](#10-plan)). Falta la
 configuración del sitio real de Doñihue, que depende de las respuestas de
 [§11](#11-lo-que-falta-preguntarle-a-doñihue).
 
@@ -47,7 +47,7 @@ la UI.
 | Decisión               | Resuelto                                                                                                |
 | ---------------------- | ------------------------------------------------------------------------------------------------------- |
 | Qué se calcula primero | **Balance hídrico**: m³ que entran por los pozos vs m³ que salen como RIL, y el coeficiente de descarga |
-| Laboratorio            | No entra en la primera fase, pero **el modelo de datos lo deja listo** (§6): se agrega sin migrar nada  |
+| Laboratorio            | Entra en la fase 2 (§6), encima del volumen de la fase 1: la carga en kg necesita las dos mitades       |
 | Origen del caudal      | **Configurable por sitio**: medidor propio, derivado de los sitios ligados, o mixto                     |
 | Normativa              | **Tabla de límites configurable**, con DS 90, DS 46 y DS 609 soportados. Doñihue se define después      |
 
@@ -220,10 +220,9 @@ prenderlo en producción es una variable de entorno, no un despliegue.
 
 ---
 
-## 6. El espacio para el laboratorio
+## 6. El laboratorio
 
-No se construye ahora. Se define ahora para que entre después sin mover nada de
-lo anterior:
+Construido en la fase 2 (migración `014_riles_laboratorio.js`):
 
 | Tabla                     | Qué guarda                                                                           |
 | ------------------------- | ------------------------------------------------------------------------------------ |
@@ -232,17 +231,45 @@ lo anterior:
 | `riles_muestra`           | Un muestreo: fecha, laboratorio, N° de informe, tipo (autocontrol / fiscalización)   |
 | `riles_muestra_resultado` | Un valor por parámetro, con marca de "bajo el límite de detección"                   |
 
+El catálogo es **global**, lo siembra la migración con 36 parámetros y no cuelga
+del sitio: el DBO5 es el mismo para todos, lo que cambia por sitio es el límite.
 El informe de laboratorio en PDF se cuelga de la tabla `documentos` que ya
-existe, no de un campo nuevo.
+existe, con `ON DELETE SET NULL`: borrar el PDF no borra el resultado analítico.
 
-Con eso, la carga sale de cruzar `riles_muestra_resultado` con el volumen del
-período que ya calcula la fase 1. **Lo único que la fase 1 tiene que respetar**
-es que el volumen por período sea consultable por rango arbitrario de fechas, no
-sólo por mes cerrado: una muestra es de un día, y la carga se compara contra el
-volumen de ese día o de esa jornada.
+La carga sale de cruzar `riles_muestra_resultado` con el volumen del día que
+calcula la fase 1 — `mg/L × m³ ÷ 1000 = kg`. Eso funciona porque el balance es
+consultable por rango arbitrario de fechas y no sólo por mes cerrado: una
+muestra es de un día, y la carga se compara contra el volumen de ese día.
 
-`riles_config.norma` se crea desde la fase 1 aunque todavía no haya límites: es
-lo que después decide qué tabla de límites aplica.
+`riles_config.norma` decide qué límites aplican. Un sitio sin norma muestra sus
+resultados pero no emite ningún veredicto, y la pantalla lo dice.
+
+### Las tres cosas que el cálculo se niega a adivinar
+
+1. **No todo parámetro tiene carga.** El pH es logarítmico y la temperatura es
+   intensiva: multiplicarlos por m³ no da kg de nada. `aplica_carga` lo marca en
+   el catálogo en vez de dejar que el cálculo lo deduzca de la unidad.
+2. **Un límite puede tener piso y techo.** El pH se pasa por abajo (5,5) y por
+   arriba (9,0); la DBO5 sólo por arriba. Dos columnas nullable, no una.
+3. **La unidad viaja con el dato.** Un metal informado en µg/L comparado contra
+   un límite en mg/L da un veredicto mil veces malo. Si las unidades no son
+   convertibles, el resultado queda `sin_comparar` — nunca `ok`. Mismo accidente
+   que la fase 1 evitó normalizando a m³.
+
+### El "< LD" no es una medición
+
+Cuando el laboratorio informa `< LD`, no midió: dijo que su método no ve por
+debajo de cierto umbral, y el valor guardado es ese umbral. El veredicto se
+emite sólo cuando el umbral alcanza para decidir:
+
+| Situación               | Veredicto      | Por qué                                                   |
+| ----------------------- | -------------- | --------------------------------------------------------- |
+| LD por debajo del techo | `ok`           | El verdadero es menor que el LD, así que también cumple   |
+| LD por encima del techo | `sin_comparar` | El verdadero puede estar de los dos lados. Nunca `excede` |
+| LD por debajo del piso  | `bajo_minimo`  | Menor que el LD es menor que el piso: determinante        |
+
+La carga que sale de un `< LD` es una **cota superior**, no una medición, y
+viaja marcada con `carga_es_cota` — la pantalla le pone un `<` adelante.
 
 ---
 
@@ -250,21 +277,36 @@ lo que después decide qué tabla de límites aplica.
 
 Bajo el prefijo que ya usan los sitios (`/api/companies/sites/:siteId/...`):
 
-| Método            | Ruta                      | Quién             |
-| ----------------- | ------------------------- | ----------------- |
-| `GET`             | `.../riles/config`        | Lectura del sitio |
-| `PUT`             | `.../riles/config`        | Admin, SuperAdmin |
-| `GET`             | `.../riles/fuentes`       | Lectura del sitio |
-| `POST` / `DELETE` | `.../riles/fuentes[/:id]` | Admin, SuperAdmin |
-| `GET`             | `.../riles/balance`       | Lectura del sitio |
+| Método            | Ruta                       | Quién             |
+| ----------------- | -------------------------- | ----------------- |
+| `GET`             | `.../riles/config`         | Lectura del sitio |
+| `PUT`             | `.../riles/config`         | Admin, SuperAdmin |
+| `GET`             | `.../riles/fuentes`        | Lectura del sitio |
+| `POST` / `DELETE` | `.../riles/fuentes[/:id]`  | Admin, SuperAdmin |
+| `GET`             | `.../riles/balance`        | Lectura del sitio |
+| `GET`             | `.../riles/parametros`     | Lectura del sitio |
+| `GET`             | `.../riles/limites`        | Lectura del sitio |
+| `POST` / `DELETE` | `.../riles/limites[/:id]`  | Admin, SuperAdmin |
+| `GET`             | `.../riles/muestras[/:id]` | Lectura del sitio |
+| `POST` / `DELETE` | `.../riles/muestras[/:id]` | Admin, SuperAdmin |
 
 `GET .../riles/balance?desde=&hasta=&granularidad=dia|mes` devuelve, por período:
 `volumen_entrada_m3`, `volumen_salida_m3`, `coeficiente_pct`, `consumo_neto_m3`,
 `completo` (bool) y el **detalle por fuente**, que es lo que permite explicar un
 coeficiente raro sin salir de la pantalla.
 
-El `DELETE` de una fuente **cierra la vigencia**, no borra la fila. Borrarla
-cambiaría el histórico que el cliente ya vio.
+El `DELETE` de una fuente y el de un límite **cierran la vigencia**, no borran la
+fila. Borrarlas cambiaría el histórico que el cliente ya vio: la muestra de
+marzo tiene que seguir leyéndose contra el límite que regía en marzo.
+
+El `DELETE` de una **muestra sí borra**, y es la única excepción del módulo. Una
+muestra no es un dato declarado que alguien ya vio en un balance: es la
+transcripción de un informe de laboratorio, y una transcripción equivocada se
+corrige borrándola y volviéndola a cargar.
+
+`GET .../riles/muestras?desde=&hasta=` devuelve cada muestra ya evaluada: el
+volumen del día que le corresponde, la carga en kg de cada parámetro, el límite
+vigente a esa fecha y el veredicto. Por defecto, los últimos 12 meses.
 
 ---
 
@@ -277,7 +319,7 @@ La vista pasó de demo a real y ganó pestañas, al estilo de la de pozos
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
 | **Monitoreo**  | Nivel de cámara, caudal y volumen del mes, **+ pH, conductividad y temperatura** cuando el sitio los tiene mapeados   |
 | **Balance**    | Tarjetas de entrada / salida / coeficiente / neto, tabla por período con barra de proporción, y el detalle por fuente |
-| **Calidad**    | Fase 2. Queda con estado vacío explícito que dice qué va a ir ahí, no oculta                                          |
+| **Calidad**    | Muestras del laboratorio con su carga en kg, el límite vigente y el veredicto, más el formulario de carga             |
 | **Alertas**    | Reusa `water-detail-alertas`                                                                                          |
 | **Bitácora**   | Reusa `water-detail-bitacora`                                                                                         |
 | **Configurar** | `riles_config` + el editor de fuentes + `site-variable-settings-panel`                                                |
@@ -329,12 +371,27 @@ Lo genuinamente nuevo son dos tablas, un servicio de balance y una pestaña.
 
 ## 10. Plan
 
-| Fase  | Qué                                                                                                                  | Estado    |
-| ----- | -------------------------------------------------------------------------------------------------------------------- | --------- |
-| **0** | Cablear el `daily-worker` de contadores en `server.js`                                                               | ✅ hecho  |
-| **1** | `riles_config` + `riles_fuente`, servicio de balance, endpoints, pestaña Balance, editor de fuentes, limpiar la demo | ✅ hecho  |
-| **2** | Laboratorio: catálogo de parámetros, límites por norma, muestras, cargas en kg, alerta por superación                | pendiente |
-| **3** | Informe mensual descargable (el botón que se sacó de la vista)                                                       | pendiente |
+| Fase   | Qué                                                                                                                  | Estado    |
+| ------ | -------------------------------------------------------------------------------------------------------------------- | --------- |
+| **0**  | Cablear el `daily-worker` de contadores en `server.js`                                                               | ✅ hecho  |
+| **1**  | `riles_config` + `riles_fuente`, servicio de balance, endpoints, pestaña Balance, editor de fuentes, limpiar la demo | ✅ hecho  |
+| **2**  | Laboratorio: catálogo de parámetros, límites por norma, muestras, cargas en kg, pestaña Calidad                      | ✅ hecho  |
+| **2b** | Aviso por correo cuando una muestra excede. Queda fuera: ver más abajo                                               | pendiente |
+| **3**  | Informe mensual descargable (el botón que se sacó de la vista)                                                       | pendiente |
+
+### Por qué el aviso por correo quedó fuera de la fase 2
+
+La excedencia **sí se calcula y sí se ve**: cada resultado trae su veredicto y
+la muestra trae `n_excede`, que la pantalla muestra como badge rojo. Lo que no
+existe todavía es el correo.
+
+El motor de alertas del resto de la plataforma evalúa telemetría contra reglas
+guardadas en la tabla `alertas`, y sólo avisa de lo que alguien configuró como
+fila. Una excedencia de laboratorio no es telemetría: es un evento puntual en el
+momento en que se transcribe el informe. Encajarla ahí significa decidir si es
+una regla configurable por sitio o un aviso fijo, quién lo recibe, y si entra al
+consolidado de 08:00/18:00 o sale inmediato como las críticas. Son decisiones de
+producto, no de implementación, y ninguna bloquea lo que ya está andando.
 
 La fase 1 sirve sola: un cliente que no tiene análisis de laboratorio igual ve su
 balance.
@@ -354,6 +411,17 @@ balance.
 | `frontend-angular/src/app/pages/companies/riles/`                       | Pestaña Balance y editor de config/fuentes           |
 | `frontend-angular/src/app/pages/companies/company-site-riles-detail.ts` | Pestañas, meses desde contadores, demo fuera         |
 
+Fase 2:
+
+| Archivo                                                    | Qué                                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------- |
+| `main-api/migrations/014_riles_laboratorio.js`             | Las cuatro tablas + la siembra del catálogo (36 parám.) |
+| `main-api/src/modules/riles/laboratorio.ts`                | Unidades, carga en kg y veredicto. Aritmética pura      |
+| `main-api/src/modules/riles/lab-repo.ts`                   | CRUD del catálogo, límites, muestras y resultados       |
+| `main-api/src/modules/riles/__tests__/laboratorio.test.ts` | 38 tests del cálculo                                    |
+| `frontend-angular/.../riles/riles-calidad-panel.ts`        | Pestaña Calidad y el formulario de carga de muestras    |
+| `frontend-angular/.../riles/riles-limites-panel.ts`        | Editor de límites, dentro de Configurar                 |
+
 ### Cómo se prende el worker diario
 
 No requiere despliegue: el worker ya está cableado y su kill switch es una
@@ -370,6 +438,24 @@ docker logs emeltec-api --since 2m | grep contadores-daily
 
 Debe aparecer `contadores-daily worker iniciado`. Si dice
 `contadores-daily worker deshabilitado`, la variable no llegó al contenedor.
+
+### Las migraciones 013 y 014 no las verifica CI
+
+Vale la pena saberlo antes de desplegarlas, porque el modo de falla es feo.
+
+`main-api/Dockerfile` arranca con `node migrations/run.js && node dist/server.js`
+y el runner aborta con exit 1 ante cualquier fallo, así que **una migración que
+revienta deja el contenedor sin levantar el server**, no sólo sin la tabla.
+
+El job `db-tests` de CI dice en su comentario que valida las migraciones antes de
+producción, y es cierto para las de `infra-db/migrations/*.sql` — las aplica
+contra un TimescaleDB real. Pero las de `main-api/migrations/*.js`, que son las
+que corren en producción, no las toca ninguna. Su SQL llega sin compuerta.
+
+Cablear `run.js` a ese job sería el arreglo, y no se hizo acá porque hoy falla
+por huecos previos: `sitio_equipo` (migración 010) y `audit_log` no están en
+`infra-db/init-db/01-init-schema.sql`, así que el runner se cae en la 010 antes
+de llegar a las de RILes. Es una limpieza aparte, no de este módulo.
 
 ---
 

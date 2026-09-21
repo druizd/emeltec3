@@ -132,6 +132,56 @@ if (rilesController) {
     requireSiteAccess('siteId'),
     rilesController.getRilesBalanceHandler,
   );
+  // ── Laboratorio ────────────────────────────────────────────────────────────
+  // El catálogo de parámetros es global, pero cuelga del sitio para no abrir
+  // una ruta sin `requireSiteAccess` en un router que todo lo tiene protegido.
+  router.get(
+    '/sites/:siteId/riles/parametros',
+    requireSiteAccess('siteId'),
+    rilesController.listRilesParametrosHandler,
+  );
+  router.get(
+    '/sites/:siteId/riles/limites',
+    requireSiteAccess('siteId'),
+    rilesController.listRilesLimitesHandler,
+  );
+  router.post(
+    '/sites/:siteId/riles/limites',
+    requireSiteAccess('siteId'),
+    requireRole(...RILES_ADMIN_ROLES),
+    rilesController.createRilesLimiteHandler,
+  );
+  // DELETE cierra la vigencia; no borra la fila.
+  router.delete(
+    '/sites/:siteId/riles/limites/:limiteId',
+    requireSiteAccess('siteId'),
+    requireRole(...RILES_ADMIN_ROLES),
+    rilesController.cerrarRilesLimiteHandler,
+  );
+  router.get(
+    '/sites/:siteId/riles/muestras',
+    requireSiteAccess('siteId'),
+    rilesController.listRilesMuestrasHandler,
+  );
+  router.get(
+    '/sites/:siteId/riles/muestras/:muestraId',
+    requireSiteAccess('siteId'),
+    rilesController.getRilesMuestraHandler,
+  );
+  router.post(
+    '/sites/:siteId/riles/muestras',
+    requireSiteAccess('siteId'),
+    requireRole(...RILES_ADMIN_ROLES),
+    rilesController.createRilesMuestraHandler,
+  );
+  // La muestra sí se borra: es la transcripción de un informe, no un dato
+  // declarado que el cliente ya vio en un balance.
+  router.delete(
+    '/sites/:siteId/riles/muestras/:muestraId',
+    requireSiteAccess('siteId'),
+    requireRole(...RILES_ADMIN_ROLES),
+    rilesController.deleteRilesMuestraHandler,
+  );
 }
 if (siteOperacionConfigController) {
   router.get(
