@@ -27,11 +27,11 @@ minuto. El cagg materializa una copia casi 1:1 de la tabla de la que sale.
 
 Y esa copia cuesta:
 
-|                            | Tamaño                        |
-| -------------------------- | ----------------------------- |
-| Base completa              | 6.601 MB                      |
+|                            | Tamaño                          |
+| -------------------------- | ------------------------------- |
+| Base completa              | 6.601 MB                        |
 | `equipo_1min`              | **3.936 MB — el 60% del total** |
-| `equipo` crudo, comprimido | 171 MB                        |
+| `equipo` crudo, comprimido | 171 MB                          |
 
 La copia pesa 23 veces más que el original, y encima responde 53 veces más
 lento porque le falta el `segmentby` que el original sí tiene.
