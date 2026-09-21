@@ -265,6 +265,19 @@ SELECT add_continuous_aggregate_policy('equipo_1min',
 CREATE INDEX IF NOT EXISTS idx_equipo_1min_serial_bucket
     ON equipo_1min (id_serial, bucket DESC);
 
+-- Columnstore: sin segmentby, leer un mes de UN serial toca casi una pagina por
+-- fila (los seriales se intercalan en orden de bucket). compress_after DEBE ser
+-- mayor que el start_offset de arriba — TimescaleDB no lo valida.
+-- Ver infra-db/migrations/2026-09-21-equipo-caggs-compression.sql.
+ALTER MATERIALIZED VIEW equipo_1min SET (
+    timescaledb.compress           = true,
+    timescaledb.compress_segmentby = 'id_serial',
+    timescaledb.compress_orderby   = 'bucket DESC'
+);
+
+SELECT add_compression_policy('equipo_1min',
+    compress_after => INTERVAL '14 days', if_not_exists => TRUE);
+
 -- 5 min — contadores/jornadas, gap analysis 30 dias
 CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_5min
 WITH (timescaledb.continuous) AS
@@ -280,6 +293,16 @@ SELECT add_continuous_aggregate_policy('equipo_5min',
 
 CREATE INDEX IF NOT EXISTS idx_equipo_5min_serial_bucket
     ON equipo_5min (id_serial, bucket DESC);
+
+-- Columnstore: mismo motivo que equipo_1min. 45 dias > los 30 del start_offset.
+ALTER MATERIALIZED VIEW equipo_5min SET (
+    timescaledb.compress           = true,
+    timescaledb.compress_segmentby = 'id_serial',
+    timescaledb.compress_orderby   = 'bucket DESC'
+);
+
+SELECT add_compression_policy('equipo_5min',
+    compress_after => INTERVAL '45 days', if_not_exists => TRUE);
 
 -- 1 hora — DGA telemetria horaria, vistas medias
 CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_hourly
