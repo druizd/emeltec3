@@ -12,7 +12,6 @@ import type { RegMap } from '../sites/types';
 import { siteUrl } from '../../utils/siteUrl';
 import { CHILE_TIME_ZONE } from '../../shared/time';
 import { destinatariosDeAlerta, nombreCompleto } from './destinatarios';
-import { procesarDigestPendiente } from './digest';
 interface AlertRegla {
   nombre: string;
   severidad: string;
@@ -54,25 +53,6 @@ const { beat } = heartbeatMod;
 
 const POLL_INTERVAL_MS = Number(process.env.ALERT_POLL_MS ?? 60_000);
 
-/**
- * Severidades que mandan correo al instante. El resto queda en la cola del
- * consolidado (`notificado = FALSE`) y sale a las 08:00 / 18:00. Default
- * espejo del de appConfig, para tests que mockean `config` sin `alertas`.
- */
-const SEVERIDADES_INMEDIATAS_DEFAULT = ['critica'];
-
-function esInmediata(severidad: string): boolean {
-  const cfg = (config as { alertas?: { digest?: { enabled?: boolean; inmediato?: string[] } } })
-    .alertas?.digest;
-  // Con el consolidado apagado se vuelve al correo inmediato por evento (pero
-  // sin la repetición por cooldown, que ya no existe).
-  if (cfg?.enabled === false) return true;
-  const lista =
-    Array.isArray(cfg?.inmediato) && cfg.inmediato.length > 0
-      ? cfg.inmediato
-      : SEVERIDADES_INMEDIATAS_DEFAULT;
-  return lista.includes(String(severidad).toLowerCase());
-}
 const DIAS_VALIDOS = [
   'domingo',
   'lunes',
@@ -243,11 +223,42 @@ function formatLagHorasMinutos(lagMs: number): string {
   return `${h}h ${m}m`;
 }
 
-export function buildMensaje(alerta: Alerta, valor: number | null): string {
+/**
+ * Horas sin transmitir a partir de las cuales `sin_datos` dispara.
+ *
+ * Vive en `umbral_bajo` (el campo no lo usa esta condición para nada más).
+ * Antes la ventana era el `cooldown_minutos` de la regla, que además hace de
+ * anti-flapping: un solo número para dos cosas distintas, y en minutos, así que
+ * el default de 60 gritaba a la hora de no transmitir. Sin `umbral_bajo` se
+ * cae al comportamiento viejo para no cambiarle la ventana a una regla que
+ * alguien afinó a mano.
+ */
+export function horasSinDatos(alerta: Alerta): number {
+  const h = Number(alerta.umbral_bajo);
+  if (Number.isFinite(h) && h > 0) return h;
+  return Math.max(alerta.cooldown_minutos, 1) / 60;
+}
+
+/** "12 h", "1,5 h" — el umbral como se escribe en el correo. */
+function horasTexto(horas: number): string {
+  const redondeado = Math.round(horas * 10) / 10;
+  return `${String(redondeado).replace('.', ',')} h`;
+}
+
+export function buildMensaje(
+  alerta: Alerta,
+  valor: number | null,
+  /** Tiempo real sin transmitir, cuando se pudo calcular (solo `sin_datos`). */
+  detalle: string | null = null,
+): string {
   const sitio = etiquetaSitio(alerta);
   const severidad = alerta.severidad.toUpperCase();
   if (alerta.condicion === 'sin_datos') {
-    return `[${severidad}] Sin datos en ${sitio}. El equipo no reporta información hace más de ${alerta.cooldown_minutos} minutos.`;
+    // Decir el tiempo real y no solo "pasó el umbral": un pozo que lleva tres
+    // días mudo y uno que acaba de cruzar las 12 h no son el mismo problema, y
+    // el mensaje viejo los describía igual.
+    const cuanto = detalle ? `hace ${detalle}` : `hace más de ${horasTexto(horasSinDatos(alerta))}`;
+    return `[${severidad}] Sin comunicación en ${sitio}. El equipo no transmite ${cuanto} (umbral ${horasTexto(horasSinDatos(alerta))}).`;
   }
   if (alerta.condicion === 'dga_slots_fallidos') {
     return `[${severidad}] ${sitio}. ${valor ?? 0} slot(s) DGA en estado fallido requieren intervención.`;
@@ -283,12 +294,13 @@ async function notificarUsuarios(
 }
 
 /**
- * Decide si este evento manda correo ahora o espera al consolidado.
+ * Manda el correo de la incidencia. Es inmediato y ocurre UNA sola vez: llegar
+ * hasta acá ya significa que `debeNotificar` abrió un episodio nuevo, y mientras
+ * ese episodio no se dé por recibido no se abre otro (ver `debeNotificar`).
  *
- * Una crítica no puede esperar hasta las 18:00, pero el resto sí: encoladas
- * salen todas juntas en un correo por destinatario. "Encolar" no es hacer nada
- * — el evento ya está insertado con `notificado = FALSE`, que ES la cola; lo
- * único que hay que hacer es no mandar el correo suelto.
+ * Acá vivía el desvío al consolidado de las 08:00/18:00, que se sacó el
+ * 16-09-2026: la alerta del cliente es inmediata. El volumen no lo causaba la
+ * inmediatez sino la repetición, y esa se corta en el episodio.
  */
 function entregarNotificacion(
   alerta: Alerta & { valor_detectado: string; condicion_texto: string },
@@ -296,13 +308,6 @@ function entregarNotificacion(
   mensaje: string,
   etiqueta: string,
 ): void {
-  if (!esInmediata(alerta.severidad)) {
-    logger.info(
-      { alertaId: alerta.id, eventoId, severidad: alerta.severidad },
-      'alerts: evento encolado para el consolidado',
-    );
-    return;
-  }
   notificarUsuarios(alerta, eventoId, mensaje).catch((err) =>
     logger.error({ err: (err as Error).message }, `alerts: notificacion ${etiqueta} falló`),
   );
@@ -717,23 +722,29 @@ async function getConsumoDiarioActual(client: any, alerta: Alerta): Promise<Cons
  * consultarla, y las condiciones DGA la resuelven con un COUNT sobre `dato_dga`
  * que no queremos pagar cada 60s (ADR-6a).
  *
- * Un aviso por episodio. Mientras haya un evento ABIERTO para la regla —
- * reconocido o no — las repeticiones se agrupan en él y no se genera evento
- * nuevo ni correo. Antes el cooldown solo miraba `triggered_at` sin importar el
- * estado, así que una condición que no se normaliza sola (un totalizador
- * acumulado, un slot DGA fallido) producía un aviso cada `cooldown_minutos`
- * indefinidamente: con el default de 60, un correo por hora por regla hasta que
- * alguien entrara a la plataforma a reconocer una por una.
+ * UN correo por incidencia, y el acuse de recibo es lo que rearma.
  *
- * El recordatorio de que algo sigue abierto ya no es ese correo repetido: es la
- * sección "siguen abiertas" del consolidado (ver `digest.ts`), una vez al día.
+ * Mientras haya un evento ABIERTO para la regla, las repeticiones se agrupan en
+ * él: ni evento nuevo ni correo. La plataforma muestra una sola alerta con las
+ * horas que lleva sin resolverse, no una fila por repetición.
  *
- * Rearme: si la condición se normaliza, el evento abierto se resuelve solo
- * (`resuelta_motivo = 'rearme_automatico'`) para que la próxima vez que ocurra
- * vuelva a avisar de verdad. Esto vale también para un evento sin reconocer: la
- * alternativa —dejarlo abierto para siempre— deja la regla muda de ahí en
- * adelante, que es peor que perder el pendiente de la bandeja. El cierre queda
- * marcado y con las repeticiones que alcanzó a acumular.
+ * Lo que decide si el episodio se cierra cuando la condición se normaliza es el
+ * ACUSE, no la condición:
+ *
+ *   - Sin acuse (`reconocida_at IS NULL`): el episodio sigue abierto aunque la
+ *     condición se normalice. Si vuelve a dispararse, cae en el mismo episodio y
+ *     no manda nada. Es la regla que pidió el usuario: aunque se repita y nadie
+ *     la dé por recibida, el correo sale una sola vez y el resto vive en la
+ *     plataforma.
+ *   - Con acuse: al normalizarse la condición el episodio se cierra
+ *     (`resuelta_motivo = 'rearme_automatico'`) y la regla queda armada otra
+ *     vez. La próxima incidencia es una incidencia nueva, y sí manda correo.
+ *
+ * Esto reemplaza el rearme incondicional anterior, que era la causa real de las
+ * alertas cada hora: el evento se cerraba solo al normalizarse un ciclo, y
+ * cuando la condición volvía ya no había episodio abierto, así que lo único que
+ * frenaba el correo era el `cooldown_minutos`. Con el default de 60, un equipo
+ * que transmite irregular producía exactamente un correo por hora, para siempre.
  *
  * @returns true si el llamador debe insertar el evento.
  */
@@ -758,12 +769,30 @@ async function debeNotificar(
     if (await evaluar()) {
       await client.query(
         `UPDATE alertas_eventos
-          SET repeticiones = repeticiones + 1, ultima_repeticion_at = NOW()
-        WHERE id = $1`,
+            SET repeticiones = repeticiones + 1,
+                ultima_repeticion_at = NOW(),
+                -- La condición volvió: el episodio ya no está normalizado.
+                normalizada_at = NULL
+          WHERE id = $1`,
         [abierto.id],
       );
       return false;
     }
+
+    // Condición normalizada. Sin acuse el episodio NO se cierra: si se cerrara,
+    // la próxima vez que la condición vuelva habría correo otra vez, que es
+    // justo el aviso por hora que hay que matar. Queda abierto acumulando, y la
+    // plataforma lo muestra con las horas que lleva sin resolverse.
+    if (!abierto.reconocida_at) {
+      await client.query(
+        `UPDATE alertas_eventos
+            SET normalizada_at = COALESCE(normalizada_at, NOW())
+          WHERE id = $1`,
+        [abierto.id],
+      );
+      return false;
+    }
+
     await client.query(
       `UPDATE alertas_eventos
           SET resuelta = TRUE, resuelta_at = NOW(), resuelta_motivo = 'rearme_automatico'
@@ -771,8 +800,8 @@ async function debeNotificar(
       [abierto.id],
     );
     logger.info(
-      { alertaId: alerta.id, eventoId: abierto.id, reconocido: Boolean(abierto.reconocida_at) },
-      'alerts: condicion normalizada, el evento se rearma',
+      { alertaId: alerta.id, eventoId: abierto.id },
+      'alerts: condicion normalizada sobre un evento ya acusado, la regla se rearma',
     );
     return false;
   }
@@ -963,17 +992,18 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
     // Por eso se acota además por `time` con un margen de un día: cae en uno o
     // dos chunks vía idx_equipo_serial_time y tolera cualquier desfase de reloj
     // razonable.
+    const ventanaMin = Math.max(1, Math.round(horasSinDatos(alerta) * 60));
     const r = await client.query(
       `SELECT time FROM equipo
        WHERE id_serial = $1
          AND time > NOW() - ($2 || ' minutes')::INTERVAL - INTERVAL '1 day'
          AND received_at > NOW() - ($2 || ' minutes')::INTERVAL
        LIMIT 1`,
-      [alerta.id_serial, alerta.cooldown_minutos],
+      [alerta.id_serial, String(ventanaMin)],
     );
     const sinDatos = r.rows.length === 0;
     if (await debeNotificar(client, alerta, () => sinDatos)) {
-      await insertarEvento(client, alerta, null, null);
+      await insertarEvento(client, alerta, null, await lagSinDatos(client, alerta));
     }
     return;
   }
@@ -1000,6 +1030,37 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
   }
 }
 
+/**
+ * Cuánto lleva el equipo sin transmitir, para que el correo lo diga en horas.
+ *
+ * Se consulta solo cuando la alerta YA disparó, que es lo raro: la ventana de
+ * 30 días acota los chunks que Timescale tiene que mirar (ver el comentario de
+ * la query de `sin_datos`), y un equipo mudo hace más de un mes se describe
+ * igual de bien sin el número exacto.
+ */
+async function lagSinDatos(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  alerta: Alerta,
+): Promise<string | null> {
+  try {
+    const r = (await client.query(
+      `SELECT MAX(received_at) AS ultimo FROM equipo
+        WHERE id_serial = $1 AND time > NOW() - INTERVAL '30 days'`,
+      [alerta.id_serial],
+    )) as { rows: Array<{ ultimo: string | Date | null }> };
+    const ultimo = r.rows[0]?.ultimo;
+    if (!ultimo) return null;
+    return formatLagHorasMinutos(Date.now() - new Date(ultimo).getTime());
+  } catch (err) {
+    logger.warn(
+      { err: (err as Error).message, alertaId: alerta.id },
+      'alerts: no se pudo calcular el tiempo sin transmitir',
+    );
+    return null;
+  }
+}
+
 async function insertarEvento(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -1007,7 +1068,7 @@ async function insertarEvento(
   valorNum: number | null,
   valorTexto: string | null,
 ): Promise<void> {
-  const mensaje = buildMensaje(alerta, valorNum);
+  const mensaje = buildMensaje(alerta, valorNum, valorTexto);
   const ctx = {
     ...alerta,
     valor_detectado: formatValor(valorNum),
@@ -1065,13 +1126,6 @@ async function runCycle(): Promise<void> {
         ),
       );
     }
-
-    // El consolidado va después de evaluar: si el ciclo que cruza las 08:00
-    // acaba de encolar un evento, ese evento sale en el correo de las 08:00 y
-    // no espera hasta las 18:00.
-    await procesarDigestPendiente(client).catch((err) =>
-      logger.error({ err: (err as Error).message }, 'alerts: error en el consolidado'),
-    );
   } catch (err) {
     logger.error({ err: (err as Error).message }, 'alerts: error en ciclo');
   } finally {

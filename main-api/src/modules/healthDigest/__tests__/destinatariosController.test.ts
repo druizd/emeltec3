@@ -108,12 +108,16 @@ describe('GET /health-digest/destinatarios', () => {
     expect(next).not.toHaveBeenCalled();
     const body = captured.body as { data: unknown[]; meta: Record<string, unknown> };
     expect(body.data).toHaveLength(1);
-    expect(body.meta.horarios_resumen).toEqual([6, 15]);
-    expect(body.meta.zona_horaria).toBe('Etc/GMT+4');
+    // La programación sale de la BD; sin fila, los valores por defecto.
+    expect(body.meta.horarios_resumen).toEqual([7, 16]);
+    expect(body.meta.umbral_horas).toBe(6);
+    // Hora de PARED chilena: el horario lo define cuándo se sienta la persona,
+    // no el UTC-4 fijo del resto de la plataforma.
+    expect(body.meta.zona_horaria).toBe('America/Santiago');
     expect(body.meta.fallback_email).toBe(MONITOR_PRIMARY);
-    // Los dos workers viajan por separado: healthDigest manda el resumen y las
-    // escalaciones, auditAlerts las alertas de seguridad. Con uno apagado y el
-    // otro encendido, un solo flag hacia la UI miente sobre la mitad de la tabla.
+    // Los dos workers viajan por separado: healthDigest manda el resumen y
+    // auditAlerts las alertas de seguridad. Con uno apagado y el otro
+    // encendido, un solo flag hacia la UI miente sobre la mitad de la tabla.
     expect(body.meta.worker_seguridad_activo).toBe(true);
   });
 });

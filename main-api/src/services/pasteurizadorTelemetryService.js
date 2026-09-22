@@ -797,12 +797,18 @@ async function loadPasteurizadorHistory(site, options) {
             -- Postgres empuje el bound al Index Cond del scan, en vez de
             -- filtrar fila por fila tras traer todo el rango crudo. Mismo
             -- fix que companyController.js getSiteDashboardHistory.
-            AND e.time >= GREATEST(
-                  ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
-                  COALESCE(
-                    (SELECT max_bucket FROM latest_cagg) + $6::interval,
-                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-                  )
+            --
+            -- DOS AND, no GREATEST(): GREATEST(const, subquery) no es
+            -- evaluable en planning time, asi que TimescaleDB no puede
+            -- excluir chunks con eso y escanea TODA la historia comprimida
+            -- del sitio (verificado en prod: 15.5s -> 500 por statement
+            -- timeout). El AND simple contra $2 SI es constante en planning
+            -- time y alcanza para que la exclusion de chunks pode todo lo
+            -- anterior al rango pedido.
+            AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND e.time >= COALESCE(
+                  (SELECT max_bucket FROM latest_cagg) + $6::interval,
+                  ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
                 )
             AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
           GROUP BY 1
@@ -883,12 +889,11 @@ async function loadPasteurizadorHistory(site, options) {
           FROM equipo e
           WHERE e.id_serial = $1
             -- Mismo fix: sin CROSS JOIN, latest_cagg como subquery escalar.
-            AND e.time >= GREATEST(
-                  ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
-                  COALESCE(
-                    (SELECT max_bucket FROM latest_cagg) + $4::interval,
-                    ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-                  )
+            -- DOS AND, no GREATEST() (ver comentario arriba en loadPasteurizadorHistory).
+            AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND e.time >= COALESCE(
+                  (SELECT max_bucket FROM latest_cagg) + $4::interval,
+                  ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
                 )
             AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
           GROUP BY 1
@@ -993,12 +998,11 @@ async function loadPasteurizadorDailyKpis(site, options) {
         WHERE e.id_serial = $1
           -- Sin CROSS JOIN: latest_cagg como subquery escalar (ver fix en
           -- loadPasteurizadorHistory / companyController.js).
-          AND e.time >= GREATEST(
-                ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}'),
-                COALESCE(
-                  (SELECT max_bucket FROM latest_cagg) + $3::interval,
-                  ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-                )
+          -- DOS AND, no GREATEST() (ver comentario en loadPasteurizadorHistory).
+          AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          AND e.time >= COALESCE(
+                (SELECT max_bucket FROM latest_cagg) + $3::interval,
+                ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
               )
           AND e.time <  (($2::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
         GROUP BY 1

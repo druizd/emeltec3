@@ -3,7 +3,6 @@
  *
  * Cubre lo que puede dejar el monitoreo mudo o ruidoso:
  *   - fail-open al buzón de respaldo (tabla vacía o query caída),
- *   - filtro por umbral de escalación,
  *   - reemplazo atómico de la lista (borra lo que ya no viene),
  *   - validación del PUT (emails inválidos, duplicados, tope).
  */
@@ -36,25 +35,10 @@ import {
   replaceDestinatarios,
   normalizeEmail,
 } from '../destinatariosRepo';
-import { destinatariosParaEvento, resolveDestinatarios, MONITOR_PRIMARY } from '../worker';
-import type { DigestDestinatario } from '../destinatariosRepo';
+import { resolveDestinatarios, MONITOR_PRIMARY } from '../worker';
 
 const mockQuery = query as Mock;
 const mockTransaction = transaction as Mock;
-
-function dest(over: Partial<DigestDestinatario> = {}): DigestDestinatario {
-  return {
-    email: 'persona@emeltec.cl',
-    nombre: 'Persona',
-    recibe_resumen: true,
-    recibe_eventos: true,
-    recibe_seguridad: true,
-    umbral_evento: 't3',
-    activo: true,
-    updated_at: '2026-08-18T12:00:00.000Z',
-    ...over,
-  };
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -86,7 +70,7 @@ describe('resolveDestinatarios — fail-open al buzón de respaldo', () => {
     expect(result[0]!.recibe_eventos).toBe(false);
   });
 
-  it('con la tabla vacía cae al buzón de respaldo suscrito a todo', async () => {
+  it('con la tabla vacía cae al buzón de respaldo suscrito al resumen', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
     const result = await resolveDestinatarios();
@@ -96,11 +80,12 @@ describe('resolveDestinatarios — fail-open al buzón de respaldo', () => {
         email: MONITOR_PRIMARY,
         nombre: null,
         recibe_resumen: true,
-        recibe_eventos: true,
+        // Las escalaciones inmediatas se retiraron el 16-09-2026.
+        recibe_eventos: false,
         // El respaldo NO se arroga las alertas de seguridad: esas no tienen
         // buzón de fallback, las lee auditAlerts directo de la tabla.
         recibe_seguridad: false,
-        umbral_evento: 't3',
+        umbral_evento: 't12',
         activo: true,
         updated_at: null,
       },
@@ -116,36 +101,6 @@ describe('resolveDestinatarios — fail-open al buzón de respaldo', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.email).toBe(MONITOR_PRIMARY);
-  });
-});
-
-// ─── Filtro por umbral de escalación ─────────────────────────────────────────
-
-describe('destinatariosParaEvento — umbral por destinatario', () => {
-  const lista = [
-    dest({ email: 't3@emeltec.cl', umbral_evento: 't3' }),
-    dest({ email: 't6@emeltec.cl', umbral_evento: 't6' }),
-    dest({ email: 't12@emeltec.cl', umbral_evento: 't12' }),
-  ];
-
-  it('un evento t3 solo va a quien pidió desde 3 h', () => {
-    const emails = destinatariosParaEvento(lista, 't3').map((d) => d.email);
-    expect(emails).toEqual(['t3@emeltec.cl']);
-  });
-
-  it('un evento t6 va a los umbrales t3 y t6', () => {
-    const emails = destinatariosParaEvento(lista, 't6').map((d) => d.email);
-    expect(emails).toEqual(['t3@emeltec.cl', 't6@emeltec.cl']);
-  });
-
-  it('un evento t12 va a todos', () => {
-    const emails = destinatariosParaEvento(lista, 't12').map((d) => d.email);
-    expect(emails).toEqual(['t3@emeltec.cl', 't6@emeltec.cl', 't12@emeltec.cl']);
-  });
-
-  it('quien tiene escalaciones apagadas nunca recibe eventos', () => {
-    const solos = [dest({ email: 'muted@emeltec.cl', recibe_eventos: false })];
-    expect(destinatariosParaEvento(solos, 't12')).toEqual([]);
   });
 });
 

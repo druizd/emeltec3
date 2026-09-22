@@ -25,8 +25,15 @@ const REGLAS_RECOMENDADAS = [
   {
     condicion: 'sin_datos',
     nombre: 'Sin comunicación del equipo',
-    descripcion: 'El equipo lleva más de 60 minutos sin transmitir.',
-    severidad: 'critica',
+    descripcion: 'El equipo lleva más de 12 horas sin transmitir.',
+    // La severidad ordena y colorea; no decide si el correo sale al instante.
+    // Toda incidencia avisa de inmediato y una sola vez (ver `debeNotificar`
+    // en modules/alerts/worker.ts).
+    severidad: 'alta',
+    /** Horas sin transmitir antes de disparar. Ver `horasSinDatos`. */
+    umbral_bajo: 12,
+    // Anti-flapping, no ventana de detección: desde que la ventana vive en
+    // `umbral_bajo` son dos cosas distintas.
     cooldown_minutos: 60,
     aplica: (ctx) => (ctx.sitio.id_serial ? null : 'El sitio no tiene equipo asociado.'),
     variable_key: (ctx) => ctx.primeraVariable || 'equipo',
@@ -135,7 +142,7 @@ async function crearAlertasPorDefecto(db, { sitioId, userId = null, condiciones 
          (nombre, descripcion, sitio_id, empresa_id, sub_empresa_id, variable_key,
           condicion, umbral_bajo, umbral_alto, severidad, cooldown_minutos, dias_activos,
           creado_por, visible_to_all, viewer_user_ids, notificar_user_ids, notificar_superadmins)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,NULL,NULL,$8,$9,$10,$11,TRUE,'{}','{}',TRUE)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9,$10,$11,$12,TRUE,'{}','{}',TRUE)`,
       [
         regla.nombre,
         regla.descripcion,
@@ -144,6 +151,7 @@ async function crearAlertasPorDefecto(db, { sitioId, userId = null, condiciones 
         ctx.sitio.sub_empresa_id ?? null,
         regla.variable_key(ctx),
         regla.condicion,
+        regla.umbral_bajo ?? null,
         regla.severidad,
         regla.cooldown_minutos,
         DIAS,
