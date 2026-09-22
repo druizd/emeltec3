@@ -19,6 +19,25 @@ import { cache } from '../../config/redis';
 // Datos pueden estar hasta 15 min stale; aceptable para totalizadores que
 // suman gradual y el chart muestra horizonte de 30/90 dias.
 const JORNADA_CACHE_TTL_S = 900;
+
+/**
+ * Timeout propio para el escaneo de un mes (`contadores__month_rows`), por
+ * encima de los 10s globales.
+ *
+ * Por que hace falta: el cagg `equipo_1min` esta comprimido con
+ * `segmentby = id_serial` (2026-09-21-equipo-caggs-compression.sql), y sobre
+ * un mes ya comprimido la query tarda ~124ms. Pero `compress_after` es de 14
+ * dias y los chunks son de 10, asi que SIEMPRE hay entre 14 y 24 dias de datos
+ * recientes sin comprimir — y el worker recomputa justamente el mes en curso.
+ * Medido el 22-09-2026 sobre el mes en curso: 5,4s aislado, que con el barrido
+ * de los 34 contadores encima cruza los 10s.
+ *
+ * Esa ventana caliente no se puede eliminar: es la que el refresco del cagg
+ * sigue tocando. Y los 10s globales existen para que un request de usuario no
+ * cuelgue una conexion — acá no hay usuario esperando, hay un worker de fondo
+ * que corre cada hora. El limite estaba protegiendo a nadie.
+ */
+const MONTH_ROWS_TIMEOUT_MS = Number(process.env.CONTADORES_MONTH_QUERY_TIMEOUT_MS ?? 60_000);
 import { applyMappingTransform, isMappingVigenteAt } from '../sites/transforms';
 
 // Proyecta solo d1/d2 del mapping ($4/$5) en vez del `data` completo — mismo
@@ -460,7 +479,7 @@ export async function computeMonthDeltaForVariable(opts: {
     ORDER BY bucket ASC
     `,
     [idSerial, start.toISOString(), end.toISOString(), mapping.d1, mapping.d2 ?? null],
-    { label: 'contadores__month_rows' },
+    { label: 'contadores__month_rows', statementTimeoutMs: MONTH_ROWS_TIMEOUT_MS },
   );
 
   // Continuidad cross-month: lee la ultima muestra valida estrictamente
