@@ -30,6 +30,45 @@ applyConnectionDefaults();
 export interface QueryOptions {
   name?: string;
   label?: string;
+  /**
+   * Sube el `statement_timeout` SOLO para esta query. Para procesos de fondo
+   * que barren meses enteros, donde el limite global de 10s protege a un
+   * usuario que no existe.
+   *
+   * Se aplica con `SET LOCAL` dentro de una transaccion propia: el valor
+   * muere en el COMMIT, asi la conexion vuelve al pool con el timeout global
+   * intacto. Un `SET` a secas sobre un cliente del pool se lo llevaria la
+   * siguiente query ajena que toque esa conexion.
+   */
+  statementTimeoutMs?: number;
+}
+
+/**
+ * Ejecuta `cfg` en una transaccion propia con el `statement_timeout` subido.
+ * Cliente dedicado para no contaminar el pool.
+ */
+async function queryWithTimeout<R extends QueryResultRow>(
+  cfg: QueryConfig<unknown[]>,
+  timeoutMs: number,
+): Promise<QueryResult<R>> {
+  // Interpolado, no parametrizado: `SET LOCAL` no acepta placeholders. De ahi
+  // que el valor se fuerce a entero positivo antes de tocar el SQL.
+  const ms = Math.max(1, Math.floor(timeoutMs));
+  if (!Number.isFinite(ms)) throw new Error(`statementTimeoutMs invalido: ${timeoutMs}`);
+
+  const client = await legacyPool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`SET LOCAL statement_timeout TO ${ms}`);
+    const result = await client.query<R>(cfg);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function query<R extends QueryResultRow = QueryResultRow>(
@@ -45,7 +84,10 @@ export async function query<R extends QueryResultRow = QueryResultRow>(
   const queryName = cfg.name ?? opts.label ?? 'inline';
 
   try {
-    const result = await legacyPool.query<R>(cfg);
+    const result =
+      opts.statementTimeoutMs === undefined
+        ? await legacyPool.query<R>(cfg)
+        : await queryWithTimeout<R>(cfg, opts.statementTimeoutMs);
     const durationNs = Number(process.hrtime.bigint() - startedAt);
     const durationMs = Math.round(durationNs / 1e6);
     dbQueryDuration.observe({ name: queryName, status: 'ok' }, durationNs / 1e9);
