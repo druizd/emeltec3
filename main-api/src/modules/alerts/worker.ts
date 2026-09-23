@@ -440,12 +440,26 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
   // de uno. La consulta de `last` de arriba sigue funcionando igual: ordena
   // por triggered_at sin filtrar resuelta, y la fila del tier nuevo sigue
   // siendo la más reciente.
-  await client.query(
+  const cierre = (await client.query(
     `UPDATE alertas_eventos
         SET resuelta = TRUE, resuelta_at = NOW(), resuelta_motivo = 'escalado'
-      WHERE alerta_id = $1 AND resuelta = FALSE`,
+      WHERE alerta_id = $1 AND resuelta = FALSE
+      RETURNING triggered_at, episodio_desde`,
     [alerta.id],
-  );
+  )) as {
+    rows: Array<{ triggered_at: string | Date; episodio_desde: string | Date | null }>;
+  };
+  // `triggered_at` de la fila nueva sigue siendo el momento de ESTA tier (lo
+  // necesita la consulta `last` de arriba), pero la antigüedad que ve el
+  // cliente —resumen semanal, bandeja— tiene que contar desde que el
+  // incidente empezó, no desde el último escalón. Por eso se hereda el
+  // inicio más antiguo entre los episodios recién cerrados (o su propio
+  // `episodio_desde`, si ya venían arrastrando uno de un escalamiento previo).
+  const episodioDesde = cierre.rows.reduce<string | Date | null>((min, r) => {
+    const inicio = r.episodio_desde ?? r.triggered_at;
+    if (min === null) return inicio;
+    return new Date(inicio).getTime() < new Date(min).getTime() ? inicio : min;
+  }, null);
 
   // `etiquetaSitio` y no `sitio_desc` a secas: el mensaje viaja al correo y a
   // la bandeja, y "Pozo 4" sin empresa ni obra no identifica nada. El camino
@@ -464,8 +478,8 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
        (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
-        valor_detectado, valor_texto, mensaje, severidad)
-     VALUES ($1,$2,$3,$4,$5,NULL,$6,$7,$8)
+        valor_detectado, valor_texto, mensaje, severidad, episodio_desde)
+     VALUES ($1,$2,$3,$4,$5,NULL,$6,$7,$8,$9)
      RETURNING id`,
     [
       alerta.id,
@@ -476,6 +490,7 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
       lagTexto,
       mensaje,
       tierSev,
+      episodioDesde,
     ],
   )) as { rows: Array<{ id: string }> };
   entregarNotificacion(ctx, ins.rows[0]!.id, mensaje, 'dga_atrasado');

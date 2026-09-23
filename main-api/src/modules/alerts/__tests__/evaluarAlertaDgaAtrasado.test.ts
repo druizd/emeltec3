@@ -192,7 +192,7 @@ describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers'
     const client = makeClient([
       { rows: [configCon(80)] },
       { rows: [{ severidad: 'media' }] },
-      { rows: [] }, // cierre del episodio 'media' por escalamiento
+      { rows: [] }, // cierre del episodio 'media' por escalamiento (sin fila: nunca escaló antes)
       { rows: [{ id: 'evento-4' }] },
     ]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
@@ -203,8 +203,35 @@ describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers'
     expect(cierreIdx).toBeGreaterThanOrEqual(0);
     expect(insertIdx).toBeGreaterThan(cierreIdx);
     expect(client._calls[cierreIdx]!.sql).toContain("resuelta_motivo = 'escalado'");
+    expect(client._calls[cierreIdx]!.sql).toContain('RETURNING triggered_at, episodio_desde');
     expect(client._calls[cierreIdx]!.params).toEqual(['alerta-1']);
     expect(insertDe(client)!.params).toContain('alta');
+    // Sin filas devueltas por el cierre (primera escalada, nunca hubo cadena
+    // previa), episodio_desde del nuevo evento queda null: no hereda nada.
+    // Último parámetro del INSERT (episodio_desde); no se usa toContain(null)
+    // porque sub_empresa_id también viaja como null y volvería la aserción
+    // trivial.
+    expect(insertDe(client)!.params.at(-1)).toBeNull();
+  });
+
+  it('escala de alta a crítica: episodio_desde hereda el inicio más antiguo entre los episodios que cierra', async () => {
+    vi.setSystemTime(new Date('2026-06-24T12:00:00Z'));
+    // lag = 80h − 24h (dia) = 56h... usamos configCon con más horas para crítica.
+    const t0 = '2026-06-18T00:00:00.000Z'; // inicio real del incidente (heredado de un escalón previo)
+    const t1 = '2026-06-20T00:00:00.000Z'; // triggered_at del tier 'alta' que se cierra ahora
+    const client = makeClient([
+      { rows: [configCon(100)] }, // lag = 100h − 24h = 76h ≥ 72h → crítica
+      { rows: [{ severidad: 'alta' }] },
+      {
+        rows: [{ triggered_at: t1, episodio_desde: t0 }],
+      }, // cierre del episodio 'alta', que ya arrastraba episodio_desde de un escalón anterior
+      { rows: [{ id: 'evento-5' }] },
+    ]);
+    await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
+    const ins = insertDe(client);
+    expect(ins).toBeDefined();
+    expect(ins!.params).toContain('critica');
+    expect(ins!.params.at(-1)).toBe(t0);
   });
 
   it('sin escalamiento (misma tier) no emite ni cierre ni insert', async () => {

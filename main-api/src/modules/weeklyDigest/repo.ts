@@ -18,6 +18,9 @@ export interface AlertaAbiertaRaw {
   mensaje: string;
   valor_texto: string | null;
   valor_detectado: string | null;
+  /** En realidad `COALESCE(episodio_desde, triggered_at)`: si el episodio viene
+   * de un escalamiento (dga_atrasado), esto es el inicio del incidente y no el
+   * momento del último tier. */
   triggered_at: string;
   repeticiones: number;
   normalizada_at: string | null;
@@ -66,7 +69,7 @@ export async function getAlertasAbiertas(): Promise<AlertaAbiertaRaw[]> {
             e.mensaje,
             e.valor_texto,
             e.valor_detectado::text AS valor_detectado,
-            e.triggered_at,
+            COALESCE(e.episodio_desde, e.triggered_at) AS triggered_at,
             COALESCE(e.repeticiones, 0) AS repeticiones,
             e.normalizada_at,
             e.reconocida_at,
@@ -86,7 +89,7 @@ export async function getAlertasAbiertas(): Promise<AlertaAbiertaRaw[]> {
        LEFT JOIN sub_empresa  se  ON se.id  = s.sub_empresa_id
        LEFT JOIN pozo_config  pc  ON pc.sitio_id = s.id
       WHERE e.resuelta = FALSE
-      ORDER BY e.triggered_at ASC`,
+      ORDER BY COALESCE(e.episodio_desde, e.triggered_at) ASC`,
     [],
     { name: 'weekly_digest__abiertas' },
   );
