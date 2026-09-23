@@ -433,6 +433,20 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
   const curRank = SEV_RANK[tierSev] ?? 0;
   if (curRank <= lastRank) return; // ya notificada esta o mayor
 
+  // Al escalar de tier (media → alta → crítica) se cierra el episodio anterior
+  // ANTES de insertar el nuevo: son el mismo incidente, y sin este cierre cada
+  // escalamiento dejaba una fila abierta más, así que un solo atraso terminaba
+  // mostrándose 3 veces en el resumen semanal y exigiendo 3 acuses en vez
+  // de uno. La consulta de `last` de arriba sigue funcionando igual: ordena
+  // por triggered_at sin filtrar resuelta, y la fila del tier nuevo sigue
+  // siendo la más reciente.
+  await client.query(
+    `UPDATE alertas_eventos
+        SET resuelta = TRUE, resuelta_at = NOW(), resuelta_motivo = 'escalado'
+      WHERE alerta_id = $1 AND resuelta = FALSE`,
+    [alerta.id],
+  );
+
   // `etiquetaSitio` y no `sitio_desc` a secas: el mensaje viaja al correo y a
   // la bandeja, y "Pozo 4" sin empresa ni obra no identifica nada. El camino
   // genérico (`buildMensaje`) ya lo hacía así.
