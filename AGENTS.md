@@ -2,7 +2,7 @@
 
 ## Project
 
-**Emeltec Cloud** (`cloud.emeltec.cl`) — SaaS IIoT platform for industrial variable monitoring (water, electricity, industrial processes) and DGA (Dirección General de Aguas) regulatory compliance. Chilean B2B, primary language: **Spanish**.
+**Emeltec Cloud** (`nuevacloud.emeltec.cl` — `cloud.emeltec.cl` is the legacy platform) — SaaS IIoT platform for industrial variable monitoring (water, electricity, industrial processes) and DGA (Dirección General de Aguas) regulatory compliance. Chilean B2B, primary language: **Spanish**.
 
 Stack: **Angular 21**, standalone components, signals, Tailwind CSS v4, Chart.js, Lucide Angular, Material Symbols.
 

@@ -63,12 +63,12 @@ Los comandos `sent` tienen un lease. Si Windows no confirma dentro de
 el comando en SQLite y no repite una escritura ya ejecutada; solo reintenta el
 reporte del resultado.
 
-Antes de usar los endpoints, aplicar:
+Antes de usar los endpoints, aplicar (el lease de comandos `sent`, `lease_until`,
+ya viene en la primera migración; no existe un tercer archivo separado):
 
 ```bash
 docker exec -i emeltec-db psql -U postgres -d telemetry_platform < infra-db/migrations/2026-06-01-plc-commands.sql
 docker exec -i emeltec-db psql -U postgres -d telemetry_platform < infra-db/migrations/2026-06-03-plc-command-data.sql
-docker exec -i emeltec-db psql -U postgres -d telemetry_platform < infra-db/migrations/2026-06-10-plc-command-leases.sql
 ```
 
 ## Desarrollo local

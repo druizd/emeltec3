@@ -44,28 +44,44 @@ infra-db/
 ├── .env.example              → Plantilla de variables de entorno
 ├── docker-compose.yml        → Definición de servicios Docker
 ├── pgadmin-servers.json      → Auto-registro del servidor en pgAdmin
-└── init-db/
-    └── 01-init-schema.sql    → Script SQL ejecutado al crear la BD por primera vez
+├── init-db/
+│   └── 01-init-schema.sql    → Script SQL ejecutado al crear la BD por primera vez
+└── migrations/                → Migraciones SQL incrementales (`YYYY-MM-DD-nombre.sql`),
+                                  aplicadas por `scripts/deploy-production.sh` en cada
+                                  deploy — ver docs/deployment.md
 ```
 
 ---
 
 ## 🗃️ Esquema de Base de Datos
 
-El script `init-db/01-init-schema.sql` crea automáticamente las siguientes tablas:
+El script `init-db/01-init-schema.sql` crea automáticamente estas tablas (lista no
+exhaustiva; las migraciones en `migrations/` agregan más desde entonces — este
+archivo se queda desactualizado a propósito y **no** se corrige con cada migración):
 
-| Tabla         | Descripción                                                           |
-| ------------- | --------------------------------------------------------------------- |
-| `empresa`     | Empresas principales (ej: "PepsiCo Internacional")                    |
-| `sub_empresa` | Sucursales/faenas de cada empresa                                     |
-| `usuario`     | Usuarios del sistema con roles, empresa asignada y hash de contraseña |
-| `equipo`      | Equipos de medición registrados                                       |
-| `mediciones`  | Hypertable de TimescaleDB para datos de telemetría en tiempo real     |
+| Tabla                         | Descripción                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| `empresa`                     | Empresas principales (ej: "PepsiCo Internacional")                                    |
+| `sub_empresa`                 | Sucursales/faenas de cada empresa                                                     |
+| `usuario`                     | Usuarios del sistema con roles, empresa asignada y hash de contraseña                 |
+| `sitio`                       | Instalaciones/pozos monitoreados                                                      |
+| `pozo_config`                 | Config DGA por sitio                                                                  |
+| `reg_map`                     | Mapeo de variables por equipo (alias, unidad, rol)                                    |
+| `alertas` / `alertas_eventos` | Reglas de alertas y sus eventos disparados                                            |
+| `documentos`                  | Documentos adjuntos por sitio/empresa                                                 |
+| `incidencias`                 | Incidencias operativas registradas                                                    |
+| `equipo`                      | Hypertable de TimescaleDB con la telemetría cruda (`time`, `id_serial`, `data` JSONB) |
+
+No existe una tabla `mediciones` — el nombre real del hypertable de telemetría es
+`equipo`. `main-api/ARCHITECTURE.md` documenta el resto de las tablas agregadas por
+migraciones posteriores (DGA, contadores, bitácora, etc.).
 
 ### Características de TimescaleDB
 
-- La tabla `mediciones` es una **Hypertable** con chunks de 1 día.
-- Compresión automática activada para datos mayores a 7 días.
+- `equipo` es una **Hypertable** con chunks de 1 día.
+- Compresión automática activada para datos mayores a 7 días (`segmentby = id_serial`).
+- Continuous aggregates (`equipo_1min`, etc.) para dashboard history y export CSV —
+  ver `infra-db/migrations/2026-05-22-equipo-data-caggs.sql`.
 - Optimizada para consultas de series temporales (últimas lecturas, rangos de fecha, etc.).
 
 ---
