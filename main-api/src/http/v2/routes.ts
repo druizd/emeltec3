@@ -37,6 +37,7 @@ import {
   bulkSlotActionHandler,
   slotsResumenHandler,
   reviewSlotActionHandler,
+  reviewBulkActionHandler,
   upsertInformanteHandler,
 } from '../../modules/dga/controller';
 import { require2fa } from '../../shared/email-otp';
@@ -96,6 +97,19 @@ const auditDgaMutations = auditMutations((req) => {
       action: `dga.review.${req.body?.action ?? 'unknown'}`,
       targetType: 'dato_dga',
       targetId: `${req.body?.site_id ?? ''}::${req.body?.ts ?? ''}`,
+    };
+  }
+  // POST /dga/review-queue/bulk — el lote es UNA acción. El targetId resume a
+  // qué tocó: los sitios involucrados y cuántos slots. La lista completa no
+  // entra en una columna, y para reconstruir el detalle están los propios
+  // slots, que guardan la nota del admin.
+  if (req.method === 'POST' && path === '/dga/review-queue/bulk') {
+    const items: Array<{ site_id?: string }> = Array.isArray(req.body?.items) ? req.body.items : [];
+    const sitios = [...new Set(items.map((i) => i?.site_id ?? '').filter(Boolean))];
+    return {
+      action: `dga.review.bulk.${req.body?.action ?? 'unknown'}`,
+      targetType: 'dato_dga',
+      targetId: `${sitios.join(',') || 'sin_sitio'}::${items.length} slots`,
     };
   }
   // POST /dga/sites/:siteId/slots/bulk — la nota del operador y el rango son
@@ -343,6 +357,18 @@ router.post(
   require2fa,
   auditDgaMutations,
   reviewSlotActionHandler,
+);
+
+// Misma decisión sobre varios slots sueltos de la cola: UN 2FA y UNA entrada
+// de auditoría para todo el lote. Antes el frontend abanicaba una petición por
+// slot y, como el código es de un solo uso, un lote de 128 pedía 128 códigos.
+router.post(
+  '/dga/review-queue/bulk',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  require2fa,
+  auditDgaMutations,
+  reviewBulkActionHandler,
 );
 
 // Resumen por estado del rango: lectura, alimenta la confirmacion previa.

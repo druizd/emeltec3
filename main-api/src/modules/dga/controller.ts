@@ -30,12 +30,14 @@ import {
   QueryDatoDgaParams,
   ReconocerSensorPayload,
   ReviewSlotActionPayload,
+  ReviewBulkActionPayload,
   SlotsResumenParams,
   UpsertInformantePayload,
 } from './schema';
 import {
   applyBulkSlotAction,
   applyReviewDecision,
+  applyReviewDecisionBulk,
   deleteInformanteService,
   getDatoDgaBySite,
   getDatoDgaDirectoFromEquipo,
@@ -45,6 +47,7 @@ import {
   listReviewQueue,
   patchPozoDgaConfigService,
   toCsv,
+  toCsvDeclarado,
   upsertInformanteService,
   verifySniaSubmission,
 } from './service';
@@ -312,6 +315,54 @@ export async function reviewSlotActionHandler(
 }
 
 /**
+ * POST /dga/review-queue/bulk — la misma decisión sobre varios slots sueltos.
+ *
+ * Un código 2FA y una entrada de auditoría para todo el lote. El frontend hacía
+ * una petición por slot y, como el código es de un solo uso, aceptar 128 slots
+ * pedía 128 códigos.
+ *
+ * El acceso se valida por SITIO DISTINTO, no por ítem: la selección de la cola
+ * suele ser decenas de slots del mismo pozo y `assertSiteAccessById` es una
+ * query cada vez.
+ *
+ * Responde 200 aunque haya ítems fallidos: el lote es parcialmente aplicable
+ * por diseño (un slot pudo cambiar de estado entremedio) y el detalle va en el
+ * cuerpo. Un 4xx obligaría al frontend a adivinar qué entró y qué no.
+ */
+export async function reviewBulkActionHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const parsed = ReviewBulkActionPayload.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
+    }
+    const user = getUser(req);
+    const sitios = [...new Set(parsed.data.items.map((i) => i.site_id))];
+    for (const siteId of sitios) {
+      await assertSiteAccessById(user, siteId);
+    }
+    const result = await applyReviewDecisionBulk({
+      action: parsed.data.action,
+      admin_note: parsed.data.admin_note,
+      admin_email: user?.email ?? 'desconocido',
+      items: parsed.data.items,
+    });
+    res.json(
+      ok(result, {
+        count: parsed.data.items.length,
+        durationMs: elapsedMs(startedAt),
+      }),
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * GET /dga/sites/:siteId/slots/resumen?desde&hasta — conteo por estado.
  *
  * Existe para que la acción en bloque no se aplique a ciegas: el operador ve
@@ -489,8 +540,8 @@ export async function exportDatoDgaCsvHandler(
     }
     await assertSiteAccessById(getUser(req), parsed.data.site_id);
     const rows = await getDatoDgaBySite(parsed.data.site_id, parsed.data.desde, parsed.data.hasta);
-    const csv = toCsv(rows);
-    const filename = `dga_${parsed.data.site_id}_${parsed.data.desde.slice(0, 10)}_${parsed.data.hasta.slice(0, 10)}.csv`;
+    const csv = toCsvDeclarado(rows);
+    const filename = `dga_declarado_${parsed.data.site_id}_${parsed.data.desde.slice(0, 10)}_${parsed.data.hasta.slice(0, 10)}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send('﻿' + csv);

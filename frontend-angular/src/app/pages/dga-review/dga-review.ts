@@ -18,13 +18,9 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { concatMap, from, of } from 'rxjs';
-
-/** 'YYYY-MM-DD', que es lo único que acepta un input type=date. */
-const FORMATO_DIA = /^\d{4}-\d{2}-\d{2}$/;
-import { catchError } from 'rxjs/operators';
 import {
   DgaReviewActionPayload,
+  DgaReviewBulkItem,
   DgaReviewSite,
   DgaReviewSlot,
   DgaService,
@@ -32,6 +28,9 @@ import {
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { TimezoneLegendComponent } from '../../components/ui/timezone-legend';
 import { CHILE_TIME_ZONE } from '../../shared/timezone';
+
+/** 'YYYY-MM-DD', que es lo único que acepta un input type=date. */
+const FORMATO_DIA = /^\d{4}-\d{2}-\d{2}$/;
 
 interface RowEdit {
   caudal: string;
@@ -939,17 +938,23 @@ export class DgaReviewComponent {
   }
 
   /**
-   * Aplica la MISMA acción a todos los slots marcados, uno por uno contra el
-   * endpoint de a uno.
+   * Aplica la MISMA acción a todos los slots marcados, en UNA petición contra
+   * `/dga/review-queue/bulk`.
    *
-   * Secuencial (`concatMap`) y no en paralelo a propósito: cada llamada puede
-   * disparar el diálogo 2FA del interceptor global, y N peticiones simultáneas
-   * abrirían N diálogos. Además el backend escribe la nota y el autor en cada
-   * slot, así que el rastro queda igual de completo que aceptando a mano.
+   * Antes esto abanicaba una petición por slot, en secuencia. El problema no
+   * era la secuencia sino el 2FA: el código es de un solo uso
+   * (`shared/email-otp` lo borra al validarlo), así que cada petición recibía
+   * un 403 nuevo, el interceptor abría el diálogo otra vez y salía otro correo.
+   * Un lote de 128 mediciones pedía 128 códigos, y la cola de S105 llevaba
+   * cinco días sin vaciarse en parte por eso. Ahora es un código y una entrada
+   * de auditoría para todo el lote.
    *
    * Al aceptar se mandan los valores YA cargados en cada fila —los del sensor,
    * sin editar—: el caso de uso es un backlog que se revisó en conjunto y se
    * declara tal cual. Para corregir un valor hay que usar la acción individual.
+   *
+   * El backend aplica ítem por ítem y devuelve cuáles fallaron, así que un slot
+   * que cambió de estado entremedio no se lleva el resto del lote.
    */
   private ejecutarEnBloque(accion: 'accept' | 'discard'): void {
     const nota = this.bulkNote().trim();
@@ -966,63 +971,69 @@ export class DgaReviewComponent {
     this.codeMessage.set('');
     this.bulkProgress.set({ done: 0, total: objetivo.length, fallidos: 0 });
 
-    from(objetivo)
-      .pipe(
-        concatMap((s) => {
-          const e = this.edit(s);
-          const payload: DgaReviewActionPayload =
-            accion === 'accept'
-              ? {
-                  site_id: s.site_id,
-                  ts: s.ts,
-                  action: 'accept',
-                  values: {
-                    caudal_instantaneo: this.numOrNull(e.caudal),
-                    flujo_acumulado: this.numOrNull(e.totalizador),
-                    nivel_freatico: this.numOrNull(e.nivel),
-                  },
-                  admin_note: nota,
-                }
-              : { site_id: s.site_id, ts: s.ts, action: 'discard', admin_note: nota };
-          return this.dga.applyReviewDecision(payload).pipe(
-            // Un slot que falla no puede abortar el lote: se cuenta y sigue.
-            catchError(() => of(null)),
-            concatMap((r) => of({ slot: s, ok: r !== null })),
-          );
-        }),
-      )
-      .subscribe({
-        next: ({ slot, ok }) => {
-          this.bulkProgress.update((p) =>
-            p ? { ...p, done: p.done + 1, fallidos: p.fallidos + (ok ? 0 : 1) } : p,
-          );
-          if (!ok) return;
-          const key = this.slotKey(slot);
-          this.slots.update((list) => list.filter((x) => this.slotKey(x) !== key));
-          this.total.update((n) => Math.max(0, n - 1));
-          this.selected.update((prev) => {
-            const next = new Set(prev);
-            next.delete(key);
-            return next;
-          });
+    // UNA petición para todo el lote. Antes acá había un `concatMap` que
+    // mandaba una por slot: como el código 2FA es de un solo uso, cada slot
+    // abría el diálogo de nuevo y disparaba otro correo con otro código.
+    // Aceptar 128 mediciones era imposible en la práctica.
+    const items: DgaReviewBulkItem[] = objetivo.map((s) => {
+      if (accion !== 'accept') return { site_id: s.site_id, ts: s.ts };
+      const e = this.edit(s);
+      return {
+        site_id: s.site_id,
+        ts: s.ts,
+        values: {
+          caudal_instantaneo: this.numOrNull(e.caudal),
+          flujo_acumulado: this.numOrNull(e.totalizador),
+          nivel_freatico: this.numOrNull(e.nivel),
         },
-        complete: () => {
-          const p = this.bulkProgress();
-          const okCount = (p?.done ?? 0) - (p?.fallidos ?? 0);
-          const verbo = accion === 'accept' ? 'aceptada(s) y enviándose' : 'descartada(s)';
-          this.bulkProgress.set(null);
-          this.bulkNote.set('');
-          this.codeMessage.set(
-            `${okCount} medición(es) ${verbo}.` +
-              (p?.fallidos ? ` ${p.fallidos} no se pudo(ieron) procesar: siguen en la cola.` : ''),
+      };
+    });
+
+    this.dga.applyReviewDecisionBulk({ action: accion, admin_note: nota, items }).subscribe({
+      next: (res) => {
+        // Los que fallaron siguen en la cola: se sacan de la lista solo los
+        // que el backend confirmó.
+        const fallidas = new Set(res.fallidos.map((f) => `${f.site_id}::${f.ts}`));
+        this.slots.update((list) =>
+          list.filter((x) => {
+            const key = this.slotKey(x);
+            return !this.selected().has(key) || fallidas.has(key);
+          }),
+        );
+        this.total.update((n) => Math.max(0, n - res.aplicados));
+        this.selected.update((prev) => {
+          const next = new Set<string>();
+          for (const key of prev) if (fallidas.has(key)) next.add(key);
+          return next;
+        });
+        this.edits.update((m) => {
+          const copy = { ...m };
+          for (const key of Object.keys(copy)) if (!fallidas.has(key)) delete copy[key];
+          return copy;
+        });
+
+        this.bulkProgress.set(null);
+        this.bulkNote.set('');
+        const verbo = accion === 'accept' ? 'aceptada(s) y enviándose' : 'descartada(s)';
+        this.codeMessage.set(
+          `${res.aplicados} medición(es) ${verbo}.` +
+            (res.fallidos.length
+              ? ` ${res.fallidos.length} no se pudo(ieron) procesar: siguen en la cola.`
+              : ''),
+        );
+        if (res.fallidos.length) {
+          this.error.set(
+            `${res.fallidos.length} medición(es) fallaron. Quedaron en la cola para reintentar.`,
           );
-          if (p?.fallidos) {
-            this.error.set(
-              `${p.fallidos} medición(es) fallaron. Quedaron en la cola para reintentar.`,
-            );
-          }
-        },
-      });
+        }
+      },
+      error: (err) => {
+        // Cancelar el 2FA o un error de red dejan el lote intacto: nada se
+        // aplicó, la selección se conserva para reintentar.
+        this.bulkProgress.set(null);
+        this.error.set(this.friendlyError(err, 'No se pudo aplicar la acción en bloque.'));
+      },
+    });
   }
 
   aceptarSeleccionados(): void {

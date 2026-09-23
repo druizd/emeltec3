@@ -19,6 +19,7 @@ import { of, throwError } from 'rxjs';
 import { DgaReviewComponent } from './dga-review';
 import {
   DgaReviewActionPayload,
+  DgaReviewBulkPayload,
   DgaReviewFilters,
   DgaReviewQueuePage,
   DgaReviewSlot,
@@ -203,6 +204,7 @@ describe('DgaReviewComponent — filtros', () => {
  */
 describe('DgaReviewComponent — selección múltiple', () => {
   let aplicadas: DgaReviewActionPayload[];
+  let lotes: DgaReviewBulkPayload[];
   let fallarEn: string | null;
 
   function slot(siteId: string, ts: string, code: string): DgaReviewSlot {
@@ -227,6 +229,7 @@ describe('DgaReviewComponent — selección múltiple', () => {
 
   beforeEach(() => {
     aplicadas = [];
+    lotes = [];
     fallarEn = null;
     const dga: Partial<DgaService> = {
       listReviewQueue: () =>
@@ -237,6 +240,18 @@ describe('DgaReviewComponent — selección múltiple', () => {
           return throwError(() => new Error('boom')) as never;
         }
         return of({ ok: true }) as never;
+      },
+      // UNA llamada por lote: es lo que hace que el 2FA se pida una sola vez.
+      // El backend aplica ítem por ítem y devuelve cuáles no pudo.
+      applyReviewDecisionBulk: (payload: DgaReviewBulkPayload) => {
+        lotes.push(payload);
+        const fallidos = payload.items
+          .filter((i) => fallarEn && i.ts === fallarEn)
+          .map((i) => ({ site_id: i.site_id, ts: i.ts, error: 'boom' }));
+        return of({
+          aplicados: payload.items.length - fallidos.length,
+          fallidos,
+        }) as never;
       },
     };
     TestBed.configureTestingModule({
@@ -305,6 +320,26 @@ describe('DgaReviewComponent — selección múltiple', () => {
     expect(c.error()).toContain('nota admin');
   });
 
+  /**
+   * El invariante que importa: UNA petición por lote, no una por slot.
+   *
+   * El código 2FA es de un solo uso, así que abanicar N peticiones hacía que el
+   * interceptor pidiera N códigos y mandara N correos. Si alguien vuelve a
+   * meter un bucle acá, este test lo caza.
+   */
+  it('manda UNA sola petición para todo el lote', () => {
+    const c = crear();
+    c.alternarMarca(SLOTS[0]!);
+    c.alternarMarca(SLOTS[1]!);
+    c.bulkNote.set('Caudal verificado contra el totalizador');
+    c.aceptarSeleccionados();
+
+    expect(lotes.length).toBe(1);
+    expect(lotes[0]!.items.length).toBe(2);
+    // El endpoint de a uno no se toca en el flujo en bloque.
+    expect(aplicadas.length).toBe(0);
+  });
+
   it('aplica la misma nota a todos los marcados y los saca de la cola', () => {
     const c = crear();
     c.alternarMarca(SLOTS[0]!);
@@ -312,13 +347,10 @@ describe('DgaReviewComponent — selección múltiple', () => {
     c.bulkNote.set('Caudal verificado contra el totalizador');
     c.aceptarSeleccionados();
 
-    expect(aplicadas.length).toBe(2);
-    expect(aplicadas.every((p) => p.action === 'accept')).toBe(true);
-    expect(aplicadas.every((p) => p.admin_note === 'Caudal verificado contra el totalizador')).toBe(
-      true,
-    );
+    expect(lotes[0]!.action).toBe('accept');
+    expect(lotes[0]!.admin_note).toBe('Caudal verificado contra el totalizador');
     // Se declaran los valores tal como venían del sensor.
-    expect(aplicadas[0]!.values?.caudal_instantaneo).toBe(77.9);
+    expect(lotes[0]!.items[0]!.values?.caudal_instantaneo).toBe(77.9);
     expect(c.slots().length).toBe(1);
     expect(c.seleccionados()).toBe(0);
     expect(c.bulkProgress()).toBeNull();
@@ -329,8 +361,8 @@ describe('DgaReviewComponent — selección múltiple', () => {
     c.alternarMarca(SLOTS[0]!);
     c.bulkNote.set('Sin dato crudo declarable');
     c.descartarSeleccionados();
-    expect(aplicadas[0]!.action).toBe('discard');
-    expect(aplicadas[0]!.values).toBeUndefined();
+    expect(lotes[0]!.action).toBe('discard');
+    expect(lotes[0]!.items[0]!.values).toBeUndefined();
   });
 
   it('un slot que falla no aborta el lote y queda en la cola', () => {
@@ -341,11 +373,12 @@ describe('DgaReviewComponent — selección múltiple', () => {
     c.bulkNote.set('Nota de prueba suficiente');
     c.aceptarSeleccionados();
 
-    // Los dos se intentaron, aunque el primero reventó.
-    expect(aplicadas.length).toBe(2);
-    // El que falló sigue en la lista; el que pasó salió.
+    // Los dos viajaron en el mismo lote; el backend informa cuál no pudo.
+    expect(lotes[0]!.items.length).toBe(2);
+    // El que falló sigue en la lista y sigue marcado, listo para reintentar.
     expect(c.slots().length).toBe(2);
     expect(c.slots().some((s) => s.ts === fallarEn)).toBe(true);
+    expect(c.estaMarcado(SLOTS[0]!)).toBe(true);
     expect(c.error()).toContain('1 medición(es) fallaron');
   });
 });
