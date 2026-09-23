@@ -146,6 +146,7 @@ describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers'
     const client = makeClient([
       { rows: [configCon(54)] },
       { rows: [] },
+      { rows: [] }, // cierre del episodio anterior por escalamiento
       { rows: [{ id: 'evento-1' }] },
     ]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
@@ -166,7 +167,12 @@ describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers'
       fecha_inicio: '2026-01-01',
       hora_inicio: '00:00:00',
     };
-    const client = makeClient([{ rows: [config] }, { rows: [] }, { rows: [{ id: 'evento-2' }] }]);
+    const client = makeClient([
+      { rows: [config] },
+      { rows: [] },
+      { rows: [] }, // cierre del episodio anterior por escalamiento
+      { rows: [{ id: 'evento-2' }] },
+    ]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
     const ins = insertDe(client);
     expect(ins).toBeDefined();
@@ -177,6 +183,35 @@ describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers'
     vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
     const client = makeClient([{ rows: [configCon(54)] }, { rows: [{ severidad: 'alta' }] }]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
+    expect(insertDe(client)).toBeUndefined();
+  });
+
+  it("escala de media a alta: cierra el episodio anterior con 'escalado' antes de insertar el nuevo", async () => {
+    vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
+    // lag = 80h − 24h (periodicidad dia) = 56h ≥ 48h → alta.
+    const client = makeClient([
+      { rows: [configCon(80)] },
+      { rows: [{ severidad: 'media' }] },
+      { rows: [] }, // cierre del episodio 'media' por escalamiento
+      { rows: [{ id: 'evento-4' }] },
+    ]);
+    await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
+    const cierreIdx = client._calls.findIndex(
+      (c) => c.sql.includes('UPDATE alertas_eventos') && c.sql.includes('resuelta = FALSE'),
+    );
+    const insertIdx = client._calls.findIndex((c) => c.sql.includes('INSERT'));
+    expect(cierreIdx).toBeGreaterThanOrEqual(0);
+    expect(insertIdx).toBeGreaterThan(cierreIdx);
+    expect(client._calls[cierreIdx]!.sql).toContain("resuelta_motivo = 'escalado'");
+    expect(client._calls[cierreIdx]!.params).toEqual(['alerta-1']);
+    expect(insertDe(client)!.params).toContain('alta');
+  });
+
+  it('sin escalamiento (misma tier) no emite ni cierre ni insert', async () => {
+    vi.setSystemTime(new Date('2026-06-21T12:00:00Z'));
+    const client = makeClient([{ rows: [configCon(54)] }, { rows: [{ severidad: 'media' }] }]);
+    await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
+    expect(client._calls.some((c) => c.sql.includes('UPDATE alertas_eventos'))).toBe(false);
     expect(insertDe(client)).toBeUndefined();
   });
 
@@ -238,7 +273,12 @@ describe('evaluarAlertaDgaAtrasado — lag desde el último comprobante y tiers'
       fecha_inicio: '2026-06-20',
       hora_inicio: '06:00:00',
     };
-    const client = makeClient([{ rows: [config] }, { rows: [] }, { rows: [{ id: 'evento-3' }] }]);
+    const client = makeClient([
+      { rows: [config] },
+      { rows: [] },
+      { rows: [] }, // cierre del episodio anterior por escalamiento
+      { rows: [{ id: 'evento-3' }] },
+    ]);
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
     const ins = insertDe(client);
     expect(ins).toBeDefined();
