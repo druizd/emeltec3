@@ -106,6 +106,52 @@ export const ReviewSlotActionPayload = z.object({
 export type ReviewSlotActionPayload = z.infer<typeof ReviewSlotActionPayload>;
 
 /**
+ * Tope de slots por request en la acción en bloque de la cola de revisión.
+ *
+ * No es el mismo que `BULK_SLOT_LIMIT` (800, acción sobre un RANGO de un pozo):
+ * acá cada ítem es un UPDATE propio y el request espera a que terminen todos,
+ * así que el techo lo pone el timeout del request, no el tamaño del rango.
+ */
+export const REVIEW_BULK_LIMIT = 300;
+
+/**
+ * Acción en bloque sobre slots SUELTOS de la cola de revisión.
+ *
+ * Existe para que un lote pida **un** código 2FA y deje **una** entrada de
+ * auditoría. Antes el frontend abanicaba una petición por slot: como el código
+ * es de un solo uso (`shared/email-otp`, `pending.delete` al validar), aceptar
+ * 128 slots pedía 128 códigos y mandaba 128 correos. La cola de S105 llevaba
+ * cinco días sin vaciarse, en parte por eso.
+ *
+ * Los ítems son claves sueltas y no un rango porque la selección de la cola
+ * cruza sitios y fechas: se marcan los slots de una anomalía, no un tramo.
+ *
+ * `values` va POR ÍTEM: cada fila de la cola tiene sus propios valores
+ * editables y el operador puede haber corregido uno antes de marcar el lote.
+ */
+export const ReviewBulkActionPayload = z.object({
+  action: z.enum(['accept', 'discard']),
+  admin_note: z.string().trim().min(5).max(500),
+  items: z
+    .array(
+      z.object({
+        site_id: z.string().trim().min(1).max(10),
+        ts: z.string().datetime({ offset: true }),
+        values: z
+          .object({
+            caudal_instantaneo: z.number().nullable().optional(),
+            flujo_acumulado: z.number().nullable().optional(),
+            nivel_freatico: z.number().nullable().optional(),
+          })
+          .optional(),
+      }),
+    )
+    .min(1)
+    .max(REVIEW_BULK_LIMIT),
+});
+export type ReviewBulkActionPayload = z.infer<typeof ReviewBulkActionPayload>;
+
+/**
  * Acción en bloque sobre un rango de slots.
  *
  * `recalcular` los devuelve a `vacio` para que el fill los recompute con la

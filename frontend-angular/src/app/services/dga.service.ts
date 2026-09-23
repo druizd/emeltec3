@@ -203,6 +203,28 @@ export interface DgaReviewActionPayload {
   admin_note: string;
 }
 
+/** Un ítem del lote: la clave del slot más sus valores editados en la fila. */
+export interface DgaReviewBulkItem {
+  site_id: string;
+  ts: string;
+  values?: {
+    caudal_instantaneo?: number | null;
+    flujo_acumulado?: number | null;
+    nivel_freatico?: number | null;
+  };
+}
+
+export interface DgaReviewBulkPayload {
+  action: 'accept' | 'discard';
+  admin_note: string;
+  items: DgaReviewBulkItem[];
+}
+
+export interface DgaReviewBulkResult {
+  aplicados: number;
+  fallidos: Array<{ site_id: string; ts: string; error: string }>;
+}
+
 /** Motivo tipificado de una baja. Va a fail_reason como baja_<tipo>. */
 export type DgaMotivoBaja =
   | 'recambio_instrumento'
@@ -402,6 +424,21 @@ export class DgaService {
   applyReviewDecision(payload: DgaReviewActionPayload): Observable<{ ok: true }> {
     return this.http
       .post<ApiResponse<{ ok: true }>>('/api/v2/dga/review-queue/action', payload)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  /**
+   * La misma decisión sobre varios slots, en UNA petición.
+   *
+   * Es una sola llamada a propósito: el código 2FA es de un solo uso, así que
+   * abanicar una petición por slot hacía que un lote de 128 pidiera 128
+   * códigos y mandara 128 correos.
+   *
+   * Responde 200 aunque algún ítem falle; el detalle viene en `fallidos`.
+   */
+  applyReviewDecisionBulk(payload: DgaReviewBulkPayload): Observable<DgaReviewBulkResult> {
+    return this.http
+      .post<ApiResponse<DgaReviewBulkResult>>('/api/v2/dga/review-queue/bulk', payload)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 

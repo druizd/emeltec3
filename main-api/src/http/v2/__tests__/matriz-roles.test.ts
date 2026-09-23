@@ -130,6 +130,9 @@ const ESPERADO: Record<string, readonly Rol[]> = {
   // --- DGA administrativo: staff Emeltec ---
   'GET /dga/review-queue': ['SuperAdmin', 'Admin'],
   'POST /dga/review-queue/action': ['SuperAdmin', 'Admin'],
+  // Mismo alcance que la acción de a uno: el lote no relaja el permiso, solo
+  // evita pedir un código 2FA por slot.
+  'POST /dga/review-queue/bulk': ['SuperAdmin', 'Admin'],
   'POST /dga/sites/:siteId/reconocer-sensor-defectuoso': ['SuperAdmin', 'Admin'],
   // Acciones en bloque sobre un rango de slots. El resumen es lectura, pero se
   // restringe igual que la acción: existe solo para precederla, y el estado

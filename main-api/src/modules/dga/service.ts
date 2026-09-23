@@ -265,6 +265,79 @@ export async function applyReviewDecision(input: {
   return { ok: true };
 }
 
+export interface ReviewBulkItemResult {
+  site_id: string;
+  ts: string;
+  error: string;
+}
+
+export interface ReviewBulkResult {
+  aplicados: number;
+  fallidos: ReviewBulkItemResult[];
+}
+
+/**
+ * Aplica la MISMA decisión a varios slots sueltos de la cola de revisión.
+ *
+ * Reusa `applyReviewDecision` ítem por ítem en vez de escribir un UPDATE
+ * masivo: las dos acciones tienen reglas propias —`accept` exige
+ * `requires_review`, `discard` acepta además `pendiente`— y duplicarlas en SQL
+ * sería una segunda fuente de verdad sobre qué se puede tocar.
+ *
+ * **No hay transacción que envuelva el lote**, y es deliberado:
+ *
+ *   - Un slot que falla no debe llevarse los 127 que sí se pudieron aplicar.
+ *     Es el mismo comportamiento que ya tenía el frontend cuando abanicaba las
+ *     peticiones, y es lo que el operador espera de una cola.
+ *   - 300 UPDATE dentro de una transacción sobre un hypertable es justo la
+ *     forma de chocar con el `statement_timeout` y dejar todo sin aplicar
+ *     después de minutos de espera.
+ *
+ * A cambio, el resultado es explícito: cuántos entraron y cuáles no, con su
+ * motivo. El llamador informa, no adivina.
+ */
+export async function applyReviewDecisionBulk(input: {
+  action: 'accept' | 'discard';
+  admin_note: string;
+  admin_email: string;
+  items: Array<{
+    site_id: string;
+    ts: string;
+    values?:
+      | {
+          caudal_instantaneo?: number | null | undefined;
+          flujo_acumulado?: number | null | undefined;
+          nivel_freatico?: number | null | undefined;
+        }
+      | undefined;
+  }>;
+}): Promise<ReviewBulkResult> {
+  const fallidos: ReviewBulkItemResult[] = [];
+  let aplicados = 0;
+
+  for (const item of input.items) {
+    try {
+      await applyReviewDecision({
+        site_id: item.site_id,
+        ts: item.ts,
+        action: input.action,
+        ...(item.values ? { values: item.values } : {}),
+        admin_note: input.admin_note,
+        admin_email: input.admin_email,
+      });
+      aplicados++;
+    } catch (err) {
+      fallidos.push({
+        site_id: item.site_id,
+        ts: item.ts,
+        error: err instanceof Error ? err.message : 'error desconocido',
+      });
+    }
+  }
+
+  return { aplicados, fallidos };
+}
+
 /**
  * Acción en bloque sobre un rango de slots de un pozo.
  *
@@ -712,6 +785,44 @@ export async function getDgaLivePreview(siteId: string): Promise<DgaLivePreview>
 // ============================================================================
 // CSV writer (legacy descarga)
 // ============================================================================
+
+/**
+ * Descarga estándar del apartado DGA del pozo: lo que efectivamente se declaró,
+ * con el comprobante SNIA de cada medición.
+ *
+ * No comparte writer con `toCsv` a propósito. Ese sale de `getDatoDgaDirecto-
+ * FromEquipo` — telemetría cruda re-bucketeada — donde el comprobante no existe
+ * porque esas filas nunca se enviaron a nadie. Meter la columna ahí habría
+ * dejado un CSV con "VOUCHER" siempre vacío, que es peor que no tenerla: sugiere
+ * que la medición se envió sin folio.
+ *
+ * El voucher sale de `dato_dga.comprobante`, que es el folio que devolvió SNIA
+ * al aceptar el envío. Un slot que todavía no se envía (o que se rechazó) lo
+ * trae vacío.
+ */
+export function toCsvDeclarado(rows: DatoDgaRow[]): string {
+  const header = 'FECHA;NIVEL FREÁTICO [M];CAUDAL [L/S];TOTALIZADOR [M3];VOUCHER';
+  const lines = rows.map((r) =>
+    [
+      fechaHoraChile(r.fecha, r.hora),
+      formatNumber(r.nivel_freatico),
+      formatNumber(r.caudal_instantaneo),
+      formatNumber(r.flujo_acumulado),
+      escapeCsv(r.comprobante ?? ''),
+    ].join(';'),
+  );
+  return [header, ...lines].join('\r\n');
+}
+
+/**
+ * `DD/MM/YYYY HH:MM` — el formato de fecha del resto de la plataforma. `fecha`
+ * y `hora` ya vienen proyectadas en hora Chile por la query, así que acá no hay
+ * conversión de zona: solo reordenar.
+ */
+function fechaHoraChile(fecha: string, hora: string): string {
+  const dia = (fecha ?? '').split('-').reverse().join('/');
+  return `${dia} ${(hora ?? '').slice(0, 5)}`.trim();
+}
 
 export function toCsv(rows: DatoDgaRow[]): string {
   const header = 'OBRA;FECHA;HORA;CAUDAL_INSTANTANEO;FLUJO_ACUMULADO;NIVEL_FREATICO';
