@@ -188,22 +188,22 @@ Config del equipo Emeltec (destinatarios y horarios del resumen de salud), no de
 
 `server.js` intenta arrancar 14 workers al levantar el HTTP server, cada uno cargando su build de `dist/modules/<módulo>/...`. Si el build falta, el worker no arranca y solo se loguea un warning — excepto el de alertas, que en producción es un error. La mayoría tiene su propio kill switch `ENABLE_*` (ver `.env.example` / `main-api/README.md`).
 
-| Worker                   | Switch                                                                     | Qué hace                                                                                             |
-| ------------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Alerts worker            | siempre activo                                                             | Evalúa reglas de alertas y dispara notificaciones (reemplaza `alertaService.js`)                     |
-| Metrics flusher          | siempre activo                                                             | Vacía el buffer in-memory de `api_metrics` a DB cada 5 s                                             |
-| DGA worker               | `ENABLE_DGA_WORKER`                                                        | Llena slots `vacio` → `pendiente` con datos del equipo                                               |
-| DGA preseed              | `ENABLE_DGA_PRESEED_WORKER`                                                | Crea slots `vacio` del mes/mes siguiente                                                             |
-| DGA submission           | `ENABLE_DGA_SUBMISSION_WORKER` (OFF por defecto)                           | Envía slots `pendiente` a SNIA                                                                       |
-| DGA GCS exporter         | `ENABLE_DGA_GCS_WORKER` (OFF por defecto)                                  | Sube envíos DGA respondidos a Google Cloud Storage                                                   |
-| DGA reconciler           | `ENABLE_DGA_RECONCILER`                                                    | Red de seguridad: detecta drift y slots atascados                                                    |
-| Health digest            | `ENABLE_HEALTH_DIGEST_WORKER` (OFF por defecto)                            | Resumen de salud de transmisión + DGA                                                                |
-| Weekly digest            | `ENABLE_WEEKLY_DIGEST_WORKER`                                              | Resumen semanal de alertas abiertas al cliente                                                       |
-| Contadores worker        | `ENABLE_CONTADORES_WORKER`                                                 | Agrega contadores mensuales                                                                          |
-| Contadores daily worker  | `ENABLE_CONTADORES_DAILY_WORKER` (OFF por defecto)                         | Materializa `site_contador_diario`/jornada                                                           |
-| Mathei simulation worker | `ENABLE_MATHEI_SIMULATION_WORKER` (OFF por defecto)                        | Deriva variables virtuales desde el pasteurizador real                                               |
-| Retention worker         | `ENABLE_RETENTION_WORKER` / `ENABLE_AUDIT_ALERTS_WORKER` (OFF por defecto) | Retención ARCO y alertas de auditoría Ley 21.663 — dos switches independientes sobre el mismo worker |
-| Cache warmer             | `ENABLE_CACHE_WARMER_WORKER`                                               | Precalienta `dashboard-history` en Redis cada ~50 s                                                  |
+| Worker                   | Switch                                                                   | Qué hace                                                                                             |
+| ------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Alerts worker            | siempre activo                                                           | Evalúa reglas de alertas y dispara notificaciones (reemplaza `alertaService.js`)                     |
+| Metrics flusher          | siempre activo                                                           | Vacía el buffer in-memory de `api_metrics` a DB cada 5 s                                             |
+| DGA worker               | `ENABLE_DGA_WORKER`                                                      | Llena slots `vacio` → `pendiente` con datos del equipo                                               |
+| DGA preseed              | `ENABLE_DGA_PRESEED_WORKER`                                              | Crea slots `vacio` del mes/mes siguiente                                                             |
+| DGA submission           | `ENABLE_DGA_SUBMISSION_WORKER` (OFF por defecto)                         | Envía slots `pendiente` a SNIA                                                                       |
+| DGA GCS exporter         | `ENABLE_DGA_GCS_WORKER` (OFF por defecto)                                | Sube envíos DGA respondidos a Google Cloud Storage                                                   |
+| DGA reconciler           | `ENABLE_DGA_RECONCILER`                                                  | Red de seguridad: detecta drift y slots atascados                                                    |
+| Health digest            | `ENABLE_HEALTH_DIGEST_WORKER` (OFF por defecto)                          | Resumen de salud de transmisión + DGA                                                                |
+| Weekly digest            | `ENABLE_WEEKLY_DIGEST_WORKER`                                            | Resumen semanal de alertas abiertas al cliente                                                       |
+| Contadores worker        | `ENABLE_CONTADORES_WORKER`                                               | Agrega contadores mensuales                                                                          |
+| Contadores daily worker  | `ENABLE_CONTADORES_DAILY_WORKER` (ON en `docker-compose.yml`)            | Materializa `site_contador_diario`/jornada                                                           |
+| Mathei simulation worker | `ENABLE_MATHEI_SIMULATION_WORKER` (OFF por defecto)                      | Deriva variables virtuales desde el pasteurizador real                                               |
+| Retention worker         | `ENABLE_RETENTION_WORKER` / `ENABLE_AUDIT_ALERTS_WORKER` (ON en compose) | Retención ARCO y alertas de auditoría Ley 21.663 — dos switches independientes sobre el mismo worker |
+| Cache warmer             | `ENABLE_CACHE_WARMER_WORKER`                                             | Precalienta `dashboard-history` en Redis cada ~50 s                                                  |
 
 > Nota de código: en `server.js`, el bloque de arranque del DGA GCS exporter se ejecuta dos veces contra el mismo módulo (`dist/modules/dga/gcs-exporter`); el primer intento llama una función que el módulo no exporta (`startDgaGcsExporter`) y falla en silencio (warning en log), y el segundo, que sí llama a `startDgaGcsExporterWorker`, es el que efectivamente inicia el worker. El comportamiento en producción no cambia, pero el log de arranque muestra un warning inofensivo de más.
 
