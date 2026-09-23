@@ -25,9 +25,12 @@ COPY package*.json ./
 RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/grpc ./dist/grpc
-# Servicios CJS legacy (emailService.js) que no están compilados en dist/
-# pero el código TS los carga via require dinámico (ver dga/notifier.ts).
-COPY --from=build /app/src/services ./src/services
+# NO se copia src/services: los CJS legacy (emailService.js) SÍ se compilan a
+# dist/ —el tsconfig tiene `allowJs` e incluye `src/**/*.js`— y es esa copia la
+# que corre. La de src/ no podía siquiera cargarse: hace
+# `require('../utils/timezone')` y src/utils nunca se copió, así que tiraba
+# MODULE_NOT_FOUND. El único que la buscaba era dga/notifier.ts, que por eso
+# no mandó un solo correo hasta el 23-09-2026.
 # Config CJS (db.js, env.js) que las migraciones requieren en runtime
 # (migrations/run.js y cada migración usan ../src/config/db).
 COPY --from=build /app/src/config ./src/config

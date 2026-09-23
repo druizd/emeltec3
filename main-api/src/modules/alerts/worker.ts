@@ -294,6 +294,39 @@ async function notificarUsuarios(
 }
 
 /**
+ * Lo que el correo necesita además de la regla: la etiqueta completa del sitio
+ * y el link profundo a su pestaña de alertas.
+ *
+ * Vive acá, y no repetido en cada evaluador, porque los cuatro especializados
+ * —`dga_atrasado`, `dga_slots_fallidos`, `review_queue_acumulacion` y
+ * `consumo_diario`— se los olvidaban. `sendAlertEmail` caía entonces a
+ * `sitio_desc` ("Pozo 4" en vez de "CCU · Quilicura · Pozo 4 · OB-1306-98") y
+ * el botón llevaba a la pantalla de login en lugar del pozo. Justamente las
+ * alertas DGA, que son las que más contexto necesitan, eran las que llegaban
+ * con menos.
+ */
+function contextoCorreo(
+  alerta: Alerta,
+  extra: {
+    valor_detectado: string;
+    condicion_texto: string;
+    severidad?: Alerta['severidad'];
+  },
+): Alerta & {
+  valor_detectado: string;
+  condicion_texto: string;
+  sitio_etiqueta: string;
+  sitio_url: string;
+} {
+  return {
+    ...alerta,
+    ...extra,
+    sitio_etiqueta: etiquetaSitio(alerta),
+    sitio_url: siteUrl(alerta.sitio_id, alerta.tipo_sitio, 'alertas'),
+  };
+}
+
+/**
  * Manda el correo de la incidencia. Es inmediato y ocurre UNA sola vez: llegar
  * hasta acá ya significa que `debeNotificar` abrió un episodio nuevo, y mientras
  * ese episodio no se dé por recibido no se abre otro (ver `debeNotificar`).
@@ -400,18 +433,20 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
   const curRank = SEV_RANK[tierSev] ?? 0;
   if (curRank <= lastRank) return; // ya notificada esta o mayor
 
-  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+  // `etiquetaSitio` y no `sitio_desc` a secas: el mensaje viaja al correo y a
+  // la bandeja, y "Pozo 4" sin empresa ni obra no identifica nada. El camino
+  // genérico (`buildMensaje`) ya lo hacía así.
+  const sitio = etiquetaSitio(alerta);
   const lagTexto = formatLagHorasMinutos(lagMs);
   const ultimo = dgaUser.ultimo_comprobante_ts
     ? `Último comprobante SNIA: slot ${new Date(dgaUser.ultimo_comprobante_ts).toISOString().replace('T', ' ').slice(0, 16)} UTC.`
     : 'Nunca se ha recibido un comprobante SNIA para este pozo.';
   const mensaje = `[${tierSev.toUpperCase()}] Reporte DGA sin comprobante en ${sitio} hace ${lagTexto}. ${ultimo}`;
-  const ctx = {
-    ...alerta,
+  const ctx = contextoCorreo(alerta, {
     severidad: tierSev,
     valor_detectado: lagTexto,
     condicion_texto: `sin comprobante SNIA hace más de ${DGA_TIER_H[tierSev]}h`,
-  };
+  });
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
        (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
@@ -473,14 +508,16 @@ export async function evaluarAlertaDgaSlotsFallidos(client: any, alerta: Alerta)
 
   if (!(await debeNotificar(client, alerta, hayFallidos))) return;
 
-  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+  // `etiquetaSitio` y no `sitio_desc` a secas: el mensaje viaja al correo y a
+  // la bandeja, y "Pozo 4" sin empresa ni obra no identifica nada. El camino
+  // genérico (`buildMensaje`) ya lo hacía así.
+  const sitio = etiquetaSitio(alerta);
   const severidad = alerta.severidad.toUpperCase();
   const mensaje = `[${severidad}] ${sitio}. ${n} slot(s) DGA en estado fallido requieren intervención.`;
-  const ctx = {
-    ...alerta,
+  const ctx = contextoCorreo(alerta, {
     valor_detectado: String(n),
     condicion_texto: formatCondicion(alerta),
-  };
+  });
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
        (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
@@ -540,14 +577,16 @@ export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Pro
 
   if (!(await debeNotificar(client, alerta, superaUmbral))) return;
 
-  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+  // `etiquetaSitio` y no `sitio_desc` a secas: el mensaje viaja al correo y a
+  // la bandeja, y "Pozo 4" sin empresa ni obra no identifica nada. El camino
+  // genérico (`buildMensaje`) ya lo hacía así.
+  const sitio = etiquetaSitio(alerta);
   const severidad = alerta.severidad.toUpperCase();
   const mensaje = `[${severidad}] ${sitio}. Cola de revisión DGA: ${n} slots requires_review (umbral ${alerta.umbral_bajo}).`;
-  const ctx = {
-    ...alerta,
+  const ctx = contextoCorreo(alerta, {
     valor_detectado: String(n),
     condicion_texto: formatCondicion(alerta),
-  };
+  });
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
        (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
@@ -596,18 +635,20 @@ export async function evaluarAlertaConsumoDiario(client: any, alerta: Alerta): P
   const dispara = consumo.delta > alerta.umbral_bajo;
   if (!(await debeNotificar(client, alerta, () => dispara))) return;
 
-  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+  // `etiquetaSitio` y no `sitio_desc` a secas: el mensaje viaja al correo y a
+  // la bandeja, y "Pozo 4" sin empresa ni obra no identifica nada. El camino
+  // genérico (`buildMensaje`) ya lo hacía así.
+  const sitio = etiquetaSitio(alerta);
   const severidad = alerta.severidad.toUpperCase();
   const unidad = consumo.unidad ? ` ${consumo.unidad}` : '';
   const deltaTexto = formatConsumo(consumo.delta);
   const mensaje =
     `[${severidad}] ${sitio}. Consumo del día ${consumo.diaIso}: ${deltaTexto}${unidad} ` +
     `(umbral ${alerta.umbral_bajo}${unidad}). Variable ${alerta.variable_key}.`;
-  const ctx = {
-    ...alerta,
+  const ctx = contextoCorreo(alerta, {
     valor_detectado: `${deltaTexto}${unidad}`,
     condicion_texto: formatCondicion(alerta),
-  };
+  });
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
        (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
@@ -1069,13 +1110,10 @@ async function insertarEvento(
   valorTexto: string | null,
 ): Promise<void> {
   const mensaje = buildMensaje(alerta, valorNum, valorTexto);
-  const ctx = {
-    ...alerta,
+  const ctx = contextoCorreo(alerta, {
     valor_detectado: formatValor(valorNum),
     condicion_texto: formatCondicion(alerta),
-    sitio_etiqueta: etiquetaSitio(alerta),
-    sitio_url: siteUrl(alerta.sitio_id, alerta.tipo_sitio, 'alertas'),
-  };
+  });
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
        (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,

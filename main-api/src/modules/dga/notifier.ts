@@ -7,8 +7,6 @@
  * para evitar bundling cruzado TS/CJS). Si no hay admin email configurado
  * (MONITOR_PRIMARY_EMAIL), loguea warn y no falla.
  */
-import path from 'path';
-import { createRequire } from 'module';
 import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
 
@@ -39,32 +37,36 @@ export function renderAdminShell(opts: {
 }
 
 let cachedMail: MailService | null = null;
-const nodeRequire = createRequire(__filename);
 
+/**
+ * `require` relativo, igual que el resto del código que usa el emailService
+ * legacy (alerts/worker, auth/service, healthDigest/worker).
+ *
+ * Antes esto apuntaba a `/app/src/services/emailService.js`, la copia que el
+ * Dockerfile metía en la imagen, y NUNCA cargaba: esa copia hace
+ * `require('../utils/timezone')` y `src/utils` no se copiaba, así que tiraba
+ * MODULE_NOT_FOUND. Los dos candidatos apuntaban al mismo árbol roto, el
+ * try/catch se tragaba el error y esto devolvía `null` con un warn. Resultado:
+ * `sendDgaAdminAlert` no mandó un solo correo desde que la imagen es así, y
+ * las anomalías del reconciler se perdían en silencio.
+ *
+ * El emailService que corre de verdad es el compilado: con `allowJs` en el
+ * tsconfig, los CJS legacy se emiten en `dist/services/`, al lado de
+ * `dist/utils/timezone.js`, que es justo lo que le faltaba a la otra copia.
+ */
 function loadMailService(): MailService | null {
   if (cachedMail) return cachedMail;
-  // emailService.js vive en src/services/. Layout:
-  //   /app/dist/modules/dga/notifier.js      ← este archivo en runtime
-  //   /app/src/services/emailService.js      ← target
-  // Subir 3 niveles desde __dirname llega a /app, luego src/services.
-  // Intentamos varios paths para cubrir layouts en dev y en docker.
-  const candidates = [
-    path.join(__dirname, '..', '..', '..', 'src', 'services', 'emailService.js'),
-    path.join(__dirname, '..', '..', '..', '..', 'src', 'services', 'emailService.js'),
-  ];
-  for (const p of candidates) {
-    try {
-      cachedMail = nodeRequire(p) as MailService;
-      return cachedMail;
-    } catch {
-      // sigue con el próximo path
-    }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedMail = require('../../services/emailService.js') as MailService;
+    return cachedMail;
+  } catch (err) {
+    logger.error(
+      { err: (err as Error).message },
+      'DGA notifier: no se pudo cargar emailService — las alertas del reconciler no saldrán',
+    );
+    return null;
   }
-  logger.warn(
-    { tried: candidates },
-    'DGA notifier: emailService.js no encontrado en paths candidatos',
-  );
-  return null;
 }
 
 /**
