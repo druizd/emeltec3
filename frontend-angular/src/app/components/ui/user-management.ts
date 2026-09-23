@@ -230,6 +230,31 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   placeholder="Ej. Encargado de sector de aguas"
                 />
               </div>
+              <!-- Suscripción al resumen semanal. Solo al editar: se prende
+                   cuando el usuario ya existe y pidió recibirlo, no de entrada. -->
+              @if (editingId()) {
+                <div class="md:col-span-2">
+                  <label
+                    class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition-colors hover:border-primary-tint-55"
+                  >
+                    <input
+                      type="checkbox"
+                      [(ngModel)]="resumenSemanal"
+                      name="recibe_resumen_semanal"
+                      class="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-primary-container focus:ring-primary-container/20"
+                    />
+                    <span class="min-w-0">
+                      <span class="block text-body-sm font-semibold text-slate-700"
+                        >Resumen semanal de alertas</span
+                      >
+                      <span class="mt-0.5 block text-[11px] leading-relaxed text-slate-500">
+                        Cada viernes recibe un correo con las alertas que siguen abiertas en las
+                        instalaciones que puede ver. Apagado por defecto.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              }
             </div>
 
             @if (!editingId()) {
@@ -602,6 +627,13 @@ export class UserManagementComponent implements OnInit, OnChanges {
     sub_empresa_id: '',
   };
 
+  /**
+   * Suscripción al resumen semanal del usuario en edición. Va aparte de
+   * `newUser` porque `CreateUserPayload` no la tiene: no se define al crear la
+   * cuenta sino después, cuando el cliente la pide.
+   */
+  resumenSemanal = false;
+
   ngOnInit() {
     this.updateInputs();
     this.resetForm();
@@ -635,6 +667,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
       empresa_id: this.empresaId,
       sub_empresa_id: this.subEmpresaId,
     };
+    this.resumenSemanal = false;
   }
 
   resetForm() {
@@ -757,6 +790,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
       empresa_id: user.empresa_id ?? this.empresaId,
       sub_empresa_id: user.sub_empresa_id ?? this.subEmpresaId,
     };
+    this.resumenSemanal = user.recibe_resumen_semanal === true;
     if (typeof document !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -782,6 +816,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
       rut_usuario: this.newUser.rut_usuario || null,
       cargo: this.newUser.cargo || null,
       tipo: this.newUser.tipo,
+      recibe_resumen_semanal: this.resumenSemanal,
     };
     // Solo se envía teléfono si se ingresó/reveló uno: vacío = preservar el
     // guardado (viene enmascarado, no se debe borrar).

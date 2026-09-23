@@ -885,6 +885,190 @@ exports.sendHealthDigest = async ({
   }
 };
 
+// ───────────────────────── Resumen semanal del cliente ──────────────────────
+//
+// Un correo por semana a cada usuario suscrito, con las alertas que siguen
+// abiertas en SUS sitios. Dos secciones que no se pueden mezclar:
+//
+//   1. En falla ahora — la condición sigue activa.
+//   2. Normalizadas, pendientes de acuse — ya se arreglaron solas, pero nadie
+//      las dio por recibidas, así que la regla sigue sin rearmarse.
+//
+// Si fueran una sola lista, el cliente leería como "activas" cosas que ya
+// pasaron y en dos semanas dejaría de abrir el correo.
+
+/** "hoy", "hace 1 día", "hace 12 días". */
+function formatDiasAbierta(dias) {
+  const n = Number(dias);
+  if (!Number.isFinite(n) || n <= 0) return 'hoy';
+  return n === 1 ? 'hace 1 día' : `hace ${n} días`;
+}
+
+/** Pastilla de severidad, del mismo color que la alerta individual. */
+function pildoraSeveridadHtml(severidad) {
+  const color = SEVERIDAD_COLOR[severidad] || '#64748b';
+  return `<span style="display:inline-block;padding:3px 10px;background-color:${color};color:#FFFFFF;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;border-radius:9999px;white-space:nowrap;">${escapeHtml(labelSeveridad(severidad))}</span>`;
+}
+
+/**
+ * Una sección del resumen semanal. Misma forma que las del resumen interno
+ * —tabla con link por fila— pero las columnas son otras: acá la unidad no es
+ * una instalación muda sino una alerta abierta.
+ */
+function seccionSemanalHtml(titulo, eyebrow, items, textoVacio) {
+  if (items.length === 0) {
+    return `          <tr>
+            <td style="padding:24px 40px 0;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(eyebrow)}</p>
+              <h2 style="margin:0;font-size:18px;line-height:1.3;color:#1E293B;font-weight:600;">${escapeHtml(titulo)}</h2>
+              <p style="margin:14px 0 0;padding:14px;background-color:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;color:#16a34a;font-size:13px;">&#10003; ${escapeHtml(textoVacio)}</p>
+            </td>
+          </tr>`;
+  }
+  const rows = items
+    .map((r) => {
+      const valor = r.valor
+        ? `<span style="color:#64748B;"> &middot; ${escapeHtml(String(r.valor))}</span>`
+        : '';
+      return `
+                <tr>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;color:#1E293B;font-weight:600;vertical-align:top;">${escapeHtml(r.sitio)}</td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:12px;color:#1E293B;vertical-align:top;">${escapeHtml(r.alerta)}${valor}</td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;vertical-align:top;">${pildoraSeveridadHtml(r.severidad)}</td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:12px;color:#64748B;vertical-align:top;white-space:nowrap;">${escapeHtml(formatDiasAbierta(r.dias))}</td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;text-align:right;vertical-align:top;"><a href="${r.url || ACCESS_URL}" style="display:inline-block;padding:5px 12px;background-color:#0DAFBD;color:#FFFFFF;font-size:11px;font-weight:700;border-radius:9999px;text-decoration:none;">Ver</a></td>
+                </tr>`;
+    })
+    .join('');
+  const th = (t, align) =>
+    `<td style="padding:9px 14px;background-color:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;${align ? `text-align:${align};` : ''}">${t}</td>`;
+  return `          <tr>
+            <td style="padding:24px 40px 0;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(eyebrow)}</p>
+              <h2 style="margin:0 0 10px;font-size:18px;line-height:1.3;color:#1E293B;font-weight:600;">${escapeHtml(titulo)}
+                <span style="font-weight:400;color:#94A3B8;font-size:14px;">&middot; ${items.length}</span>
+              </h2>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
+                <tr>
+                  ${th('Sitio')}${th('Alerta')}${th('Severidad')}${th('Abierta')}${th('', 'right')}
+                </tr>
+                ${rows}
+              </table>
+            </td>
+          </tr>`;
+}
+
+/** El acento lo pone lo peor que esté pasando ahora, no el total de filas. */
+function acentoSemanal(enFalla, pendientesAcuse) {
+  const orden = ['critica', 'alta', 'media', 'baja'];
+  const peor = orden.find((s) => enFalla.some((r) => r.severidad === s));
+  if (peor) return SEVERIDAD_COLOR[peor];
+  if (pendientesAcuse.length > 0) return '#d97706';
+  return '#22C55E';
+}
+
+function buildSemanalHtml({ nombre, generatedAt, enFalla, pendientesAcuse }) {
+  const accentColor = acentoSemanal(enFalla, pendientesAcuse);
+  const accentGradient = `linear-gradient(90deg,${accentColor} 0%,${accentColor} 100%)`;
+  const total = enFalla.length + pendientesAcuse.length;
+  const saludo = (nombre || '').trim() || 'usuario';
+
+  const intro =
+    total === 0
+      ? 'No hay alertas abiertas en tus instalaciones. Este correo llega igual cada semana, así sabes que el monitoreo está vivo.'
+      : enFalla.length === 0
+        ? 'No hay nada fallando ahora. Quedan alertas esperando que las des por recibidas para que la regla vuelva a armarse.'
+        : `Hay <strong style="color:#1E293B;">${enFalla.length} ${enFalla.length === 1 ? 'alerta' : 'alertas'}</strong> con la condición todavía activa en tus instalaciones.`;
+
+  const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Resumen semanal</p>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">${total === 0 ? 'Sin alertas activas' : 'Alertas abiertas en tus instalaciones'}</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">Hola <strong style="color:#1E293B;">${escapeHtml(saludo)}</strong>, ${intro}</p>
+              <p style="margin:8px 0 0;font-size:12px;color:#94A3B8;">Generado el ${escapeHtml(formatChile(generatedAt || new Date().toISOString()))}</p>
+            </td>
+          </tr>
+${seccionSemanalHtml('En falla ahora', 'Requieren atención', enFalla, 'Ninguna alerta con la condición activa.')}
+${seccionSemanalHtml('Normalizadas, pendientes de acuse', 'Esperando tu confirmación', pendientesAcuse, 'Ninguna alerta esperando acuse de recibo.')}
+${ctaButtonHtml(ACCESS_URL, 'Ir a la plataforma', accentColor)}
+${securityNoteHtml('Resumen automático semanal. Una alerta deja de aparecer acá cuando la das por recibida en la plataforma y su condición se normaliza. Para dejar de recibir este correo, pídelo a tu contacto Emeltec.')}`;
+
+  return renderShell({
+    title: 'Resumen semanal · Emeltec',
+    preheader:
+      total === 0
+        ? 'Sin alertas activas en tus instalaciones esta semana.'
+        : `${enFalla.length} en falla · ${pendientesAcuse.length} por confirmar.`,
+    accentColor,
+    accentGradient,
+    contentHtml,
+  });
+}
+
+// Internal — usado por scripts de preview/render y por los tests. No estable.
+exports._renderWeeklyDigestHtml = (input) => buildSemanalHtml(input);
+
+/**
+ * Resumen semanal de alertas abiertas, para el cliente.
+ *
+ * Se manda igual cuando no hay nada: un correo que solo llega con malas
+ * noticias se lee como ruido y termina filtrado.
+ */
+exports.sendWeeklyDigest = async ({
+  to,
+  nombre,
+  generatedAt,
+  enFalla = [],
+  pendientesAcuse = [],
+}) => {
+  try {
+    if (!to) {
+      console.warn('[emailService] sendWeeklyDigest: "to" vacío, email omitido');
+      return;
+    }
+    const total = enFalla.length + pendientesAcuse.length;
+    const subject =
+      total === 0
+        ? 'Resumen semanal Emeltec — Sin alertas activas'
+        : `Resumen semanal Emeltec — ${enFalla.length} en falla · ${pendientesAcuse.length} por confirmar`;
+
+    const lineas = [
+      `Resumen semanal de alertas — ${formatChile(generatedAt || new Date().toISOString())}`,
+      '',
+    ];
+    const seccionTexto = (titulo, items, vacio) => {
+      lineas.push(`${titulo} — ${items.length}`);
+      if (items.length === 0) {
+        lineas.push(`  ${vacio}`);
+      } else {
+        for (const r of items) {
+          lineas.push(
+            `  - ${r.sitio} — ${r.alerta} [${labelSeveridad(r.severidad)}]${r.valor ? ` · ${r.valor}` : ''} — abierta ${formatDiasAbierta(r.dias)}`,
+          );
+          lineas.push(`    ${r.url || ACCESS_URL}`);
+        }
+      }
+      lineas.push('');
+    };
+    seccionTexto('EN FALLA AHORA', enFalla, 'Ninguna alerta con la condición activa.');
+    seccionTexto(
+      'NORMALIZADAS, PENDIENTES DE ACUSE',
+      pendientesAcuse,
+      'Ninguna alerta esperando acuse de recibo.',
+    );
+    lineas.push(`Plataforma: ${ACCESS_URL}`);
+
+    await enviar({
+      to,
+      subject,
+      text: lineas.join('\n'),
+      html: buildSemanalHtml({ nombre, generatedAt, enFalla, pendientesAcuse }),
+    });
+  } catch (error) {
+    console.error('[emailService] Error enviando el resumen semanal:', error.message);
+  }
+};
+
 /**
  * Aviso de inactividad próxima a anonimización (B5.2 — Retención ARCO+).
  * Se envía ~30 días antes de que la cuenta sea anonimizada por inactividad.

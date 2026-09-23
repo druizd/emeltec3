@@ -23,6 +23,11 @@ export interface User {
   auth_mode?: AuthMode | null;
   password_set_at?: string | null;
   activo?: boolean;
+  /**
+   * Suscripción al resumen semanal de alertas abiertas. Apagada por defecto:
+   * se prende usuario por usuario desde la pantalla de usuarios.
+   */
+  recibe_resumen_semanal?: boolean;
   politica_aceptada_at?: string | null;
 }
 
@@ -57,6 +62,7 @@ export interface UpdateUserAdminPayload {
   empresa_id?: string | null;
   sub_empresa_id?: string | null;
   activo?: boolean;
+  recibe_resumen_semanal?: boolean;
 }
 
 export interface UpdateUserSecurityPayload {

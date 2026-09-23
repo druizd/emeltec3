@@ -29,6 +29,7 @@ const USER_PROFILE_SELECT = `
          u.empresa_id,
          u.sub_empresa_id,
          COALESCE(u.activo, true) AS activo,
+         COALESCE(u.recibe_resumen_semanal, false) AS recibe_resumen_semanal,
          u.last_login_at,
          u.activated_at,
          u.auth_mode,
@@ -234,6 +235,7 @@ exports.getAllUsers = async (req, res, next) => {
              u.empresa_id,
              u.sub_empresa_id,
              COALESCE(u.activo, true) AS activo,
+             COALESCE(u.recibe_resumen_semanal, false) AS recibe_resumen_semanal,
              u.last_login_at,
              u.activated_at,
              u.auth_mode,
@@ -692,6 +694,12 @@ exports.updateUser = async (req, res, next) => {
       empresa_id: b.empresa_id,
       sub_empresa_id: b.sub_empresa_id,
       activo: b.activo,
+      // Suscripción al resumen semanal de alertas. Apagada por defecto en la
+      // BD; se prende desde la pantalla de usuarios, uno por uno. Quién puede
+      // prenderla ya lo decidió `managePermissionError` más arriba: el mismo
+      // permiso que para editar cualquier otro campo del usuario.
+      recibe_resumen_semanal:
+        b.recibe_resumen_semanal === undefined ? undefined : Boolean(b.recibe_resumen_semanal),
     };
     const sets = [];
     const params = [];
