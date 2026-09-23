@@ -9,7 +9,10 @@ El proyecto esta disenado como una aplicacion multi-servicio desplegada con Dock
 La plataforma centraliza informacion de instalaciones industriales y entrega herramientas para operar modulos como:
 
 - Consumo de agua.
+- Cumplimiento normativo DGA (Direccion General de Aguas): declaracion de mediciones a SNIA.
+- Contadores: agregacion mensual y diaria de energia y volumen.
 - Generacion de riles.
+- Alertas: reglas de monitoreo y notificacion por correo.
 - Variables de proceso.
 - Consumo electrico.
 - Maletas piloto.
@@ -161,21 +164,24 @@ docker compose config --quiet
 
 ## Produccion y VM
 
-Produccion esta pensada para ejecutarse en una VM Linux con Docker Compose. El deploy se realiza automaticamente con GitHub Actions cuando se hace merge o push a `main`.
+Produccion corre en una unica VM Linux con Docker Compose, publicada por Nginx en
+`nuevacloud.emeltec.cl` (`cloud.emeltec.cl` es la plataforma legacy). El deploy a
+`main` es automatico, sin aprobacion manual, y termina en la VM en ~3-10 minutos.
 
-El flujo general es:
+El flujo real es:
 
-1. GitHub Actions valida el proyecto.
-2. GitHub se conecta por SSH a la VM.
-3. La VM actualiza el repositorio.
-4. Docker Compose reconstruye y reinicia los servicios.
-5. Nginx publica el frontend y enruta las APIs bajo el dominio configurado.
+1. Push a `main` dispara `build-publish.yml`: un runner GitHub-hosted construye las
+   imagenes y las publica en GHCR.
+2. Si ese build termina OK, se dispara `deploy-selfhosted.yml` en el runner
+   self-hosted de la VM: hace `git pull`, aplica migraciones y actualiza los
+   contenedores con `docker compose pull` + `up --no-build` (no reconstruye en la VM).
+3. Nginx publica el frontend y enruta las APIs bajo `nuevacloud.emeltec.cl`.
 
-La documentacion especifica de despliegue esta en:
+Un tercer workflow (`deploy-production.yml`) solo valida el build en cada push; su
+deploy por SSH es manual (`workflow_dispatch`).
 
-```text
-docs/deployment.md
-```
+La documentacion especifica de despliegue, con el detalle de cada workflow, esta en
+[`docs/deployment.md`](docs/deployment.md).
 
 ## Notas de mantenimiento
 
