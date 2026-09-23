@@ -1165,6 +1165,25 @@ interface SiteDashboardData {
                                 >
                               </a>
                             }
+                            <!-- Mismo patrón que el comprobante SNIA: un ícono
+                                 al lado del badge, no una línea nueva. La celda
+                                 ya carga estado y motivo; una tercera línea la
+                                 ensucia. Solo SuperAdmin, que es quien resuelve
+                                 la cola. -->
+                            @if (report.estado === 'Revisar' && isSuperAdmin()) {
+                              <a
+                                [routerLink]="['/dga-review']"
+                                [queryParams]="revisionQueryParams(report)"
+                                (click)="$event.stopPropagation()"
+                                title="Resolver este slot en la cola de revisión DGA"
+                                aria-label="Resolver este slot en la cola de revisión DGA"
+                                class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 transition-colors hover:bg-amber-100"
+                              >
+                                <span class="material-symbols-outlined text-[14px]"
+                                  >fact_check</span
+                                >
+                              </a>
+                            }
                           </div>
                           @if (
                             report.estado === 'Rechazado' ||
@@ -1177,29 +1196,6 @@ interface SiteDashboardData {
                             >
                               {{ report.respuesta }}
                             </p>
-                          }
-                          <!-- El estado "Revisar" no se destraba desde acá: el
-                               slot espera decisión en la cola de revisión. Para
-                               quien puede entrar, un link directo ya filtrado
-                               en este pozo y este día; para el resto, decir
-                               quién lo resuelve. -->
-                          @if (report.estado === 'Revisar') {
-                            @if (isSuperAdmin()) {
-                              <a
-                                [routerLink]="['/dga-review']"
-                                [queryParams]="revisionQueryParams(report)"
-                                class="inline-flex w-fit items-center gap-1 text-caption-xs font-bold text-amber-700 underline-offset-2 transition-colors hover:text-amber-800 hover:underline"
-                              >
-                                Revisar este dato
-                                <span class="material-symbols-outlined" aria-hidden="true"
-                                  >arrow_forward</span
-                                >
-                              </a>
-                            } @else {
-                              <p class="text-caption-xs font-medium text-slate-400">
-                                La revisión la realiza el equipo Emeltec.
-                              </p>
-                            }
                           }
                         </div>
                       </td>
