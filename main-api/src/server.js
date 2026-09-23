@@ -184,6 +184,24 @@ const httpServer = app.listen(config.port, () => {
     }
   }
 
+  // Weekly digest worker TS (resumen semanal de alertas abiertas, al cliente).
+  try {
+    const weeklyWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'weeklyDigest',
+      'worker',
+    );
+    const { startWeeklyDigestWorker } = require(weeklyWorkerPath);
+    startWeeklyDigestWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar weekly digest worker:', err.message);
+    }
+  }
+
   // Contadores worker TS (agrega mensualmente totalizador/energia/volumen).
   try {
     const contadoresWorkerPath = require('path').join(
@@ -390,6 +408,21 @@ function shutdown(signal) {
     );
     const { stopHealthDigestWorker } = require(healthWorkerPath);
     stopHealthDigestWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
+
+  try {
+    const weeklyWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'weeklyDigest',
+      'worker',
+    );
+    const { stopWeeklyDigestWorker } = require(weeklyWorkerPath);
+    stopWeeklyDigestWorker();
   } catch (_err) {
     // worker no estaba activo
   }
