@@ -17,7 +17,11 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { concatMap, from, of } from 'rxjs';
+
+/** 'YYYY-MM-DD', que es lo único que acepta un input type=date. */
+const FORMATO_DIA = /^\d{4}-\d{2}-\d{2}$/;
 import { catchError } from 'rxjs/operators';
 import {
   DgaReviewActionPayload,
@@ -496,6 +500,7 @@ const WARNING_LABELS: Record<string, string> = {
 })
 export class DgaReviewComponent {
   private readonly dga = inject(DgaService);
+  private readonly route = inject(ActivatedRoute);
 
   slots = signal<DgaReviewSlot[]>([]);
   /** Total que matchea los filtros SIN el tope de la página. */
@@ -578,7 +583,31 @@ export class DgaReviewComponent {
   });
 
   constructor() {
+    this.aplicarQueryParams();
     this.reload();
+  }
+
+  /**
+   * Filtros iniciales desde la URL: `?site=S105&desde=2026-09-18&hasta=2026-09-23`.
+   *
+   * Es lo que permite llegar hasta acá desde el estado "Revisar" de la pestaña
+   * DGA de un pozo, ya filtrado en ese pozo y ese día. Sin esto, el único
+   * camino era el sidebar y volver a buscar el slot a mano — y una cola que
+   * exige acordarse de ir a otra pantalla no se vacía: S105 acumuló 128 slots
+   * en cinco días.
+   *
+   * Las fechas se validan contra el formato del input `type=date`: un valor
+   * basura en la URL dejaría el campo en un estado que el navegador no sabe
+   * mostrar, y el filtro se aplicaría en silencio.
+   */
+  private aplicarQueryParams(): void {
+    const params = this.route.snapshot.queryParamMap;
+    const site = (params.get('site') ?? '').trim();
+    const desde = (params.get('desde') ?? '').trim();
+    const hasta = (params.get('hasta') ?? '').trim();
+    if (site) this.filterSite.set(site);
+    if (FORMATO_DIA.test(desde)) this.filterDesde.set(desde);
+    if (FORMATO_DIA.test(hasta)) this.filterHasta.set(hasta);
   }
 
   slotKey(s: DgaReviewSlot): string {

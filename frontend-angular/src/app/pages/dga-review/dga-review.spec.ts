@@ -14,6 +14,7 @@
  * de más abajo es el único que detecta la regresión.
  */
 import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { DgaReviewComponent } from './dga-review';
 import {
@@ -29,9 +30,12 @@ const PAGINA_VACIA = { slots: [], total: 0, sitios: [] };
 describe('DgaReviewComponent — filtros', () => {
   let capturado: DgaReviewFilters[];
   let dga: Partial<DgaService>;
+  /** Se completa ANTES de `crear()`: el componente los lee en el constructor. */
+  let queryParams: Record<string, string>;
 
   beforeEach(() => {
     capturado = [];
+    queryParams = {};
     dga = {
       listReviewQueue: (filters: DgaReviewFilters = {}) => {
         capturado.push(filters);
@@ -40,7 +44,19 @@ describe('DgaReviewComponent — filtros', () => {
     };
     TestBed.configureTestingModule({
       imports: [DgaReviewComponent],
-      providers: [{ provide: DgaService, useValue: dga }],
+      providers: [
+        { provide: DgaService, useValue: dga },
+        {
+          // Getter y no un objeto fijo: el mapa se arma cuando el componente
+          // inyecta la ruta, que es después de que el test setee queryParams.
+          provide: ActivatedRoute,
+          useValue: {
+            get snapshot() {
+              return { queryParamMap: convertToParamMap(queryParams) };
+            },
+          },
+        },
+      ],
     });
   });
 
@@ -54,6 +70,45 @@ describe('DgaReviewComponent — filtros', () => {
     expect(capturado[0]!.desde).toBeUndefined();
     expect(capturado[0]!.hasta).toBeUndefined();
     expect(capturado[0]!.siteId).toBeUndefined();
+  });
+
+  // ---- Deep link desde el estado "Revisar" de un pozo ----
+  //
+  // Es el único camino directo entre la pantalla que avisa y la que resuelve.
+  // Sin esto había que entrar por el sidebar y volver a buscar el slot a mano,
+  // y la cola no se vaciaba: S105 llegó a 128 slots en cinco días.
+
+  it('aplica obra y rango desde la URL en la PRIMERA carga', () => {
+    queryParams = { site: 'S105', desde: '2026-09-18', hasta: '2026-09-18' };
+    const c = crear();
+    expect(c.filterSite()).toBe('S105');
+    expect(c.filterDesde()).toBe('2026-09-18');
+    // Una sola llamada: los filtros se aplican ANTES del reload, no después.
+    expect(capturado.length).toBe(1);
+    expect(capturado[0]!.siteId).toBe('S105');
+    expect(capturado[0]!.desde).toBe('2026-09-18T04:00:00.000Z');
+  });
+
+  it('filtra solo por obra cuando la URL no trae fechas', () => {
+    queryParams = { site: 'S119' };
+    crear();
+    expect(capturado[0]!.siteId).toBe('S119');
+    expect(capturado[0]!.desde).toBeUndefined();
+  });
+
+  it('ignora una fecha con formato inválido en vez de romper el input', () => {
+    queryParams = { site: 'S105', desde: 'ayer', hasta: '18-09-2026' };
+    const c = crear();
+    expect(c.filterSite()).toBe('S105');
+    expect(c.filterDesde()).toBe('');
+    expect(c.filterHasta()).toBe('');
+    expect(capturado[0]!.desde).toBeUndefined();
+  });
+
+  it('sin query params se comporta como antes', () => {
+    const c = crear();
+    expect(c.filterSite()).toBe('');
+    expect(c.hasFilters()).toBe(false);
   });
 
   it('expande "desde" al inicio del día en hora de Chile (UTC-4 en invierno)', () => {
@@ -186,7 +241,15 @@ describe('DgaReviewComponent — selección múltiple', () => {
     };
     TestBed.configureTestingModule({
       imports: [DgaReviewComponent],
-      providers: [{ provide: DgaService, useValue: dga }],
+      providers: [
+        { provide: DgaService, useValue: dga },
+        // Sin query params: esta tanda no prueba el deep link, pero el
+        // componente inyecta la ruta igual.
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
+      ],
     });
   });
 

@@ -21,6 +21,7 @@ import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton
 import { WellDiagramSkeletonComponent } from '../../../../components/ui/well-diagram-skeleton';
 import { WellStatCardComponent } from '../../../../components/ui/well-stat-card';
 import { type ContadorMensualPoint, CompanyService } from '../../../../services/company.service';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../../services/auth.service';
 import { DatoDgaRow, DgaService } from '../../../../services/dga.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
@@ -105,6 +106,7 @@ interface SiteDashboardData {
     TimezoneLegendComponent,
     WellStatCardComponent,
     DgaSlotsMantenimientoComponent,
+    RouterLink,
   ],
   template: `
     <ng-container>
@@ -1176,6 +1178,29 @@ interface SiteDashboardData {
                               {{ report.respuesta }}
                             </p>
                           }
+                          <!-- El estado "Revisar" no se destraba desde acá: el
+                               slot espera decisión en la cola de revisión. Para
+                               quien puede entrar, un link directo ya filtrado
+                               en este pozo y este día; para el resto, decir
+                               quién lo resuelve. -->
+                          @if (report.estado === 'Revisar') {
+                            @if (isSuperAdmin()) {
+                              <a
+                                [routerLink]="['/dga-review']"
+                                [queryParams]="revisionQueryParams(report)"
+                                class="inline-flex w-fit items-center gap-1 text-caption-xs font-bold text-amber-700 underline-offset-2 transition-colors hover:text-amber-800 hover:underline"
+                              >
+                                Revisar este dato
+                                <span class="material-symbols-outlined" aria-hidden="true"
+                                  >arrow_forward</span
+                                >
+                              </a>
+                            } @else {
+                              <p class="text-caption-xs font-medium text-slate-400">
+                                La revisión la realiza el equipo Emeltec.
+                              </p>
+                            }
+                          }
                         </div>
                       </td>
                     </tr>
@@ -1633,6 +1658,31 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
    * botón solo les daría un 403 tras llenar el formulario.
    */
   readonly canReviewDga = this.authService.canReviewDga;
+
+  /**
+   * Gate del link a la cola de revisión. Es MÁS ESTRICTO que `canReviewDga`
+   * (SuperAdmin + Admin) y que el propio `roleGuard` de `/dga-review`: por
+   * decisión del usuario el 23-09-2026, solo SuperAdmin ve el link. Un Admin
+   * puede seguir llegando por el sidebar; simplemente no se lo ofrecemos desde
+   * el pozo.
+   */
+  readonly isSuperAdmin = this.authService.isSuperAdmin;
+
+  /**
+   * Filtros con los que se abre la cola de revisión desde un slot: ese pozo y
+   * ese día. El día sale de `report.fecha`, que el backend ya entrega en la
+   * zona DGA (`Etc/GMT+4`); recalcularlo desde el ISO lo correría de día en los
+   * slots de la madrugada.
+   *
+   * Si la fecha no viniera con el formato esperado, se filtra solo por obra:
+   * es preferible una cola sin acotar a una con un rango inventado que esconda
+   * justamente el slot que se venía a mirar.
+   */
+  revisionQueryParams(report: DgaReportRow): Record<string, string> {
+    const dia = (report.fecha ?? '').slice(0, 10);
+    const site = this.siteId();
+    return /^\d{4}-\d{2}-\d{2}$/.test(dia) ? { site, desde: dia, hasta: dia } : { site };
+  }
 
   // Inputs
   siteId = input.required<string>();
