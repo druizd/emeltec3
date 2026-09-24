@@ -392,6 +392,7 @@ describe('auditAlerts — marca de agua de cambio_rol', () => {
     target_tipo_actual: 'Admin',
     ip: null,
     ts: '2026-08-18T04:52:48.000Z',
+    ts_exacto: '2026-08-18 04:52:48.000000+00',
     cambio_tipo: { antes: 'Gerente', despues: 'Admin' },
   };
 
@@ -437,7 +438,8 @@ describe('auditAlerts — marca de agua de cambio_rol', () => {
     expect(upsert).toBeDefined();
     // rows viene ORDER BY ts DESC: rows[0].ts es el cambio más nuevo del correo.
     // Guardar NOW() en su lugar se comería los cambios que entren durante el envío.
-    expect(upsert![1]).toEqual(['cambio_rol:lote', '2026-08-18T04:52:48.000Z']);
+    // Viaja ts_exacto (texto), no ts (Date) — ver test 10 para el porqué.
+    expect(upsert![1]).toEqual(['cambio_rol:lote', '2026-08-18 04:52:48.000000+00']);
   });
 
   it('9. La marca nunca retrocede: el UPSERT la avanza con GREATEST', async () => {
@@ -447,6 +449,33 @@ describe('auditAlerts — marca de agua de cambio_rol', () => {
 
     const [sql] = upsertDe(dbQ)!;
     expect(sql).toContain('GREATEST(EXCLUDED.watermark_ts, audit_alert_cooldown.watermark_ts)');
+  });
+
+  it('10. La marca viaja como texto (ts_exacto) y conserva los microsegundos que el Date de node-postgres trunca', async () => {
+    // Reproduce el incidente real: node-postgres devuelve `ts` como Date, que
+    // solo tiene milisegundos (acá truncado a .898), mientras que `ts_exacto`
+    // (columna ts::text) conserva los microsegundos reales de audit_log
+    // (.898265). Antes del fix, registrarCooldown recibía el Date truncado y
+    // la fila seguía calificando en el ciclo siguiente (.898265 > .898000).
+    const cambioConMicrosegundos = {
+      ...CAMBIO,
+      ts: new Date('2026-09-23T12:21:39.898Z'),
+      ts_exacto: '2026-09-23 12:21:39.898265+00',
+    };
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [cambioConMicrosegundos], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+
+    await detectarCambiosRol(dbQ, vi.fn().mockResolvedValue(undefined));
+
+    const upsert = upsertDe(dbQ);
+    expect(upsert).toBeDefined();
+    // El parámetro de la marca debe ser el string con los microsegundos
+    // (.898265), no el Date truncado (.898).
+    expect(upsert![1]).toEqual(['cambio_rol:lote', '2026-09-23 12:21:39.898265+00']);
   });
 
   it('11. logins_fallidos registra sin marca: su ventana de 15 min ya es más corta que el cooldown', async () => {
