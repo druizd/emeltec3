@@ -13,6 +13,14 @@ ALTER TABLE dato_dga
   ADD COLUMN IF NOT EXISTS ultimo_intento_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS intentos          SMALLINT     NOT NULL DEFAULT 0;
 
-CREATE INDEX IF NOT EXISTS idx_dato_dga_submission
-  ON dato_dga (estatus, ultimo_intento_at)
-  WHERE estatus != 'enviado';
+-- idx_dato_dga_submission: se construía acá, pero quedó superado por el
+-- rediseño de la cola de envío (2026-05-16 lo dropea; 2026-05-17 lo
+-- reemplaza por idx_dato_dga_pending_retry / idx_dato_dga_review_queue
+-- sobre site_id). Se deja de crear acá para que una base ya migrada no
+-- reconstruya el índice completo en cada deploy solo para que la migración
+-- 2026-05-16 lo vuelva a dropear un instante después: en dato_dga
+-- (hypertable caliente, consultada constantemente por los workers DGA) ese
+-- CREATE toma lock exclusivo y puede deadlockear contra ellos. El
+-- DROP INDEX IF EXISTS de 2026-05-16 se mantiene para limpiar bases
+-- antiguas que todavía lo tengan; en el estado final del esquema este
+-- índice no existe.

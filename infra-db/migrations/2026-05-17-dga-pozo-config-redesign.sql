@@ -273,20 +273,63 @@ END $$;
 -- ============================================================================
 -- SECCIÓN 6 — Re-crear índices con site_id
 -- ============================================================================
+-- El DROP + CREATE de acá migra los índices que antes usaban id_dgauser
+-- (creados por 2026-05-16 mientras esa columna existía) a la definición
+-- nueva sobre site_id. Es necesario una sola vez, la primera vez que esta
+-- migración corre sobre una base que aún tenía la columna vieja.
+--
+-- IMPORTANTE: el deploy re-aplica TODAS las migraciones sobre la base viva
+-- en cada release. Sin guardia, este DROP + CREATE se repite en cada deploy
+-- sobre dato_dga y dga_send_audit (hypertables calientes, consultadas
+-- constantemente por los workers DGA), pidiendo lock exclusivo cada vez —
+-- causa confirmada de deadlock contra esos workers (24-09-2026). La guardia
+-- consulta pg_indexes y sólo toca el índice si su definición actual todavía
+-- NO menciona site_id (es decir, sigue en la versión vieja con id_dgauser o
+-- no existe). Si ya menciona site_id, la migración no hace nada: ni DROP ni
+-- CREATE ni lock.
 
-DROP INDEX IF EXISTS idx_audit_slot;
-CREATE INDEX IF NOT EXISTS idx_audit_slot
-  ON dga_send_audit (site_id, ts);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+     WHERE schemaname = 'public'
+       AND indexname = 'idx_audit_slot'
+       AND indexdef ILIKE '%site_id%'
+  ) THEN
+    EXECUTE 'DROP INDEX IF EXISTS idx_audit_slot';
+    EXECUTE 'CREATE INDEX idx_audit_slot ON dga_send_audit (site_id, ts)';
+  END IF;
+END $$;
 
-DROP INDEX IF EXISTS idx_dato_dga_pending_retry;
-CREATE INDEX IF NOT EXISTS idx_dato_dga_pending_retry
-  ON dato_dga (next_retry_at NULLS FIRST, site_id)
-  WHERE estatus = 'pendiente';
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+     WHERE schemaname = 'public'
+       AND indexname = 'idx_dato_dga_pending_retry'
+       AND indexdef ILIKE '%site_id%'
+  ) THEN
+    EXECUTE 'DROP INDEX IF EXISTS idx_dato_dga_pending_retry';
+    EXECUTE 'CREATE INDEX idx_dato_dga_pending_retry
+               ON dato_dga (next_retry_at NULLS FIRST, site_id)
+               WHERE estatus = ''pendiente''';
+  END IF;
+END $$;
 
-DROP INDEX IF EXISTS idx_dato_dga_review_queue;
-CREATE INDEX IF NOT EXISTS idx_dato_dga_review_queue
-  ON dato_dga (site_id, ts DESC)
-  WHERE estatus = 'requires_review';
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+     WHERE schemaname = 'public'
+       AND indexname = 'idx_dato_dga_review_queue'
+       AND indexdef ILIKE '%site_id%'
+  ) THEN
+    EXECUTE 'DROP INDEX IF EXISTS idx_dato_dga_review_queue';
+    EXECUTE 'CREATE INDEX idx_dato_dga_review_queue
+               ON dato_dga (site_id, ts DESC)
+               WHERE estatus = ''requires_review''';
+  END IF;
+END $$;
 
 -- ============================================================================
 -- SECCIÓN 7 — DROP tabla dga_user
