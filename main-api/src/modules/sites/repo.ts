@@ -23,7 +23,7 @@ const HISTORY_RANGE_TTL_S = 300;
  * transmitiendo (2.200 muestras a ~1/min son apenas ~37 horas) y deja fuera
  * del plan a los chunks históricos. NO borrar este filtro pensando que sobra.
  */
-const HISTORY_WINDOW_DAYS = 30;
+export const HISTORY_WINDOW_DAYS = 30;
 
 const SITE_COLUMNS =
   'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo, es_maleta_piloto';

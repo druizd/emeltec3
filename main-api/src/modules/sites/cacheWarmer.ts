@@ -22,7 +22,7 @@
 import { logger } from '../../config/logger';
 import { beat } from '../../config/heartbeat';
 import { query } from '../../config/dbHelpers';
-import { getDashboardHistory } from './repo';
+import { getDashboardHistory, HISTORY_WINDOW_DAYS } from './repo';
 
 const INTERVAL_MS = 50_000;
 const HISTORY_LIMITS = [500, 2200];
@@ -35,13 +35,49 @@ let isWarming = false;
 // Handle del próximo barrido encadenado, para poder cancelarlo (tests, shutdown).
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
 
-async function getActiveSiteSerials(): Promise<string[]> {
-  const result = await query<{ id_serial: string }>(
-    `SELECT id_serial FROM sitio WHERE activo = true ORDER BY id_serial`,
+interface ActiveSiteRow {
+  id_serial: string;
+  has_recent_data: boolean;
+}
+
+/**
+ * Sitios activos, marcando cuáles tienen datos dentro de la MISMA ventana que
+ * usa la consulta acotada de `getDashboardHistory` (`HISTORY_WINDOW_DAYS`,
+ * importada desde `./repo`, no un 30 suelto acá). Que las dos ventanas no
+ * puedan separarse es el punto: si el warmer calentara un sitio fuera de esa
+ * ventana, `getDashboardHistory` dispararía su fallback sin cota (el plan de
+ * ~140 chunks que este cambio vino a eliminar de cada barrido). Un sitio
+ * activo pero mudo hace semanas queda fuera del barrido: no sirve precalentar
+ * una caché que nadie va a mirar, y evita pagar ese fallback caro en cada
+ * pasada del warmer.
+ */
+async function getActiveSiteSerials(): Promise<{ serials: string[]; skipped: number }> {
+  const result = await query<ActiveSiteRow>(
+    `
+    SELECT s.id_serial,
+           EXISTS (
+             SELECT 1 FROM equipo_1min e
+              WHERE e.id_serial = s.id_serial
+                AND e.bucket >= NOW() - INTERVAL '${HISTORY_WINDOW_DAYS} days'
+           ) AS has_recent_data
+      FROM sitio s
+     WHERE s.activo = true
+     ORDER BY s.id_serial
+    `,
     [],
     { label: 'cache_warmer__active_sites' },
   );
-  return result.rows.map((r) => r.id_serial);
+
+  const serials: string[] = [];
+  let skipped = 0;
+  for (const row of result.rows) {
+    if (row.has_recent_data === false) {
+      skipped += 1;
+    } else {
+      serials.push(row.id_serial);
+    }
+  }
+  return { serials, skipped };
 }
 
 function sleep(ms: number): Promise<void> {
@@ -58,7 +94,7 @@ export async function warmAll(): Promise<void> {
   let failures = 0;
   try {
     beat('cacheWarmer');
-    const serials = await getActiveSiteSerials();
+    const { serials, skipped } = await getActiveSiteSerials();
     for (const [i, serial] of serials.entries()) {
       for (const limit of HISTORY_LIMITS) {
         try {
@@ -74,7 +110,7 @@ export async function warmAll(): Promise<void> {
       }
     }
     const durationMs = Date.now() - startedAt;
-    const summary = { count: serials.length, durationMs, failures };
+    const summary = { count: serials.length, durationMs, failures, skipped };
     if (durationMs > INTERVAL_MS) {
       logger.warn(
         summary,
