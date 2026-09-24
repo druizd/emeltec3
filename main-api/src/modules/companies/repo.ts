@@ -7,6 +7,21 @@ import type { Company, HierarchySite, SubCompany } from './types';
 const SITE_COLUMNS =
   'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo, es_maleta_piloto';
 
+/**
+ * Ventana temporal para la primera pasada de `attachLastSeenToSites` contra
+ * `equipo_1min`.
+ *
+ * Mismo hallazgo que `sites/repo.ts::getDashboardHistory` (medido en
+ * produccion el 24-09-2026): sin cota sobre `bucket`, TimescaleDB abre los
+ * ~140 chunks del hypertable/cagg al planificar aunque la consulta se
+ * resuelva en milisegundos. Esta es ademas la consulta que dejo la web sin
+ * listado de instalaciones: moria por statement_timeout a los 10s. 30 dias
+ * cubre a cualquier serial que este transmitiendo; los que llevan mas tiempo
+ * mudos se resuelven en una segunda pasada sin cota (ver mas abajo). NO
+ * borrar este filtro pensando que sobra.
+ */
+const LAST_SEEN_WINDOW_DAYS = 30;
+
 export async function listCompanies(empresaIds: string[] | null): Promise<Company[]> {
   if (empresaIds === null) {
     const r = await query<Company>(
@@ -139,20 +154,45 @@ export async function attachLastSeenToSites<T extends { id_serial?: string | nul
     .filter((v): v is string => typeof v === 'string' && v.length > 0);
   if (serials.length === 0) return sites.map((s) => ({ ...s, last_seen_at: null }));
 
-  const r = await query<{ id_serial: string; last_seen: string }>(
+  const bounded = await query<{ id_serial: string; last_seen: string }>(
     `SELECT s.id_serial, e.bucket::text AS last_seen
        FROM unnest($1::text[]) AS s(id_serial)
        JOIN LATERAL (
          SELECT bucket
            FROM equipo_1min
           WHERE id_serial = s.id_serial
+            AND bucket >= NOW() - INTERVAL '${LAST_SEEN_WINDOW_DAYS} days'
           ORDER BY bucket DESC
           LIMIT 1
        ) e ON true`,
     [serials],
-    { name: 'companies__last_seen_per_serial' },
+    { label: 'companies__last_seen_per_serial' },
   );
-  const map = new Map(r.rows.map((row) => [row.id_serial, row.last_seen]));
+  const map = new Map(bounded.rows.map((row) => [row.id_serial, row.last_seen]));
+
+  // Segunda pasada, sin cota, SOLO para los seriales que no resolvieron en la
+  // ventana acotada (sitios mudos hace semanas, ej. S151 desde el 14-09). Los
+  // sitios vivos -la enorme mayoria- nunca pagan este plan caro.
+  const missing = serials.filter((s) => !map.has(s));
+  if (missing.length > 0) {
+    const unbounded = await query<{ id_serial: string; last_seen: string }>(
+      `SELECT s.id_serial, e.bucket::text AS last_seen
+         FROM unnest($1::text[]) AS s(id_serial)
+         JOIN LATERAL (
+           SELECT bucket
+             FROM equipo_1min
+            WHERE id_serial = s.id_serial
+            ORDER BY bucket DESC
+            LIMIT 1
+         ) e ON true`,
+      [missing],
+      { label: 'companies__last_seen_per_serial_unbounded' },
+    );
+    for (const row of unbounded.rows) {
+      map.set(row.id_serial, row.last_seen);
+    }
+  }
+
   return sites.map((s) => ({
     ...s,
     last_seen_at: s.id_serial ? (map.get(s.id_serial) ?? null) : null,

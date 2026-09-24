@@ -8,6 +8,23 @@ import type { HistoryEquipoRow, LatestEquipoRow, PozoConfig, RegMap, Site } from
 const HISTORY_TTL_S = 60;
 const HISTORY_RANGE_TTL_S = 300;
 
+/**
+ * Ventana temporal para la consulta acotada de `getDashboardHistory` contra
+ * `equipo_1min`.
+ *
+ * Medido en produccion el 24-09-2026 con EXPLAIN (ANALYZE, BUFFERS): sin cota
+ * sobre `bucket`, TimescaleDB no puede excluir chunks al planificar (el
+ * hypertable/cagg tiene ~140 chunks, cada uno comprimido con su propio
+ * ColumnarScan) y el planning time se dispara a ~8,8s aunque la consulta se
+ * ejecute en ~130ms — el LIMIT descarta casi todos los chunks recien despues
+ * de que el planificador ya los miro todos. Eso fue lo que tumbo la
+ * plataforma: 80 consultas asi por barrido del cacheWarmer saturaban la CPU
+ * planificando, no leyendo. 30 dias cubre a cualquier sitio que este
+ * transmitiendo (2.200 muestras a ~1/min son apenas ~37 horas) y deja fuera
+ * del plan a los chunks historicos. NO borrar este filtro pensando que sobra.
+ */
+const HISTORY_WINDOW_DAYS = 30;
+
 const SITE_COLUMNS =
   'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo, es_maleta_piloto';
 const MAP_COLUMNS =
@@ -119,17 +136,38 @@ export async function getDashboardHistory(
     }
   }
 
-  const result = await query<HistoryEquipoRow>(
+  const bounded = await query<HistoryEquipoRow>(
     `
     SELECT bucket AS time, received_at, id_serial, data
     FROM equipo_1min
     WHERE id_serial = $1
+      AND bucket >= NOW() - INTERVAL '${HISTORY_WINDOW_DAYS} days'
     ORDER BY bucket DESC
     LIMIT $2
     `,
     [serialId, limit],
     { label: 'sites__dashboard_history' },
   );
+
+  // Sitio mudo hace semanas (ej. S151, sin datos desde el 14-09): la ventana
+  // acotada no trae nada y el dashboard no puede quedar vacio. El plan lento
+  // se paga UNA vez -y solo para este sitio muerto-, nunca en el camino
+  // rapido del sitio que si esta transmitiendo. El TTL de la cache evita
+  // repetir el fallback en cada barrido del cacheWarmer.
+  const result =
+    bounded.rows.length > 0
+      ? bounded
+      : await query<HistoryEquipoRow>(
+          `
+    SELECT bucket AS time, received_at, id_serial, data
+    FROM equipo_1min
+    WHERE id_serial = $1
+    ORDER BY bucket DESC
+    LIMIT $2
+    `,
+          [serialId, limit],
+          { label: 'sites__dashboard_history_unbounded' },
+        );
 
   if (cache.enabled) {
     await cache.set(cacheKey, JSON.stringify(result.rows), HISTORY_TTL_S);
