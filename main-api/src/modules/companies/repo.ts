@@ -174,28 +174,26 @@ export async function attachLastSeenToSites<T extends { id_serial?: string | nul
   );
   const map = new Map(bounded.rows.map((row) => [row.id_serial, row.last_seen]));
 
-  // Segunda pasada, sin cota, SOLO para los seriales que no resolvieron en la
-  // ventana acotada (sitios mudos hace semanas, ej. S151 desde el 14-09). Los
-  // sitios vivos —la enorme mayoría— nunca pagan este plan caro.
-  const missing = serials.filter((s) => !map.has(s));
-  if (missing.length > 0) {
-    const unbounded = await query<{ id_serial: string; last_seen: string }>(
-      `SELECT s.id_serial, e.bucket::text AS last_seen
-         FROM unnest($1::text[]) AS s(id_serial)
-         JOIN LATERAL (
-           SELECT bucket
-             FROM equipo_1min
-            WHERE id_serial = s.id_serial
-            ORDER BY bucket DESC
-            LIMIT 1
-         ) e ON true`,
-      [missing],
-      { name: 'companies__last_seen_per_serial_unbounded' },
-    );
-    for (const row of unbounded.rows) {
-      map.set(row.id_serial, row.last_seen);
-    }
-  }
+  // Un sitio sin lecturas dentro de la ventana sale con `last_seen_at: null`, y
+  // eso es deliberado: NO se hace una segunda pasada sin cota para rescatar su
+  // última fecha.
+  //
+  // Hubo una, y costaba 6,5 segundos (medido el 24-09-2026: 6.600 ms para
+  // devolver 3 filas). El costo no depende de cuántos seriales queden sin
+  // resolver sino de cuántos chunks mire el planificador, así que bastaba UN
+  // sitio mudo para pagar el plan completo de ~140 chunks — y mudos hay casi
+  // siempre. Eran 6,5 de los 7 segundos que tardaba /api/v2/companies/tree.
+  //
+  // Y no compraba nada. El frontend usa `last_seen_at` solo para pintar la
+  // tarjeta: "En vivo" si la lectura tiene menos de una hora, "Sin datos" en
+  // cualquier otro caso, incluido el timestamp ausente (ver `site-card.ts`).
+  // Para un sitio que lleva más de LAST_SEEN_WINDOW_DAYS días mudo, mandar su
+  // fecha real de hace dos meses y no mandar nada pintan la misma tarjeta gris.
+  //
+  // Si alguna vez hace falta la fecha exacta de un sitio mudo, la salida NO es
+  // reponer esta consulta: es reducir la cantidad de chunks de las hypertables
+  // (`chunk_time_interval`) o mantener el último timestamp en `sitio` al
+  // escribir. Consultar la serie temporal sin cota no escala.
 
   return sites.map((s) => ({
     ...s,

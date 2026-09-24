@@ -66,17 +66,14 @@ describe('attachLastSeenToSites — todos resuelven en la pasada acotada', () =>
   });
 });
 
-describe('attachLastSeenToSites — algunos seriales no resuelven en la primera pasada', () => {
-  it('ejecuta la segunda consulta solo con los seriales faltantes y completa last_seen_at', async () => {
+describe('attachLastSeenToSites — algunos seriales no resuelven en la ventana', () => {
+  it('deja last_seen_at en null sin una segunda consulta sin cota', async () => {
     // S1 vivo: resuelve en la pasada acotada. S2 mudo hace meses: no aparece
-    // ahi y debe resolverse en la segunda pasada, sin cota.
-    vi.mocked(query)
-      .mockResolvedValueOnce({
-        rows: [{ id_serial: 'S1', last_seen: '2026-09-24T12:00:00.000Z' }],
-      } as never)
-      .mockResolvedValueOnce({
-        rows: [{ id_serial: 'S2', last_seen: '2026-06-01T08:00:00.000Z' }],
-      } as never);
+    // ahi y se queda en null. Rescatar su fecha exacta costaba 6,5 s de
+    // planificacion y pintaba la misma tarjeta gris "Sin datos" que el null.
+    vi.mocked(query).mockResolvedValueOnce({
+      rows: [{ id_serial: 'S1', last_seen: '2026-09-24T12:00:00.000Z' }],
+    } as never);
 
     const sites = [
       { id: 'a', id_serial: 'S1' },
@@ -84,15 +81,9 @@ describe('attachLastSeenToSites — algunos seriales no resuelven en la primera 
     ];
     const result = await attachLastSeenToSites(sites);
 
-    expect(query).toHaveBeenCalledTimes(2);
-
-    const secondCallArgs = vi.mocked(query).mock.calls[1]!;
-    expect(secondCallArgs[1]).toEqual([['S2']]);
-    const secondCallOpts = secondCallArgs[2] as { name?: string };
-    expect(secondCallOpts.name).toBe('companies__last_seen_per_serial_unbounded');
-
+    expect(query).toHaveBeenCalledTimes(1);
     expect(result.find((s) => s.id === 'a')?.last_seen_at).toBe('2026-09-24T12:00:00.000Z');
-    expect(result.find((s) => s.id === 'b')?.last_seen_at).toBe('2026-06-01T08:00:00.000Z');
+    expect(result.find((s) => s.id === 'b')?.last_seen_at).toBeNull();
   });
 
   it('no ejecuta una segunda pasada vacia cuando no hay faltantes', async () => {
