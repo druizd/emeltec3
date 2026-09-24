@@ -61,8 +61,8 @@ describe('attachLastSeenToSites — todos resuelven en la pasada acotada', () =>
     expect(result.find((s) => s.id === 'a')?.last_seen_at).toBe('2026-09-24T12:00:00.000Z');
     expect(result.find((s) => s.id === 'b')?.last_seen_at).toBe('2026-09-24T12:01:00.000Z');
 
-    const firstCallOpts = vi.mocked(query).mock.calls[0]![2] as { label?: string };
-    expect(firstCallOpts.label).toBe('companies__last_seen_per_serial');
+    const firstCallOpts = vi.mocked(query).mock.calls[0]![2] as { name?: string };
+    expect(firstCallOpts.name).toBe('companies__last_seen_per_serial');
   });
 });
 
@@ -88,8 +88,8 @@ describe('attachLastSeenToSites — algunos seriales no resuelven en la primera 
 
     const secondCallArgs = vi.mocked(query).mock.calls[1]!;
     expect(secondCallArgs[1]).toEqual([['S2']]);
-    const secondCallOpts = secondCallArgs[2] as { label?: string };
-    expect(secondCallOpts.label).toBe('companies__last_seen_per_serial_unbounded');
+    const secondCallOpts = secondCallArgs[2] as { name?: string };
+    expect(secondCallOpts.name).toBe('companies__last_seen_per_serial_unbounded');
 
     expect(result.find((s) => s.id === 'a')?.last_seen_at).toBe('2026-09-24T12:00:00.000Z');
     expect(result.find((s) => s.id === 'b')?.last_seen_at).toBe('2026-06-01T08:00:00.000Z');

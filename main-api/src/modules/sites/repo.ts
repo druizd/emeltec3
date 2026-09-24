@@ -12,16 +12,16 @@ const HISTORY_RANGE_TTL_S = 300;
  * Ventana temporal para la consulta acotada de `getDashboardHistory` contra
  * `equipo_1min`.
  *
- * Medido en produccion el 24-09-2026 con EXPLAIN (ANALYZE, BUFFERS): sin cota
+ * Medido en producción el 24-09-2026 con EXPLAIN (ANALYZE, BUFFERS): sin cota
  * sobre `bucket`, TimescaleDB no puede excluir chunks al planificar (el
  * hypertable/cagg tiene ~140 chunks, cada uno comprimido con su propio
- * ColumnarScan) y el planning time se dispara a ~8,8s aunque la consulta se
- * ejecute en ~130ms — el LIMIT descarta casi todos los chunks recien despues
- * de que el planificador ya los miro todos. Eso fue lo que tumbo la
- * plataforma: 80 consultas asi por barrido del cacheWarmer saturaban la CPU
- * planificando, no leyendo. 30 dias cubre a cualquier sitio que este
+ * ColumnarScan) y el planning time se dispara a ~8,8 s aunque la consulta se
+ * ejecute en ~130 ms — el LIMIT descarta casi todos los chunks recién después
+ * de que el planificador ya los miró todos. Eso fue lo que tumbó la
+ * plataforma: 80 consultas así por barrido del cacheWarmer saturaban la CPU
+ * planificando, no leyendo. 30 días cubre a cualquier sitio que esté
  * transmitiendo (2.200 muestras a ~1/min son apenas ~37 horas) y deja fuera
- * del plan a los chunks historicos. NO borrar este filtro pensando que sobra.
+ * del plan a los chunks históricos. NO borrar este filtro pensando que sobra.
  */
 const HISTORY_WINDOW_DAYS = 30;
 
@@ -150,10 +150,10 @@ export async function getDashboardHistory(
   );
 
   // Sitio mudo hace semanas (ej. S151, sin datos desde el 14-09): la ventana
-  // acotada no trae nada y el dashboard no puede quedar vacio. El plan lento
-  // se paga UNA vez -y solo para este sitio muerto-, nunca en el camino
-  // rapido del sitio que si esta transmitiendo. El TTL de la cache evita
-  // repetir el fallback en cada barrido del cacheWarmer.
+  // acotada no trae nada y el dashboard no puede quedar vacío. El plan lento
+  // se paga UNA vez —y solo para ese sitio muerto—, nunca en el camino rápido
+  // del sitio que sí está transmitiendo. El TTL de la caché evita repetir el
+  // fallback en cada barrido del cacheWarmer.
   const result =
     bounded.rows.length > 0
       ? bounded

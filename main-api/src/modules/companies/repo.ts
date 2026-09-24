@@ -12,12 +12,12 @@ const SITE_COLUMNS =
  * `equipo_1min`.
  *
  * Mismo hallazgo que `sites/repo.ts::getDashboardHistory` (medido en
- * produccion el 24-09-2026): sin cota sobre `bucket`, TimescaleDB abre los
+ * producción el 24-09-2026): sin cota sobre `bucket`, TimescaleDB abre los
  * ~140 chunks del hypertable/cagg al planificar aunque la consulta se
- * resuelva en milisegundos. Esta es ademas la consulta que dejo la web sin
- * listado de instalaciones: moria por statement_timeout a los 10s. 30 dias
- * cubre a cualquier serial que este transmitiendo; los que llevan mas tiempo
- * mudos se resuelven en una segunda pasada sin cota (ver mas abajo). NO
+ * resuelva en milisegundos. Esta es además la consulta que dejó la web sin
+ * listado de instalaciones: moría por statement_timeout a los 10 s. 30 días
+ * cubre a cualquier serial que esté transmitiendo; los que llevan más tiempo
+ * mudos se resuelven en una segunda pasada sin cota (ver más abajo). NO
  * borrar este filtro pensando que sobra.
  */
 const LAST_SEEN_WINDOW_DAYS = 30;
@@ -166,13 +166,17 @@ export async function attachLastSeenToSites<T extends { id_serial?: string | nul
           LIMIT 1
        ) e ON true`,
     [serials],
-    { label: 'companies__last_seen_per_serial' },
+    // `name` y no `label`: convierte la consulta en un prepared statement y
+    // Postgres reutiliza el plan entre ejecuciones. Con `label` solo cambia la
+    // etiqueta del log y cada llamada vuelve a planificar desde cero, que es
+    // exactamente el costo que este cambio viene a evitar.
+    { name: 'companies__last_seen_per_serial' },
   );
   const map = new Map(bounded.rows.map((row) => [row.id_serial, row.last_seen]));
 
   // Segunda pasada, sin cota, SOLO para los seriales que no resolvieron en la
   // ventana acotada (sitios mudos hace semanas, ej. S151 desde el 14-09). Los
-  // sitios vivos -la enorme mayoria- nunca pagan este plan caro.
+  // sitios vivos —la enorme mayoría— nunca pagan este plan caro.
   const missing = serials.filter((s) => !map.has(s));
   if (missing.length > 0) {
     const unbounded = await query<{ id_serial: string; last_seen: string }>(
@@ -186,7 +190,7 @@ export async function attachLastSeenToSites<T extends { id_serial?: string | nul
             LIMIT 1
          ) e ON true`,
       [missing],
-      { label: 'companies__last_seen_per_serial_unbounded' },
+      { name: 'companies__last_seen_per_serial_unbounded' },
     );
     for (const row of unbounded.rows) {
       map.set(row.id_serial, row.last_seen);
