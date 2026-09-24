@@ -25,6 +25,13 @@
  * calificando ciclo tras ciclo y la alerta se repite hasta que la fila envejece.
  * `audit_alert_cooldown.watermark_ts` recuerda el `ts` más nuevo ya notificado
  * para esa clave, y la detección solo mira lo posterior.
+ *
+ * Precisión de la marca: `watermark_ts` es TIMESTAMPTZ (microsegundos), pero
+ * node-postgres devuelve `ts` como `Date` de JavaScript, que solo tiene
+ * milisegundos. Guardar la marca con ese `Date` truncaba los microsegundos y
+ * la misma fila de `audit_log` volvía a calificar en el ciclo siguiente
+ * (`ts > watermark_ts` seguía siendo TRUE). Por eso la marca viaja como texto
+ * (`ts::text`), que conserva la precisión completa.
  */
 import { query } from '../../config/dbHelpers';
 import { logger } from '../../config/logger';
@@ -209,7 +216,8 @@ export async function detectarCambiosRol(
             NULLIF(TRIM(CONCAT(t.nombre, ' ', COALESCE(t.apellido, ''))), '') AS target_nombre,
             t.email AS target_email,
             t.tipo  AS target_tipo_actual,
-            al.metadata -> 'changes' -> 'tipo' AS cambio_tipo
+            al.metadata -> 'changes' -> 'tipo' AS cambio_tipo,
+            al.ts::text AS ts_exacto
      FROM audit_log al
      LEFT JOIN usuario a ON a.id = al.actor_id
      LEFT JOIN usuario t ON t.id = al.target_id
@@ -235,6 +243,7 @@ export async function detectarCambiosRol(
       target_tipo_actual: string | null;
       ip: string | null;
       ts: string;
+      ts_exacto: string;
       cambio_tipo: { antes?: unknown; despues?: unknown } | null;
     }>;
   };
@@ -283,7 +292,15 @@ export async function detectarCambiosRol(
   // `rows` viene ORDER BY ts DESC, así que rows[0].ts es el cambio más nuevo
   // incluido en este correo: la marca se posa exactamente ahí. Un cambio que
   // entre mientras se envía queda por delante de la marca y se alerta después.
-  await registrarCooldown(alertKey, dbQ, ultimo?.ts);
+  //
+  // Se pasa `ts_exacto` (texto) y no `ts` (Date): node-postgres trunca
+  // TIMESTAMPTZ a milisegundos al convertirlo a Date, así que la fila más
+  // nueva seguía calificando en el ciclo siguiente por sus microsegundos
+  // perdidos (incidente real: watermark guardado en `.898`, fila en
+  // `.898265` — `265 µs > 0` bastaba para que `ts > watermark_ts` siguiera
+  // en TRUE). El texto viaja completo y Postgres lo reparsea con precisión
+  // de microsegundos al escribirlo en la columna TIMESTAMPTZ.
+  await registrarCooldown(alertKey, dbQ, ultimo?.ts_exacto);
   // El log lleva IDs, no identidades: los nombres y correos viajan al mail del
   // SuperAdmin, pero persistirlos en los logs de la app sería otra copia de
   // datos personales fuera de la bitácora (Ley 21.719).
