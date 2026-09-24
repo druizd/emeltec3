@@ -37,12 +37,21 @@ services:
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     container_name: emeltec-db
+    # effective_cache_size no aloca memoria: es lo que el planner cree que hay
+    # de caché entre shared_buffers y el page cache del sistema. En 768MB le
+    # estábamos diciendo que hay poca, y con eso prefiere seq scan antes que
+    # index scan — justo el plan que hace lento a equipo_1min.
+    #
+    # max_connections baja de 100 a 60. El techo teórico de los pools es 46
+    # (main-api 20, auth-api 10, ftpconsumer 8, linux-db-api 8) y el uso real
+    # son 26 conexiones, así que 60 acota el peor caso sin quedar corto.
     command: >
       postgres
       -c max_locks_per_transaction=128
       -c shared_buffers=256MB
-      -c effective_cache_size=768MB
+      -c effective_cache_size=1536MB
       -c work_mem=4MB
+      -c max_connections=60
     ports:
       # EMT-H03: la BD NO debe quedar expuesta a 0.0.0.0. Solo loopback
       # (acceso local / túnel SSH). Los servicios la alcanzan por red interna.
@@ -54,8 +63,20 @@ services:
     volumes:
       - timescale_data:/var/lib/postgresql/data
       - ./infra-db/init-db:/docker-entrypoint-initdb.d
-    mem_limit: 1024m
-    mem_reservation: 512m
+    # El 24-09-2026 el cgroup mató backends de postgres siete veces en una hora
+    # (10:40, 10:45, 10:53, 11:04, 11:11, 11:37, 11:41). Cada kill fuerza el
+    # crash recovery de todo el cluster, y como el postmaster es el PID 1 y
+    # sobrevive, el container nunca se reinicia: `docker ps` decía "Up 40 hours
+    # (healthy)" con RestartCount=0 mientras la base se caía cada diez minutos.
+    # La única señal externa es `docker inspect --format '{{.State.OOMKilled}}'`.
+    #
+    # Con 1024m la base vivía en 1021 MiB (99,7%). La VM tiene 3862 MiB reales
+    # (4 GiB menos lo que reserva el kernel) y los otros ocho containers usan
+    # 166 MiB entre todos, así que 2048m deja ~1,6 GB para el sistema y el page
+    # cache. Los límites del resto quedan como están: son topes que nunca se
+    # rozaron en 19 horas de operación.
+    mem_limit: 2048m
+    mem_reservation: 1024m
     pids_limit: 150
     logging:
       driver: json-file
