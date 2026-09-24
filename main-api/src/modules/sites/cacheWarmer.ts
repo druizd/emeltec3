@@ -117,7 +117,12 @@ export async function warmAll(): Promise<void> {
         'cache_warmer: el barrido tardó más que su propio intervalo (INTERVAL_MS); revisar solapamiento',
       );
     } else {
-      logger.debug(summary, 'cache_warmer: ciclo completado');
+      // `info` y no `debug`: en producción LOG_LEVEL es `info` por defecto, así
+      // que el resumen del barrido sano nunca se imprimía y lo único observable
+      // era el warn de arriba. Saber que no hay errores no es lo mismo que
+      // medir: sin esta línea no hay forma de ver cuánto tarda el barrido ni
+      // cuántos sitios recorre. Es una línea cada ~100 s.
+      logger.info(summary, 'cache_warmer: ciclo completado');
     }
   } finally {
     // Se libera pase lo que pase (éxito o excepción) para que el próximo

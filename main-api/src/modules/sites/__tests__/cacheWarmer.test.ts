@@ -40,7 +40,7 @@ const mockQuery = vi.mocked(query);
 const mockGetDashboardHistory = vi.mocked(getDashboardHistory);
 const mockLoggerWarn = vi.mocked(logger.warn);
 const mockLoggerError = vi.mocked(logger.error);
-const mockLoggerDebug = vi.mocked(logger.debug);
+const mockLoggerInfo = vi.mocked(logger.info);
 
 function siteRows(...ids: string[]) {
   return { rows: ids.map((id_serial) => ({ id_serial })) };
@@ -160,7 +160,7 @@ describe('cacheWarmer — warmAll()', () => {
 
     await warmAll();
 
-    const summaryCall = mockLoggerDebug.mock.calls.find(
+    const summaryCall = mockLoggerInfo.mock.calls.find(
       (call) => call[1] === 'cache_warmer: ciclo completado',
     );
     expect(summaryCall).toBeDefined();
