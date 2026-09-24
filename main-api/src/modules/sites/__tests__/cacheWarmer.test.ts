@@ -27,6 +27,7 @@ vi.mock('../../../config/dbHelpers', () => ({
 
 vi.mock('../repo', () => ({
   getDashboardHistory: vi.fn(),
+  HISTORY_WINDOW_DAYS: 30,
 }));
 
 import { logger } from '../../../config/logger';
@@ -39,9 +40,15 @@ const mockQuery = vi.mocked(query);
 const mockGetDashboardHistory = vi.mocked(getDashboardHistory);
 const mockLoggerWarn = vi.mocked(logger.warn);
 const mockLoggerError = vi.mocked(logger.error);
+const mockLoggerDebug = vi.mocked(logger.debug);
 
 function siteRows(...ids: string[]) {
   return { rows: ids.map((id_serial) => ({ id_serial })) };
+}
+
+/** Filas de `sitio` con el flag `has_recent_data` explícito (EXISTS acotado por HISTORY_WINDOW_DAYS). */
+function activeSiteRows(...rows: Array<{ id_serial: string; has_recent_data: boolean }>) {
+  return { rows };
 }
 
 /** Promesa controlable manualmente, para simular un getDashboardHistory que no termina. */
@@ -120,6 +127,44 @@ describe('cacheWarmer — warmAll()', () => {
     // El guardia se liberó: un segundo warmAll() sí ejecuta consultas.
     await warmAll();
     expect(mockGetDashboardHistory).toHaveBeenCalledTimes(2);
+  });
+
+  it('un sitio activo SIN datos recientes no se calienta: no aparece en las llamadas a getDashboardHistory', async () => {
+    mockQuery.mockResolvedValue(
+      activeSiteRows(
+        { id_serial: 'S1', has_recent_data: true },
+        { id_serial: 'S2', has_recent_data: false },
+      ) as never,
+    );
+    mockGetDashboardHistory.mockResolvedValue([]);
+
+    await warmAll();
+
+    // Solo S1 (con datos recientes) se calienta: 1 sitio x 2 límites.
+    expect(mockGetDashboardHistory).toHaveBeenCalledTimes(2);
+    expect(mockGetDashboardHistory).toHaveBeenCalledWith('S1', 500, { forceRefresh: true });
+    expect(mockGetDashboardHistory).toHaveBeenCalledWith('S1', 2200, { forceRefresh: true });
+    expect(mockGetDashboardHistory).not.toHaveBeenCalledWith('S2', 500, { forceRefresh: true });
+    expect(mockGetDashboardHistory).not.toHaveBeenCalledWith('S2', 2200, { forceRefresh: true });
+  });
+
+  it('el resumen del barrido informa cuántos sitios activos se omitieron por no tener datos recientes', async () => {
+    mockQuery.mockResolvedValue(
+      activeSiteRows(
+        { id_serial: 'S1', has_recent_data: true },
+        { id_serial: 'S2', has_recent_data: false },
+        { id_serial: 'S3', has_recent_data: false },
+      ) as never,
+    );
+    mockGetDashboardHistory.mockResolvedValue([]);
+
+    await warmAll();
+
+    const summaryCall = mockLoggerDebug.mock.calls.find(
+      (call) => call[1] === 'cache_warmer: ciclo completado',
+    );
+    expect(summaryCall).toBeDefined();
+    expect(summaryCall?.[0]).toEqual(expect.objectContaining({ count: 1, skipped: 2 }));
   });
 });
 
