@@ -45,9 +45,19 @@ services:
     # max_connections baja de 100 a 60. El techo teórico de los pools es 46
     # (main-api 20, auth-api 10, ftpconsumer 8, linux-db-api 8) y el uso real
     # son 26 conexiones, así que 60 acota el peor caso sin quedar corto.
+    #
+    # Pero max_connections NO solo limita conexiones: también dimensiona la
+    # tabla de locks, que se reparte como
+    #     max_locks_per_transaction × (max_connections + max_prepared_transactions)
+    # Bajarlo de 100 a 60 dejó 7.680 slots donde antes había 12.800, y el
+    # deploy del 24-09-2026 murió con `out of shared memory` aplicando las
+    # migraciones: cada chunk y cada índice de un hypertable pide su propio
+    # lock, y son miles. Por eso los locks suben de 128 a 256, que deja 15.360
+    # slots — un 20% más que los 12.800 originales. El costo en memoria
+    # compartida son unos pocos MB de los 2 GB del container.
     command: >
       postgres
-      -c max_locks_per_transaction=128
+      -c max_locks_per_transaction=256
       -c shared_buffers=256MB
       -c effective_cache_size=1536MB
       -c work_mem=4MB
