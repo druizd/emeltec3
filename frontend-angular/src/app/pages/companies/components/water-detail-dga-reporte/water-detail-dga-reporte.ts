@@ -150,54 +150,89 @@ interface DgaReportRow {
             </label>
           </div>
 
-          <!-- Granularidad del CSV -->
+          <!-- Fuente de los datos -->
           <div class="mt-4 border-t border-slate-100 px-5 pt-4 pb-2">
             <label class="text-caption-xs uppercase tracking-wider font-semibold text-slate-500">
-              Granularidad de los datos en el CSV
+              Fuente de los datos
             </label>
-            <div class="mt-2 grid grid-cols-5 gap-2">
-              @for (opt of dgaReportBucketOptions; track opt.value) {
+            <div class="mt-2 grid gap-2">
+              @for (opt of dgaReportFuenteOptions; track opt.value) {
                 <button
                   type="button"
-                  (click)="dgaReportBucket.set(opt.value)"
-                  [attr.aria-pressed]="dgaReportBucket() === opt.value"
+                  (click)="dgaReportFuente.set(opt.value)"
+                  [attr.aria-pressed]="dgaReportFuente() === opt.value"
                   [class]="
-                    dgaReportBucket() === opt.value
-                      ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container active:scale-95'
-                      : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 transition-colors hover:border-accent/20 hover:text-accent-container active:scale-95'
+                    dgaReportFuente() === opt.value
+                      ? 'rounded-lg border border-accent bg-accent/10 px-3 py-2 text-left active:scale-95'
+                      : 'rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-accent/20 active:scale-95'
                   "
                 >
-                  {{ opt.label }}
+                  <span
+                    [class]="
+                      dgaReportFuente() === opt.value
+                        ? 'block text-caption-xs font-semibold text-accent-container'
+                        : 'block text-caption-xs font-semibold text-slate-600'
+                    "
+                    >{{ opt.label }}</span
+                  >
+                  <span class="block text-caption-xs text-slate-500">{{ opt.hint }}</span>
                 </button>
               }
             </div>
-            <p class="mt-1 text-caption-xs text-slate-500">
-              1 fila por bucket. La medición es la más reciente dentro del bucket.
-            </p>
           </div>
 
-          <!-- Orden de los datos -->
-          <div class="px-5 pt-2 pb-2">
-            <label class="text-caption-xs uppercase tracking-wider font-semibold text-slate-500">
-              Orden de los datos
-            </label>
-            <div class="mt-2 grid grid-cols-2 gap-2">
-              @for (opt of dgaReportOrdenOptions; track opt.value) {
-                <button
-                  type="button"
-                  (click)="dgaReportOrden.set(opt.value)"
-                  [attr.aria-pressed]="dgaReportOrden() === opt.value"
-                  [class]="
-                    dgaReportOrden() === opt.value
-                      ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container active:scale-95'
-                      : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 transition-colors hover:border-accent/20 hover:text-accent-container active:scale-95'
-                  "
-                >
-                  {{ opt.label }}
-                </button>
-              }
+          <!-- Granularidad y orden sólo aplican a la telemetría directa: lo
+               declarado ya viene con la periodicidad y el orden del slot. -->
+          @if (dgaReportFuente() === 'directo') {
+            <!-- Granularidad del CSV -->
+            <div class="mt-4 border-t border-slate-100 px-5 pt-4 pb-2">
+              <label class="text-caption-xs uppercase tracking-wider font-semibold text-slate-500">
+                Granularidad de los datos en el CSV
+              </label>
+              <div class="mt-2 grid grid-cols-5 gap-2">
+                @for (opt of dgaReportBucketOptions; track opt.value) {
+                  <button
+                    type="button"
+                    (click)="dgaReportBucket.set(opt.value)"
+                    [attr.aria-pressed]="dgaReportBucket() === opt.value"
+                    [class]="
+                      dgaReportBucket() === opt.value
+                        ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container active:scale-95'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 transition-colors hover:border-accent/20 hover:text-accent-container active:scale-95'
+                    "
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+              <p class="mt-1 text-caption-xs text-slate-500">
+                1 fila por bucket. La medición es la más reciente dentro del bucket.
+              </p>
             </div>
-          </div>
+
+            <!-- Orden de los datos -->
+            <div class="px-5 pt-2 pb-2">
+              <label class="text-caption-xs uppercase tracking-wider font-semibold text-slate-500">
+                Orden de los datos
+              </label>
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                @for (opt of dgaReportOrdenOptions; track opt.value) {
+                  <button
+                    type="button"
+                    (click)="dgaReportOrden.set(opt.value)"
+                    [attr.aria-pressed]="dgaReportOrden() === opt.value"
+                    [class]="
+                      dgaReportOrden() === opt.value
+                        ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container active:scale-95'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 transition-colors hover:border-accent/20 hover:text-accent-container active:scale-95'
+                    "
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
 
           <!-- Errores generales del modal de reporte -->
           @if (dgaReportError()) {
@@ -438,6 +473,12 @@ export class WaterDetailDgaReporteComponent {
   dgaReportDateTo = signal('');
   dgaReportBucket = signal<'minuto' | 'hora' | 'dia' | 'semana' | 'mes'>('hora');
   dgaReportOrden = signal<'asc' | 'desc'>('asc');
+  /**
+   * Por defecto lo declarado: es lo que pide el cliente para acreditar ante la
+   * DGA y lo único que trae comprobante. La telemetría directa queda como
+   * segunda opción — sirve para revisar el dato crudo, no para respaldar.
+   */
+  dgaReportFuente = signal<'declarado' | 'directo'>('declarado');
   dgaReportDownloading = signal<boolean>(false);
   dgaReportError = signal<string>('');
   selectedDgaReport = signal<DgaReportRow | null>(null);
@@ -471,6 +512,22 @@ export class WaterDetailDgaReporteComponent {
     { value: 'dia', label: 'Cada día' },
     { value: 'semana', label: 'Cada semana' },
     { value: 'mes', label: 'Cada mes' },
+  ];
+  readonly dgaReportFuenteOptions: {
+    value: 'declarado' | 'directo';
+    label: string;
+    hint: string;
+  }[] = [
+    {
+      value: 'declarado',
+      label: 'Declarado a la DGA',
+      hint: 'Cada medición con su voucher, su estado y las observaciones del operador.',
+    },
+    {
+      value: 'directo',
+      label: 'Telemetría directa',
+      hint: 'Dato crudo del equipo, sin comprobante. Granularidad a elección.',
+    },
   ];
   readonly dgaReportOrdenOptions: { value: 'asc' | 'desc'; label: string }[] = [
     { value: 'asc', label: 'Ascendente (antiguo → reciente)' },
@@ -586,14 +643,19 @@ export class WaterDetailDgaReporteComponent {
     hastaDate.setUTCDate(hastaDate.getUTCDate() + 1);
     const hastaIso = hastaDate.toISOString();
 
-    const url = this.dgaService.exportCsvUrlDirecto(
-      siteId,
-      desdeIso,
-      hastaIso,
-      this.dgaReportBucket(),
-      this.dgaReportOrden(),
-    );
-    const filename = `reporte_dga_${siteId}_${this.dgaReportBucket()}_${from}_${to}.csv`;
+    const declarado = this.dgaReportFuente() === 'declarado';
+    const url = declarado
+      ? this.dgaService.exportCsvUrlBySite(siteId, desdeIso, hastaIso)
+      : this.dgaService.exportCsvUrlDirecto(
+          siteId,
+          desdeIso,
+          hastaIso,
+          this.dgaReportBucket(),
+          this.dgaReportOrden(),
+        );
+    const filename = declarado
+      ? `dga_declarado_${siteId}_${from}_${to}.csv`
+      : `reporte_dga_${siteId}_${this.dgaReportBucket()}_${from}_${to}.csv`;
 
     this.dgaReportDownloading.set(true);
     this.dgaReportError.set('');

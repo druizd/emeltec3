@@ -799,19 +799,78 @@ export async function getDgaLivePreview(siteId: string): Promise<DgaLivePreview>
  * El voucher sale de `dato_dga.comprobante`, que es el folio que devolvió SNIA
  * al aceptar el envío. Un slot que todavía no se envía (o que se rechazó) lo
  * trae vacío.
+ *
+ * Trae TODOS los slots del rango, no solo los enviados: un mes incompleto tiene
+ * que verse incompleto. Por eso `ESTADO` y `OBSERVACIÓN` van al final —sin
+ * ellas un pendiente se leía como un envío sin folio—, y las cinco primeras
+ * columnas conservan su orden para no romper a quien ya procesa el archivo.
  */
 export function toCsvDeclarado(rows: DatoDgaRow[]): string {
-  const header = 'FECHA;NIVEL FREÁTICO [M];CAUDAL [L/S];TOTALIZADOR [M3];VOUCHER';
-  const lines = rows.map((r) =>
-    [
+  const header =
+    'FECHA;NIVEL FREÁTICO [M];CAUDAL [L/S];TOTALIZADOR [M3];VOUCHER;ESTADO;OBSERVACIÓN';
+  const lines = rows.map((r) => {
+    const baja = esBajaManual(r);
+    return [
       fechaHoraChile(r.fecha, r.hora),
       formatNumber(r.nivel_freatico),
       formatNumber(r.caudal_instantaneo),
       formatNumber(r.flujo_acumulado),
       escapeCsv(r.comprobante ?? ''),
-    ].join(';'),
-  );
+      baja ? 'Dado de baja' : (ESTADO_DECLARADO_LABEL[r.estatus] ?? 'Pendiente'),
+      escapeCsv(baja ? notaBaja(r.fail_reason, r.baja_nota) : ''),
+    ].join(';');
+  });
   return [header, ...lines].join('\r\n');
+}
+
+/**
+ * Mismas etiquetas que la tabla DGA del pozo (`water-detail-dga.ts`), para que
+ * el archivo y la pantalla digan lo mismo del mismo slot.
+ */
+const ESTADO_DECLARADO_LABEL: Readonly<Record<string, string>> = {
+  vacio: 'Pendiente',
+  pendiente: 'Pendiente',
+  requires_review: 'Revisar',
+  enviando: 'Enviando',
+  enviado: 'Enviado',
+  rechazado: 'Rechazado',
+  fallido: 'Fallido',
+};
+
+/**
+ * Copia de `MOTIVO_BAJA_LABEL` del frontend (`baja-manual.ts`). La clave es el
+ * `fail_reason` que escribe la baja por rango: `baja_` + el motivo tipificado.
+ */
+const MOTIVO_BAJA_LABEL: Readonly<Record<string, string>> = {
+  baja_recambio_instrumento:
+    'Período sin medición por recambio de instrumento. El equipo fue reemplazado y no hay dato que declarar.',
+  baja_sin_dato_crudo:
+    'Sin telemetría del equipo en este período, por lo que no hay medición que declarar.',
+  baja_dato_no_confiable:
+    'La medición existe pero no es confiable, así que se cerró en vez de declararla.',
+  baja_otro: 'Período cerrado por decisión del operador, con el motivo registrado en la medición.',
+};
+
+/**
+ * Un `fallido` puede ser una falla del envío o una baja que hizo un operador.
+ * Hay dos vías de baja y guardan distinto: la de rango deja `baja_<motivo>` en
+ * `fail_reason`; la de a una deja ahí la nota libre y solo se reconoce por la
+ * `baja_nota` que la query extrae del warning `admin_discarded`.
+ */
+function esBajaManual(r: DatoDgaRow): boolean {
+  if (r.estatus !== 'fallido') return false;
+  return (r.fail_reason ?? '').startsWith('baja_') || Boolean(r.baja_nota);
+}
+
+/** Motivo tipificado + la nota del operador, sin repetirla si son la misma. */
+function notaBaja(failReason: string | null, bajaNota: string | null): string {
+  const motivo =
+    MOTIVO_BAJA_LABEL[failReason ?? ''] ??
+    'Período cerrado por el operador, con el motivo registrado.';
+  const nota = (bajaNota ?? '').trim();
+  if (!nota) return motivo;
+  if (nota === (failReason ?? '').trim()) return nota;
+  return `${motivo} — ${nota}`;
 }
 
 /**
