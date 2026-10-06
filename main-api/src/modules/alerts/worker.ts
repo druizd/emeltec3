@@ -63,7 +63,13 @@ const DIAS_VALIDOS = [
   'sabado',
 ] as const;
 
-let intervalHandle: NodeJS.Timeout | null = null;
+// Timer del próximo ciclo encadenado. Nunca hay un setInterval: el siguiente
+// ciclo se agenda recién cuando el anterior termina, para que una base lenta
+// no apile ciclos simultáneos (cada uno retiene una conexión del pool).
+let pendingTimer: NodeJS.Timeout | null = null;
+let workerActive = false;
+// Guardia de reentrada: true mientras un ciclo está en curso.
+let cycleRunning = false;
 
 interface Alerta {
   id: string;
@@ -947,6 +953,51 @@ async function valorEvaluable(
 }
 
 /**
+ * Última fila de `equipo` del serial, con la lectura acotada en el tiempo.
+ * `ORDER BY time DESC LIMIT 1` sin cota obliga a Timescale a recorrer y
+ * descomprimir los ~900 chunks diarios cuando el equipo dejó de transmitir. Se
+ * busca primero en los últimos 7 días (chunks sin comprimir); si no hay nada,
+ * el cagg `equipo_daily` da el último día con datos y se lee solo ese chunk.
+ * Mismo criterio que `getLatestEquipoForSerial` (sites/repo.ts), pero sobre el
+ * cliente recibido para no tomar otra conexión del pool.
+ */
+async function latestEquipoData(
+  client: Awaited<ReturnType<typeof getClient>>,
+  idSerial: string,
+): Promise<Record<string, unknown> | null> {
+  const recent = (await client.query(
+    `SELECT data FROM equipo
+     WHERE id_serial = $1
+       AND time >= NOW() - INTERVAL '7 days'
+     ORDER BY time DESC
+     LIMIT 1`,
+    [idSerial],
+  )) as { rows: Array<{ data: Record<string, unknown> }> };
+  if (recent.rows[0]?.data) return recent.rows[0].data;
+
+  const lastBucket = (await client.query(
+    `SELECT bucket FROM equipo_daily
+     WHERE id_serial = $1
+     ORDER BY bucket DESC
+     LIMIT 1`,
+    [idSerial],
+  )) as { rows: Array<{ bucket: string | Date }> };
+  const bucket = lastBucket.rows[0]?.bucket;
+  if (!bucket) return null;
+
+  const fallback = (await client.query(
+    `SELECT data FROM equipo
+     WHERE id_serial = $1
+       AND time >= $2
+       AND time <  $2 + INTERVAL '1 day'
+     ORDER BY time DESC
+     LIMIT 1`,
+    [idSerial, bucket],
+  )) as { rows: Array<{ data: Record<string, unknown> }> };
+  return fallback.rows[0]?.data ?? null;
+}
+
+/**
  * Condición `sobre_derecho_dga`: el caudal instantáneo del pozo supera el
  * derecho de aprovechamiento cargado en `pozo_config` (`dga_caudal_max_lps`)
  * más la tolerancia configurada. No lleva umbral ni variable: el límite sale
@@ -987,11 +1038,7 @@ export async function evaluarAlertaSobreDerecho(client: any, alerta: Alerta): Pr
   )) as { rows: RegMap[] };
   if (mapRes.rows.length === 0) return;
 
-  const latest = (await client.query(
-    `SELECT data FROM equipo WHERE id_serial = $1 ORDER BY time DESC LIMIT 1`,
-    [alerta.id_serial],
-  )) as { rows: Array<{ data: Record<string, unknown> }> };
-  const data = latest.rows[0]?.data;
+  const data = await latestEquipoData(client, alerta.id_serial);
   if (!data) return;
 
   // Si hay más de un mapeo con rol caudal (resto de un recambio de equipo), se
@@ -1078,14 +1125,11 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
     return;
   }
 
-  const latest = (await client.query(
-    `SELECT data FROM equipo WHERE id_serial = $1 ORDER BY time DESC LIMIT 1`,
-    [alerta.id_serial],
-  )) as { rows: Array<{ data: Record<string, unknown> }> };
-  if (latest.rows.length === 0) return;
-  const rawVal = latest.rows[0]!.data[alerta.variable_key];
+  const latestData = await latestEquipoData(client, alerta.id_serial);
+  if (!latestData) return;
+  const rawVal = latestData[alerta.variable_key];
   if (rawVal === undefined) return;
-  const evaluable = await valorEvaluable(client, alerta, latest.rows[0]!.data);
+  const evaluable = await valorEvaluable(client, alerta, latestData);
   if (evaluable === null) return;
   const { valorNum, valorTexto } = evaluable;
 
@@ -1164,7 +1208,12 @@ async function insertarEvento(
   entregarNotificacion(ctx, ins.rows[0]!.id, mensaje, alerta.condicion);
 }
 
-async function runCycle(): Promise<void> {
+export async function runCycle(): Promise<void> {
+  if (cycleRunning) {
+    logger.warn('alerts: se omite el ciclo, el anterior sigue en curso');
+    return;
+  }
+  cycleRunning = true;
   // Latido para el monitor interno (health digest), igual que hacía el legado.
   beat('alertas');
   let client: Awaited<ReturnType<typeof getClient>> | null = null;
@@ -1197,26 +1246,37 @@ async function runCycle(): Promise<void> {
     logger.error({ err: (err as Error).message }, 'alerts: error en ciclo');
   } finally {
     if (client) client.release();
+    cycleRunning = false;
   }
 }
 
+function scheduleNextCycle(): void {
+  if (!workerActive) return;
+  pendingTimer = setTimeout(() => {
+    pendingTimer = null;
+    // runCycle captura sus errores; el finally mantiene viva la cadena.
+    void runCycle().finally(scheduleNextCycle);
+  }, POLL_INTERVAL_MS);
+  pendingTimer.unref?.();
+}
+
 export function startAlertsWorker(): void {
-  if (intervalHandle) return;
+  if (workerActive) return;
   if (!config.workers.alerts) {
     logger.info('Alerts worker deshabilitado (ENABLE_ALERTS_WORKER=false).');
     return;
   }
   logger.info({ intervalMs: POLL_INTERVAL_MS }, 'Alerts worker iniciado');
-  void runCycle();
-  intervalHandle = setInterval(() => {
-    void runCycle();
-  }, POLL_INTERVAL_MS);
-  intervalHandle.unref?.();
+  workerActive = true;
+  void runCycle().finally(scheduleNextCycle);
 }
 
 export function stopAlertsWorker(): void {
-  if (!intervalHandle) return;
-  clearInterval(intervalHandle);
-  intervalHandle = null;
+  if (!workerActive) return;
+  workerActive = false;
+  if (pendingTimer) {
+    clearTimeout(pendingTimer);
+    pendingTimer = null;
+  }
   logger.info('Alerts worker detenido');
 }
