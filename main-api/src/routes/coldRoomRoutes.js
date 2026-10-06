@@ -2116,7 +2116,15 @@ let alarmCronStarted = false;
 function startAlarmCron() {
   if (alarmCronStarted) return;
   alarmCronStarted = true;
+  // Guardia de reentrada: si un tick tarda más de 60s (base lenta), el
+  // siguiente se omite en vez de apilarse y retener otra conexión del pool.
+  let tickRunning = false;
   const tick = async () => {
+    if (tickRunning) {
+      console.warn('[alarm cron] se omite el tick, el anterior sigue en curso');
+      return;
+    }
+    tickRunning = true;
     try {
       const { rows } = await pool.query(
         `SELECT DISTINCT site_id FROM cold_room_alarm_rule WHERE enabled=TRUE`,
@@ -2128,6 +2136,8 @@ function startAlarmCron() {
       }
     } catch (err) {
       console.error('[alarm cron] tick:', err.message);
+    } finally {
+      tickRunning = false;
     }
   };
   // Primer tick en 30s, luego cada 60s.

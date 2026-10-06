@@ -42,6 +42,9 @@ const STALE_SLOT_HOURS = Number(process.env.DGA_STALE_SLOT_HOURS ?? 48);
 const NO_DATA_WARN_HOURS = Number(process.env.DGA_NO_DATA_WARN_HOURS ?? 3);
 
 let intervalHandle: NodeJS.Timeout | null = null;
+// Guardia de reentrada: si un ciclo tarda más que el intervalo (base lenta), el
+// siguiente se omite en vez de apilarse y retener otra conexión del pool.
+let cycleRunning = false;
 
 export function slotAgeHours(slotTs: string, nowMs: number): number {
   return (nowMs - new Date(slotTs).getTime()) / 3_600_000;
@@ -259,7 +262,12 @@ export async function processPozo(pozoDga: PozoDgaConfigRow): Promise<void> {
   }
 }
 
-async function runCycle(): Promise<void> {
+export async function runCycle(): Promise<void> {
+  if (cycleRunning) {
+    logger.warn('DGA fill: se omite el ciclo, el anterior sigue en curso');
+    return;
+  }
+  cycleRunning = true;
   beat('dgaWorker');
   try {
     const pozos = await listPozosDgaActivos();
@@ -268,6 +276,8 @@ async function runCycle(): Promise<void> {
     }
   } catch (err) {
     logger.error({ err: (err as Error).message }, 'DGA fill: ciclo falló');
+  } finally {
+    cycleRunning = false;
   }
 }
 
