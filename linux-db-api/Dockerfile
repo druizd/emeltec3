@@ -1,13 +1,14 @@
-FROM --platform=linux/amd64 rust:1.85-bookworm AS builder
+FROM --platform=linux/amd64 rust:1.90-bookworm AS builder
 
 WORKDIR /app
 
-# Sin el Cargo.lock, cada build resolvia dependencias de cero y una version
-# nueva (ctutils 0.4.3, rustc >= 1.87) rompia el build con rust:1.85.
+# El Cargo.lock fija las versiones que siguen siendo validas. Sin --locked:
+# el lock esta desfasado del Cargo.toml y cargo debe poder completarlo.
+# ctutils 0.4.3 exige rustc >= 1.87, de ahi la imagen 1.90.
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 
-RUN cargo build --release --locked
+RUN cargo build --release
 
 FROM --platform=linux/amd64 debian:bookworm-slim
 
