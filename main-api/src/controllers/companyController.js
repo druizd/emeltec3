@@ -517,6 +517,14 @@ const HISTORY_EXPORT_GRANULARITY = {
   '1d': { view: 'equipo_daily', bucketInterval: '1 day' },
 };
 
+// Filas por FETCH del cursor de exportacion. Con 50.000 un mes a 1 minuto
+// salia en un solo FETCH que, con la DB cargada, pasaba los 10 s del
+// statement_timeout del pool.
+const HISTORY_EXPORT_FETCH_SIZE = 5000;
+// Tope por sentencia dentro de la transaccion del export (SET LOCAL: no
+// contamina la conexion del pool al devolverla).
+const HISTORY_EXPORT_STATEMENT_TIMEOUT_MS = 30000;
+
 function parseHistoryExportGranularity(value) {
   const key = cleanString(value).toLowerCase();
   return Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_GRANULARITY, key) ? key : '1m';
@@ -2815,12 +2823,21 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
 
     const gz = zlib.createGzip({ level: 1 });
+    // Sin este listener, el `gz.destroy(err)` del catch emite un 'error' no
+    // manejado y Node mata el proceso: un export fallido tumbaba la API entera.
+    gz.on('error', (gzErr) => {
+      console.error('[export-historico] stream abortado', {
+        siteId,
+        error: gzErr.message,
+      });
+    });
     gz.pipe(res);
 
     let client;
     try {
       client = await db.connect();
       await client.query('BEGIN');
+      await client.query(`SET LOCAL statement_timeout TO ${HISTORY_EXPORT_STATEMENT_TIMEOUT_MS}`);
       await client.query(
         `
         DECLARE history_export_cursor NO SCROLL CURSOR FOR
@@ -2846,7 +2863,9 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
       );
 
       while (true) {
-        const batch = await client.query('FETCH 50000 FROM history_export_cursor');
+        const batch = await client.query(
+          `FETCH ${HISTORY_EXPORT_FETCH_SIZE} FROM history_export_cursor`,
+        );
         if (batch.rows.length === 0) break;
 
         const lines = batch.rows.map((rawRow) => {
