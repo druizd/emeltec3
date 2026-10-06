@@ -50,13 +50,14 @@ vi.mock('../../sites/service', () => ({
 
 import { logger } from '../../../config/logger';
 import {
+  listPozosDgaActivos,
   listVacioSlotsForSite,
   markPozoDgaLastRun,
   transitionSlotToPendiente,
   transitionSlotToRequiresReview,
 } from '../repo';
 import { getDashboardBucketExact } from '../../sites/repo';
-import { processPozo, slotAgeHours } from '../worker';
+import { processPozo, runCycle, slotAgeHours } from '../worker';
 
 const POZO = { sitio_id: 'S999' } as Parameters<typeof processPozo>[0];
 
@@ -180,5 +181,31 @@ describe('processPozo — slot con dato (regresión)', () => {
     );
     expect(markPozoDgaLastRun).toHaveBeenCalledTimes(1);
     expect(transitionSlotToRequiresReview).not.toHaveBeenCalled();
+  });
+});
+
+describe('runCycle — guarda de solapamiento', () => {
+  it('un segundo ciclo con el primero en curso no corre y avisa', async () => {
+    vi.clearAllMocks();
+    let liberar: () => void = () => {};
+    vi.mocked(listPozosDgaActivos).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          liberar = () => resolve([]);
+        }),
+    );
+
+    const primero = runCycle();
+    await runCycle();
+
+    expect(listPozosDgaActivos).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('se omite el ciclo'));
+
+    liberar();
+    await primero;
+
+    // Terminado el primero, el guardia queda libre.
+    await runCycle();
+    expect(listPozosDgaActivos).toHaveBeenCalledTimes(2);
   });
 });

@@ -63,6 +63,9 @@ const WORKER_ENABLED =
   String(process.env.ENABLE_DGA_RECONCILER ?? 'true').toLowerCase() !== 'false';
 
 let intervalHandle: NodeJS.Timeout | null = null;
+// Guardia de reentrada: si un ciclo tarda más que el intervalo (base lenta), el
+// siguiente se omite en vez de apilarse y retener otra conexión del pool.
+let cycleRunning = false;
 
 async function reconcileStuckEnviando(): Promise<number> {
   const stuck = await listStuckEnviando(STUCK_THRESHOLD_MINUTES);
@@ -497,6 +500,11 @@ async function reportBajaNoDataDefinitiva(): Promise<AlertPart> {
 }
 
 export async function runReconcilerCycle(): Promise<void> {
+  if (cycleRunning) {
+    logger.warn('DGA reconciler: se omite el ciclo, el anterior sigue en curso');
+    return;
+  }
+  cycleRunning = true;
   beat('dgaReconciler');
   try {
     const stuck = await reconcileStuckEnviando();
@@ -575,6 +583,8 @@ export async function runReconcilerCycle(): Promise<void> {
     }
   } catch (err) {
     logger.error({ err: (err as Error).message }, 'DGA reconciler: ciclo falló');
+  } finally {
+    cycleRunning = false;
   }
 }
 

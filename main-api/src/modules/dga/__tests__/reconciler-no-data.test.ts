@@ -45,6 +45,7 @@ vi.mock('../repo', () => ({
 import { logger } from '../../../config/logger';
 import {
   listNoDataStaleConDatoTardio,
+  listStuckEnviando,
   listNoDataStaleVencidos,
   markSlotNoDataDefinitivo,
   resetSlotAVacio,
@@ -182,5 +183,33 @@ describe('reconciler check H — desactivado con DGA_NO_DATA_GIVEUP_DAYS=0', () 
 
     expect(repo.listNoDataStaleVencidos).not.toHaveBeenCalled();
     expect(repo.markSlotNoDataDefinitivo).not.toHaveBeenCalled();
+  });
+});
+
+describe('reconciler — guarda de solapamiento', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('un segundo ciclo con el primero en curso no corre y avisa', async () => {
+    let liberar: () => void = () => {};
+    vi.mocked(listStuckEnviando).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          liberar = () => resolve([]);
+        }),
+    );
+
+    const primero = runReconcilerCycle();
+    await runReconcilerCycle();
+
+    expect(listStuckEnviando).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('se omite el ciclo'));
+
+    liberar();
+    await primero;
+    expectCicloSano();
+
+    // Terminado el primero, el guardia queda libre.
+    await runReconcilerCycle();
+    expect(listStuckEnviando).toHaveBeenCalledTimes(2);
   });
 });
