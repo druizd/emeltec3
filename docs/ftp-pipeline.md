@@ -221,6 +221,6 @@ ssh -i ~/Downloads/key.pem azureuser@145.190.8.19
 | Contenedor             | Imagen                            | Función                          |
 | ---------------------- | --------------------------------- | -------------------------------- |
 | `emeltec-ftpconsumer`  | ftpconsumer                       | Recibe gRPC, inserta en `equipo` |
-| `emeltec-db`           | timescale/timescaledb:latest-pg16 | TimescaleDB                      |
+| `emeltec-db`           | timescale/timescaledb:2.30.2-pg16 | TimescaleDB                      |
 | `emeltec-linux-db-api` | linux-db-api                      | Transforma equipo → dato_dga     |
 | `emeltec-api`          | main-api                          | API principal                    |

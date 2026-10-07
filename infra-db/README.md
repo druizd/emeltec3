@@ -8,7 +8,7 @@ Esta carpeta contiene la configuración de **Docker Compose** para levantar la b
 
 | Servicio        | Imagen Docker                       | Puerto Local | Descripción                                                |
 | --------------- | ----------------------------------- | ------------ | ---------------------------------------------------------- |
-| **TimescaleDB** | `timescale/timescaledb:latest-pg16` | `5433`       | Base de datos PostgreSQL optimizada para series temporales |
+| **TimescaleDB** | `timescale/timescaledb:2.30.2-pg16` | `5433`       | Base de datos PostgreSQL optimizada para series temporales |
 | **pgAdmin 4**   | `dpage/pgadmin4:latest`             | `5050`       | Interfaz web para administrar la BD visualmente            |
 
 ---

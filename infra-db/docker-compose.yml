@@ -6,7 +6,7 @@
 services:
   # ---- TimescaleDB (PostgreSQL + TimescaleDB) ----
   timescaledb:
-    image: timescale/timescaledb:latest-pg16
+    image: timescale/timescaledb:2.30.2-pg16
     container_name: timescaledb-infra
     restart: unless-stopped
     ports:

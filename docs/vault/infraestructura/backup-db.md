@@ -585,7 +585,7 @@ flowchart TD
 ### Requisitos en el servidor
 
 - `docker`, `az` CLI, `jq`, `sha256sum` (viene con coreutils).
-- Imagen `timescale/timescaledb:latest-pg16` (se descarga la primera vez).
+- Imagen `timescale/timescaledb:2.30.2-pg16` (se descarga la primera vez).
 - Espacio libre en `/tmp`: ~2 GB para el dump y el data dir del container.
 
 ### Payload webhook
@@ -792,7 +792,7 @@ RPO baja de **6 h → segundos**. RTO similar al actual (bajarse el basebackup +
 1. **Extender imagen de la DB** (nuevo `infra-db/Dockerfile`):
 
    ```dockerfile
-   FROM timescale/timescaledb:latest-pg16
+   FROM timescale/timescaledb:2.30.2-pg16
    RUN apt-get update && apt-get install -y wget && \
        wget https://github.com/wal-g/wal-g/releases/latest/download/wal-g-pg-ubuntu-22.04-amd64.tar.gz -O /tmp/wal-g.tar.gz && \
        tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin && \
