@@ -35,7 +35,11 @@ x-healthcheck-auth-api: &healthcheck-auth-api
 
 services:
   timescaledb:
-    image: timescale/timescaledb:latest-pg16
+    # Versión fija: con latest-pg16 cada deploy podía bajar una imagen nueva y
+    # recrear la base. Subirla es un cambio explícito, junto con
+    # ALTER EXTENSION timescaledb UPDATE. Mantener igual en ci.yml y
+    # scripts/verify-backup.sh.
+    image: timescale/timescaledb:2.30.2-pg16
     container_name: emeltec-db
     # effective_cache_size no aloca memoria: es lo que el planner cree que hay
     # de caché entre shared_buffers y el page cache del sistema. En 768MB le

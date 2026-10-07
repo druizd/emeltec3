@@ -1,6 +1,6 @@
 services:
   timescaledb:
-    image: timescale/timescaledb:latest-pg16
+    image: timescale/timescaledb:2.30.2-pg16
     container_name: emeltec-timescaledb
     ports:
       # EMT-H03/H04: BD solo en loopback y sin password por defecto.
