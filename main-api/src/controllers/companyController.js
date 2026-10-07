@@ -1,6 +1,5 @@
 const crypto = require('crypto');
 const zlib = require('zlib');
-const { once } = require('events');
 const db = require('../config/db');
 const { canAccessSite } = require('../services/dataAccess');
 const {
@@ -524,6 +523,10 @@ const HISTORY_EXPORT_FETCH_SIZE = 5000;
 // Tope por sentencia dentro de la transaccion del export (SET LOCAL: no
 // contamina la conexion del pool al devolverla).
 const HISTORY_EXPORT_STATEMENT_TIMEOUT_MS = 30000;
+// Red de seguridad: si el export queda detenido con la transaccion del cursor
+// abierta, Postgres corta la sesion. Una descarga abandonada quedo asi 2 h 38 min
+// el 06-10-2026, con un lock sobre equipo_1min que colgo el deploy.
+const HISTORY_EXPORT_IDLE_IN_TX_TIMEOUT_MS = 120000;
 
 function parseHistoryExportGranularity(value) {
   const key = cleanString(value).toLowerCase();
@@ -567,10 +570,37 @@ function exportFileName(site, from, to, format) {
   return `${siteLabel}_historico_${from}_${to}.${format}`;
 }
 
-async function writeResponseChunk(res, chunk) {
-  if (!res.write(chunk)) {
-    await once(res, 'drain');
+async function writeResponseChunk(stream, chunk) {
+  // Un stream cerrado (el cliente abandono la descarga) nunca vuelve a emitir
+  // 'drain': esperarlo dejaba la transaccion del cursor abierta para siempre.
+  if (stream.destroyed) {
+    throw new Error('La descarga se cerro antes de terminar.');
   }
+  if (stream.write(chunk)) return;
+  // Listeners explicitos y no Promise.race de `once`: la promesa perdedora
+  // quedaria rechazada sin manejar, y eso tambien termina el proceso.
+  await new Promise((resolve, reject) => {
+    const cleanup = () => {
+      stream.off('drain', onDrain);
+      stream.off('close', onClose);
+      stream.off('error', onError);
+    };
+    const onDrain = () => {
+      cleanup();
+      resolve();
+    };
+    const onClose = () => {
+      cleanup();
+      reject(new Error('La descarga se cerro antes de terminar.'));
+    };
+    const onError = (err) => {
+      cleanup();
+      reject(err);
+    };
+    stream.on('drain', onDrain);
+    stream.on('close', onClose);
+    stream.on('error', onError);
+  });
 }
 
 async function generateSequentialId(client, table, prefix) {
@@ -2832,12 +2862,34 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
       });
     });
     gz.pipe(res);
+    // Si el cliente cierra la descarga, `pipe` desconecta el gzip y su buffer
+    // nunca se vacia. Se destruye para que el loop salga y libere el cursor.
+    res.on('close', () => {
+      if (!res.writableFinished && !gz.destroyed) {
+        gz.destroy(new Error('El cliente cerro la descarga.'));
+      }
+    });
 
     let client;
+    // Con el cliente prestado, el pool no escucha sus errores: si Postgres
+    // corta la sesion (idle_in_transaction_session_timeout), un 'error' sin
+    // listener terminaria el proceso.
+    let clientBroken = false;
+    const onClientError = (clientErr) => {
+      clientBroken = true;
+      console.error('[export-historico] conexion cortada', {
+        siteId,
+        error: clientErr.message,
+      });
+    };
     try {
       client = await db.connect();
+      client.on('error', onClientError);
       await client.query('BEGIN');
       await client.query(`SET LOCAL statement_timeout TO ${HISTORY_EXPORT_STATEMENT_TIMEOUT_MS}`);
+      await client.query(
+        `SET LOCAL idle_in_transaction_session_timeout TO ${HISTORY_EXPORT_IDLE_IN_TX_TIMEOUT_MS}`,
+      );
       await client.query(
         `
         DECLARE history_export_cursor NO SCROLL CURSOR FOR
@@ -2918,7 +2970,11 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
       gz.destroy(streamErr);
       return res.destroy(streamErr);
     } finally {
-      if (client) client.release();
+      if (client) {
+        client.off('error', onClientError);
+        // Una conexion cortada vuelve marcada para que el pool la descarte.
+        client.release(clientBroken || undefined);
+      }
     }
   } catch (err) {
     next(err);
