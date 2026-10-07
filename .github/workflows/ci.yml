@@ -116,11 +116,15 @@ jobs:
         run: psql -h localhost -U postgres -d telemetry_platform -v ON_ERROR_STOP=1 -f infra-db/init-db/01-init-schema.sql
 
       - name: Apply migrations
+        run: bash scripts/apply-migrations.sh infra-db/migrations psql -h localhost -U postgres -d telemetry_platform
+
+      # Mismo script que el deploy: la segunda pasada sobre la misma base no
+      # debe aplicar nada, o el deploy volvería a correr todo en cada release.
+      - name: Re-run migrations (must be a no-op)
         run: |
-          for migration in infra-db/migrations/*.sql; do
-            echo "Applying $migration..."
-            psql -h localhost -U postgres -d telemetry_platform -v ON_ERROR_STOP=1 -f "$migration"
-          done
+          out="$(bash scripts/apply-migrations.sh infra-db/migrations psql -h localhost -U postgres -d telemetry_platform)"
+          echo "$out"
+          echo "$out" | grep -q '^Migrations: 0 applied,'
 
       - name: Integration tests (auth-api)
         run: pnpm --filter auth-api test

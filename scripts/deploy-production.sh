@@ -70,14 +70,19 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
+# Solo se aplican las migraciones nuevas o modificadas (ver apply-migrations.sh).
+# lock_timeout: si una migración espera un lock (por ejemplo, una transacción
+# abierta sobre la tabla), falla a los 30 s en vez de colgar el deploy y dejar
+# en cola a todas las consultas que llegan detrás. Con el error, el deploy se
+# corta antes de `up` y sigue corriendo la versión anterior.
+MIGRATION_LOCK_TIMEOUT="${MIGRATION_LOCK_TIMEOUT:-30s}"
+
 if [ -d infra-db/migrations ]; then
-  echo "Applying database migrations..."
-  for migration in infra-db/migrations/*.sql; do
-    [ -e "$migration" ] || continue
-    echo "Applying $migration..."
-    docker compose -f "$COMPOSE_FILE" exec -T timescaledb \
-      psql -v ON_ERROR_STOP=1 -h localhost -U "$MIGRATION_DB_USER" -d "$MIGRATION_DB_NAME" < "$migration"
-  done
+  echo "Applying pending database migrations..."
+  bash scripts/apply-migrations.sh infra-db/migrations \
+    docker compose -f "$COMPOSE_FILE" exec -T \
+      -e "PGOPTIONS=-c lock_timeout=${MIGRATION_LOCK_TIMEOUT}" timescaledb \
+      psql -h localhost -U "$MIGRATION_DB_USER" -d "$MIGRATION_DB_NAME"
 fi
 
 # Resuelve colisiones de container_name huérfanas. Los servicios usan
