@@ -115,6 +115,12 @@ jobs:
       - name: Apply base schema
         run: psql -h localhost -U postgres -d telemetry_platform -v ON_ERROR_STOP=1 -f infra-db/init-db/01-init-schema.sql
 
+      # En producción ya existe public.schema_migrations, la de las migraciones .js
+      # de main-api (run.js). Se replica aquí para que el registro de las .sql no
+      # choque con ella, como pasó en el deploy del PR #258.
+      - name: Create main-api migrations table (as in production)
+        run: psql -h localhost -U postgres -d telemetry_platform -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS schema_migrations (nombre TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())"
+
       - name: Apply migrations
         run: bash scripts/apply-migrations.sh infra-db/migrations psql -h localhost -U postgres -d telemetry_platform
 
