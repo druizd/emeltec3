@@ -62,10 +62,42 @@ jobs:
       - name: Validate compose config
         run: docker compose config --quiet
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      # Bake lee los mismos targets de docker-compose.yml, pero con caché de
+      # capas en el backend de GitHub Actions: sin ella cada push a main
+      # reconstruía los 7 servicios desde cero (~220 s). Un scope por servicio
+      # para que no se pisen entre sí; mode=max guarda también las etapas
+      # intermedias (deps de npm/pnpm, builder de Rust), que es lo que más tarda.
+      # Esta caché la escribe solo main; el CI de los PRs la lee.
+      # load: las deja en el docker local para que los pasos de push sigan igual.
       - name: Build images (tag latest)
+        uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
         env:
           IMAGE_TAG: latest
-        run: docker compose build $SERVICES
+        with:
+          source: .
+          files: docker-compose.yml
+          # Misma lista que SERVICES.
+          targets: main-api,auth-api,linux-db-api,frontend-angular,landing-emeltec,csvconsumer,ftpconsumer
+          load: true
+          provenance: false
+          set: |
+            main-api.cache-from=type=gha,scope=main-api
+            main-api.cache-to=type=gha,scope=main-api,mode=max
+            auth-api.cache-from=type=gha,scope=auth-api
+            auth-api.cache-to=type=gha,scope=auth-api,mode=max
+            linux-db-api.cache-from=type=gha,scope=linux-db-api
+            linux-db-api.cache-to=type=gha,scope=linux-db-api,mode=max
+            frontend-angular.cache-from=type=gha,scope=frontend-angular
+            frontend-angular.cache-to=type=gha,scope=frontend-angular,mode=max
+            landing-emeltec.cache-from=type=gha,scope=landing-emeltec
+            landing-emeltec.cache-to=type=gha,scope=landing-emeltec,mode=max
+            csvconsumer.cache-from=type=gha,scope=csvconsumer
+            csvconsumer.cache-to=type=gha,scope=csvconsumer,mode=max
+            ftpconsumer.cache-from=type=gha,scope=ftpconsumer
+            ftpconsumer.cache-to=type=gha,scope=ftpconsumer,mode=max
 
       - name: Push :latest
         env:

@@ -152,7 +152,27 @@ jobs:
       - name: Validate compose file
         run: docker compose config --quiet
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
       # Misma lista que build-publish.yml: un servicio que no se buildea aca
       # puede romper el build de main y bloquear el deploy sin que el PR lo vea.
+      # Lee la caché de capas que escribe build-publish.yml en main (un PR puede
+      # leer la caché de su rama base) y no la escribe: las capas de un PR solo
+      # le sirven a ese PR y competirían con las de main por la cuota de 10 GB.
+      # Sin output: solo verifica que las imágenes compilan.
       - name: Build application images
-        run: docker compose build main-api auth-api linux-db-api frontend-angular landing-emeltec csvconsumer ftpconsumer
+        uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
+        with:
+          source: .
+          files: docker-compose.yml
+          targets: main-api,auth-api,linux-db-api,frontend-angular,landing-emeltec,csvconsumer,ftpconsumer
+          provenance: false
+          set: |
+            main-api.cache-from=type=gha,scope=main-api
+            auth-api.cache-from=type=gha,scope=auth-api
+            linux-db-api.cache-from=type=gha,scope=linux-db-api
+            frontend-angular.cache-from=type=gha,scope=frontend-angular
+            landing-emeltec.cache-from=type=gha,scope=landing-emeltec
+            csvconsumer.cache-from=type=gha,scope=csvconsumer
+            ftpconsumer.cache-from=type=gha,scope=ftpconsumer
