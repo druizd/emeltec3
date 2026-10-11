@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Aplica las migraciones SQL pendientes de un directorio y registra cada una en
-# public.schema_migrations (nombre de archivo + sha256).
+# public.sql_migrations (nombre de archivo + sha256).
+#
+# No confundir con public.schema_migrations: esa es de las migraciones .js de
+# main-api (main-api/migrations/run.js), con otro esquema.
 #
 # Uso: apply-migrations.sh <directorio> <comando psql...>
 #   apply-migrations.sh infra-db/migrations psql -h localhost -U postgres -d db
@@ -30,16 +33,21 @@ run_psql_query() {
   run_psql "$@" </dev/null
 }
 
-run_psql_query -q -c "CREATE TABLE IF NOT EXISTS public.schema_migrations (
+run_psql_query -q -c "CREATE TABLE IF NOT EXISTS public.sql_migrations (
   filename   TEXT PRIMARY KEY,
   checksum   TEXT NOT NULL,
   applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 )"
 
+# El registro se lee a una variable y no con `< <(...)`: dentro de una
+# sustitución de proceso un error no corta el script, y se tomaría como "nada
+# aplicado", re-aplicando todo.
+registry="$(run_psql_query -At -c "SELECT filename || '|' || checksum FROM public.sql_migrations")"
+
 declare -A applied=()
 while IFS='|' read -r name sum; do
   [ -n "$name" ] && applied["$name"]="$sum"
-done < <(run_psql_query -At -c "SELECT filename || '|' || checksum FROM public.schema_migrations")
+done <<< "$registry"
 
 applied_count=0
 skipped_count=0
@@ -65,7 +73,7 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
   # Se registra solo si la migración terminó bien: con ON_ERROR_STOP y
   # `set -e`, un error corta el script antes de llegar aquí.
   run_psql -q -v name="$name" -v sum="$sum" <<'SQL'
-INSERT INTO public.schema_migrations (filename, checksum)
+INSERT INTO public.sql_migrations (filename, checksum)
 VALUES (:'name', :'sum')
 ON CONFLICT (filename) DO UPDATE
   SET checksum = EXCLUDED.checksum, applied_at = now();
