@@ -67,8 +67,13 @@ import { logger } from '../../config/logger';
 const alertasPorDefectoMod = require('../../services/alertasPorDefecto.js') as {
   crearAlertasPorDefecto: (
     db: { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }> },
-    input: { sitioId: string; userId?: string | null },
-  ) => Promise<{ creadas: string[]; existentes: string[]; omitidas: string[] }>;
+    input: { sitioId: string; userId?: string | null; activa?: boolean },
+  ) => Promise<{
+    creadas: string[];
+    existentes: string[];
+    omitidas: string[];
+    activa: boolean;
+  }>;
 };
 const { crearAlertasPorDefecto } = alertasPorDefectoMod;
 
@@ -183,12 +188,16 @@ export async function patchPozoDgaConfigHandler(
     if (parsed.data.dga_activo === true) {
       // Al activar DGA el pozo pasa a necesitar las reglas de comprobante y de
       // derecho. Idempotente y sin await: no condiciona la respuesta del PATCH.
+      // Pausadas por la misma razón que al crear el sitio: un pozo recién
+      // activado no tiene ningún comprobante SNIA, así que `dga_atrasado` mide
+      // el atraso contra dga_fecha_inicio y dispara en el primer ciclo.
       const userId = (req as { user?: { id?: string } }).user?.id ?? null;
-      crearAlertasPorDefecto({ query }, { sitioId: siteId, userId }).catch((err: Error) =>
-        logger.warn(
-          { site_id: siteId, err: err.message },
-          'dga: no se pudieron crear las alertas por defecto al activar DGA',
-        ),
+      crearAlertasPorDefecto({ query }, { sitioId: siteId, userId, activa: false }).catch(
+        (err: Error) =>
+          logger.warn(
+            { site_id: siteId, err: err.message },
+            'dga: no se pudieron crear las alertas por defecto al activar DGA',
+          ),
       );
     }
     res.json(ok(result, { durationMs: elapsedMs(startedAt) }));

@@ -9,8 +9,18 @@ type Db = { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[
 const { crearAlertasPorDefecto, listarAlertasRecomendadas } = require('../alertasPorDefecto') as {
   crearAlertasPorDefecto: (
     db: Db,
-    input: { sitioId: string; userId?: string | null; condiciones?: string[] | null },
-  ) => Promise<{ creadas: string[]; existentes: string[]; omitidas: string[] }>;
+    input: {
+      sitioId: string;
+      userId?: string | null;
+      condiciones?: string[] | null;
+      activa?: boolean;
+    },
+  ) => Promise<{
+    creadas: string[];
+    existentes: string[];
+    omitidas: string[];
+    activa: boolean;
+  }>;
   listarAlertasRecomendadas: (
     db: Db,
     input: { sitioId: string },
@@ -88,6 +98,24 @@ describe('crearAlertasPorDefecto', () => {
     // usan umbral.
     expect(db.inserts.map((p) => p[7])).toEqual([12, null, null]);
     expect(db.inserts.map((p) => p[8])).toEqual(['alta', 'media', 'alta']);
+    // Pausadas: el sitio recién creado todavía no transmite y su pozo no tiene
+    // comprobantes, así que activarlas ahora sería notificar por diseño.
+    expect(db.inserts.every((p) => p[12] === false)).toBe(true);
+    expect(r.activa).toBe(false);
+  });
+
+  it('el selector las pide activas y nacen encendidas', async () => {
+    const db = makeDb({ sitio: pozoDga, variables: ['AI24'] });
+    const r = await crearAlertasPorDefecto(db, {
+      sitioId: 'S127',
+      userId: 'SA001',
+      condiciones: ['sobre_derecho_dga'],
+      activa: true,
+    });
+
+    expect(r.creadas).toEqual(['sobre_derecho_dga']);
+    expect(r.activa).toBe(true);
+    expect(db.inserts[0]![12]).toBe(true);
   });
 
   it('con filtro (selector): crea solo las marcadas', async () => {

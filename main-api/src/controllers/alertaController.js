@@ -891,6 +891,9 @@ exports.listarRecomendadas = async (req, res, next) => {
  *
  * Crea las reglas recomendadas marcadas (o todas las que apliquen si no se
  * manda `condiciones`). Idempotente: una condición que ya existe se respeta.
+ *
+ * Las crea ACTIVAS, a diferencia de los dos llamados automáticos: acá el
+ * usuario las marcó una por una sobre un sitio que ya conoce.
  */
 exports.crearRecomendadas = async (req, res, next) => {
   try {
@@ -913,6 +916,7 @@ exports.crearRecomendadas = async (req, res, next) => {
       sitioId,
       userId: req.user.id,
       condiciones,
+      activa: true,
     });
     res.status(resultado.creadas.length ? 201 : 200).json({ ok: true, data: resultado });
   } catch (err) {
