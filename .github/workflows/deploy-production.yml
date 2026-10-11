@@ -2,13 +2,14 @@ name: Deploy production (SSH, manual)
 
 # EMT-H12: ruta de deploy SSH. El deploy automático en push lo hace
 # deploy-selfhosted.yml; este queda como opción MANUAL (workflow_dispatch) para
-# no duplicar despliegues ni competir por la VM. En push solo corre la
-# validación (build de imágenes); el deploy real solo si se lanza a mano.
+# no duplicar despliegues ni competir por la VM.
+#
+# Ya no corre en push: su validación (build de imágenes, ~125 s) duplicaba la
+# de build-publish.yml y la del CI de cada PR, y el job de deploy quedaba
+# siempre "skipped", con un check verde que no desplegaba nada. Al lanzarlo a
+# mano, valida y despliega igual que antes.
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 concurrency:
