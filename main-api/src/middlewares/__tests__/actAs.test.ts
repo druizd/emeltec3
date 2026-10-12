@@ -133,7 +133,9 @@ describe.each([
     const r = await ejecutar(protect, method, tokenActAs());
     expect(statusDe(r)).toBe(403);
     expect(mensajeDe(r)).toBe(READ_ONLY_ERROR);
-    expect(r.req.user).toBeUndefined();
+    // La identidad queda en req para que auditMutations registre al suplantador.
+    expect(r.req.user).toMatchObject({ id: VIEW_AS_USER_ID, tipo: 'Cliente' });
+    expect(r.req.actAs).toEqual({ realUserId: 'SA001' });
     if (r.status !== undefined) expect(r.body).toEqual({ ok: false, error: READ_ONLY_ERROR });
   });
 
@@ -239,17 +241,19 @@ describe('audit_log con "ver como"', () => {
     expect(params[11]).toBeNull();
   });
 
-  it('auditMutations registra el intento de escritura bloqueado con el suplantador', async () => {
+  it('auditMutations registra el intento bloqueado con lo que protect deja en req (orden real: ver actAsAudit.test.ts)', async () => {
     const mw = audit.auditMutations(() => ({ action: 'alerta.create', targetType: 'alerta' }));
     const res = Object.assign(new EventEmitter(), { statusCode: 403 });
+    // req.user / req.actAs salen de ejecutar protect de verdad, no armados a mano.
+    const rechazo = await ejecutar(protectV2 as Handler, 'POST', tokenActAs());
     const req = {
       method: 'POST',
       originalUrl: '/api/alertas',
       ip: '10.0.0.1',
       headers: {},
       body: { nombre: 'x' },
-      user: { id: VIEW_AS_USER_ID, tipo: 'Cliente', email: 'root@emeltec.cl' },
-      actAs: { realUserId: 'SA001' },
+      user: rechazo.req.user,
+      actAs: rechazo.req.actAs,
     };
     await new Promise<void>((resolve) => {
       void mw(req as unknown as Request, res as unknown as Response, () => {

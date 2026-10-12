@@ -37,6 +37,10 @@ exports.protect = async (req, res, next) => {
       return res.status(401).json({ ok: false, error: 'Token inválido o expirado' });
     }
     if (!isReadOnlyMethod(req.method)) {
+      // Se deposita la identidad ANTES de rechazar: `auditMutations` (montado
+      // antes del router) lee req.user / req.actAs al terminar la respuesta.
+      req.user = decoded;
+      req.actAs = actAsContext(decoded);
       return res.status(403).json({ ok: false, error: READ_ONLY_ERROR });
     }
   }

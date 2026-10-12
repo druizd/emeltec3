@@ -56,11 +56,14 @@ los checks funcionales: `main-api` → `npm test` (vitest), `auth-api` →
   + bloqueo de escrituras + auditoría del suplantador + tests.
 - [x] T2 — Frontend: pedir/usar/descartar el token "ver como", corregir la
   etiqueta "Sitio" → "División".
+- [x] T3 — Corrección: auditoría registra al suplantador en escrituras bloqueadas
+  (hallazgo de verificación independiente).
 
 ## Ruta por tarea
 
 - T1: delegada (writer único; toca 2+ archivos no triviales). Hecha.
 - T2: delegada (writer único; toca 2+ archivos no triviales).
+- T3: delegada (writer único; corrección acotada).
 
 ## Progreso y evidencia
 
@@ -97,6 +100,15 @@ los checks funcionales: `main-api` → `npm test` (vitest), `auth-api` →
   - Verificación: `cd frontend-angular && npx ng build` → OK (solo warnings previos de
     budget/hammerjs); `npm test` → 16 archivos, 272 tests OK; eslint y prettier OK en
     lo tocado.
+- T3 hecha. Defecto: ambos `protect` devolvían el 403 de solo lectura antes de poner
+  `req.user`/`req.actAs`, así que `auditMutations` (montado antes del router) registraba
+  el intento con actor e `impersonator_id` nulos. Ahora ambos depositan la identidad antes
+  de rechazar (misma respuesta). Test nuevo `actAsAudit.test.ts` (Express real + legacy y
+  v2 + audit con DB espiada; también token vencido y HS512 → 401). Test de actAs.test.ts
+  que armaba `req` a mano ahora usa lo que `protect` deja realmente.
+  - RED (código sin corregir): 2 fallos, `actor_id` null en legacy y v2.
+  - GREEN: `npm test` → 82 archivos, 926 tests OK; `npm run typecheck` sin errores;
+    prettier y eslint OK en lo tocado.
 
 ## Siguiente paso
 

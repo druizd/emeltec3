@@ -60,6 +60,10 @@ export function protect(req: Request, _res: Response, next: NextFunction): void 
       return;
     }
     if (!isReadOnlyMethod(req.method)) {
+      // Se deposita la identidad ANTES de rechazar: `auditMutations` (montado
+      // antes del router) lee req.user / req.actAs al terminar la respuesta.
+      (req as ReqWithUser).user = decoded as AuthUser;
+      (req as ReqWithUser).actAs = actAsContext(decoded);
       next(new ForbiddenError(READ_ONLY_ERROR));
       return;
     }
