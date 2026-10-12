@@ -27,7 +27,11 @@ const SECRET = process.env.JWT_SECRET as string;
 vi.mock('../../../services/sessionRevocation', () => ({ isSessionRevoked: async () => false }));
 
 vi.mock('../../../config/dbHelpers', () => ({
-  query: async () => ({ rows: [], rowCount: 0 }),
+  // issueViewAsToken contrasta el tipo del emisor con la tabla usuario.
+  query: async (sql: string) =>
+    sql.includes('SELECT tipo, activo FROM usuario')
+      ? { rows: [{ tipo: 'SuperAdmin', activo: true }], rowCount: 1 }
+      : { rows: [], rowCount: 0 },
   transaction: async () => undefined,
 }));
 
