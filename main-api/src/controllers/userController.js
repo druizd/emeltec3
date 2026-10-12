@@ -630,7 +630,12 @@ exports.deleteUser = async (req, res, next) => {
     const permErr = managePermissionError(currentUser, check.rows[0]);
     if (permErr) return res.status(403).json({ ok: false, error: permErr });
 
-    await db.query('UPDATE usuario SET activo = false, updated_at = NOW() WHERE id = $1', [id]);
+    // Desactivar corta también las sesiones abiertas (sessions_valid_from).
+    await db.query(
+      'UPDATE usuario SET activo = false, sessions_valid_from = NOW(), updated_at = NOW() WHERE id = $1',
+      [id],
+    );
+    sessionRevocation.forget(id);
     res.json({ ok: true, message: 'Usuario desactivado' });
   } catch (err) {
     next(err);
@@ -712,11 +717,18 @@ exports.updateUser = async (req, res, next) => {
     if (sets.length === 0) {
       return res.status(400).json({ ok: false, error: 'No hay campos para actualizar' });
     }
+    // Un cambio real de rol o una desactivación cortan las sesiones abiertas: sus
+    // JWT conservarían el rol anterior (o seguirían activos) hasta expirar.
+    // Editar otros campos, o reenviar el mismo tipo, no las toca.
+    const revocaSesiones =
+      (b.tipo !== undefined && b.tipo !== check.rows[0].tipo) || b.activo === false;
+    if (revocaSesiones) sets.push('sessions_valid_from = NOW()');
     params.push(id);
     await db.query(
       `UPDATE usuario SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length}`,
       params,
     );
+    if (revocaSesiones) sessionRevocation.forget(id);
     const updated = await getUserProfileById(id);
     res.json({ ok: true, data: maskUserPhones([updated])[0] });
   } catch (err) {
