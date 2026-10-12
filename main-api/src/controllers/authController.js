@@ -26,7 +26,7 @@ exports.login = async (req, res, next) => {
     // Buscar al usuario (ahora incluye otp_hash y otp_expires_at)
     const result = await db.query(
       `SELECT id, nombre, email, tipo, empresa_id, sub_empresa_id,
-              password_hash, otp_hash, otp_expires_at
+              password_hash, otp_hash, otp_expires_at, activo
        FROM usuario WHERE email = $1`,
       [email],
     );
@@ -62,7 +62,10 @@ exports.login = async (req, res, next) => {
       if (passMatch) authenticated = true;
     }
 
-    if (!authenticated) {
+    // Un usuario desactivado recibe exactamente la misma respuesta que con
+    // credenciales inválidas (se verifica DESPUÉS de las comparaciones bcrypt para
+    // no delatar la cuenta ni por respuesta ni por tiempo). `activo` NULL = activo.
+    if (!authenticated || unUsuario.activo === false) {
       return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
     }
 
