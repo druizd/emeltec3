@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import type { MockInstance } from 'vitest';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -6,6 +7,8 @@ import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import type { SessionUser } from './auth.service';
 import type { User } from '@emeltec/shared';
+import { USE_REAL_TOKEN } from './auth-http-context';
+import { ToastService } from './toast.service';
 
 // Alias para compatibilidad de tipos en el test
 type SessionUserShape = SessionUser;
@@ -215,11 +218,11 @@ describe('AuthService', () => {
 
     it('restauración con view-as en sessionStorage y usuario SuperAdmin → restaura viewAsContext', async () => {
       const token = makeJwt(3600);
-      const superAdmin: User = { ...usuarioCompleto, tipo: 'SuperAdmin' };
       const superAdminSession: SessionUserShape = { ...proyeccionEsperada, tipo: 'SuperAdmin' };
       localStorage.setItem('jwt_token', token);
       localStorage.setItem('user_data', JSON.stringify(superAdminSession));
       sessionStorage.setItem('view_as_role', JSON.stringify({ role: 'Gerente', companyId: 'c1' }));
+      sessionStorage.setItem('view_as_token', makeJwt(1200));
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
@@ -231,10 +234,38 @@ describe('AuthService', () => {
       expect(svc.viewAsContext()).not.toBeNull();
       expect(svc.viewAsContext()?.role).toBe('Gerente');
 
-      // Drenar la microtask queue para que queueMicrotask() se ejecute
+      // Drenar la microtask queue: con view-as activo NO se hidrata /api/users/me
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      hm.expectOne('/api/users/me').flush({ ok: true, data: superAdmin });
+      hm.expectNone('/api/users/me');
+      expect(svc.user()?.tipo).toBe('SuperAdmin');
+      hm.verify();
+    });
+
+    it('view-as guardado con token vencido → se descarta y se hidrata normal', async () => {
+      const token = makeJwt(3600);
+      const superAdminSession: SessionUserShape = { ...proyeccionEsperada, tipo: 'SuperAdmin' };
+      localStorage.setItem('jwt_token', token);
+      localStorage.setItem('user_data', JSON.stringify(superAdminSession));
+      sessionStorage.setItem('view_as_role', JSON.stringify({ role: 'Gerente', companyId: 'c1' }));
+      sessionStorage.setItem('view_as_token', makeJwt(-10));
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      });
+      const svc = TestBed.inject(AuthService);
+      const hm = TestBed.inject(HttpTestingController);
+
+      expect(svc.viewAsContext()).toBeNull();
+      expect(sessionStorage.getItem('view_as_role')).toBeNull();
+      expect(sessionStorage.getItem('view_as_token')).toBeNull();
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      hm.expectOne('/api/users/me').flush({
+        ok: true,
+        data: { ...usuarioCompleto, tipo: 'SuperAdmin' },
+      });
       hm.verify();
     });
   });
@@ -391,62 +422,138 @@ describe('AuthService', () => {
 
   describe('view-as', () => {
     let superAdminService: AuthService;
+    let navigateSpy: MockInstance<Router['navigate']>;
+    const realToken = makeJwt(3600);
 
     beforeEach(() => {
-      // Crear un SuperAdmin
       const superAdmin: User = { ...usuarioCompleto, tipo: 'SuperAdmin' };
-      service.login(makeJwt(3600), superAdmin);
+      service.login(realToken, superAdmin);
       superAdminService = service;
+      navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     });
 
-    it('setViewAs("Admin") con SuperAdmin → cambia effectiveRole() a "Admin"', () => {
-      superAdminService.setViewAs('Admin');
+    /** Pide "ver como" y responde 200 con un token de 30 min. */
+    function activate(context: Parameters<AuthService['setViewAsContext']>[0]): string {
+      const viewAsToken = makeJwt(1800);
+      superAdminService.setViewAsContext(context);
+      const req = httpMock.expectOne('/api/v2/auth/view-as');
+      req.flush({
+        ok: true,
+        data: {
+          token: viewAsToken,
+          expires_in: 1800,
+          expires_at: new Date(Date.now() + 1800_000).toISOString(),
+          view_as: {
+            tipo: context.role,
+            empresa_id: context.companyId ?? null,
+            sub_empresa_id: null,
+          },
+        },
+      });
+      return viewAsToken;
+    }
+
+    it('setViewAsContext con SuperAdmin → pide token al servidor y cambia effectiveRole()', () => {
+      const viewAsToken = activate({ role: 'Admin', companyId: 'e1' });
+
       expect(superAdminService.effectiveRole()).toBe('Admin');
+      expect(sessionStorage.getItem('view_as_token')).toBe(viewAsToken);
+      expect(navigateSpy).toHaveBeenCalledWith(['/dashboard']);
     });
 
-    it('setViewAs("Admin") con SuperAdmin → persiste en sessionStorage', () => {
-      superAdminService.setViewAs('Admin');
-      const stored = sessionStorage.getItem('view_as_role');
-      expect(stored).not.toBeNull();
-      const parsed = JSON.parse(stored!);
-      expect(parsed.role).toBe('Admin');
+    it('POST usa el token real (USE_REAL_TOKEN) y manda role/empresa/sub_empresa', () => {
+      superAdminService.setViewAsContext({
+        role: 'Cliente',
+        companyId: 'e1',
+        subCompanyId: 's1',
+        siteId: 'sitio-ignorado',
+      });
+
+      const req = httpMock.expectOne('/api/v2/auth/view-as');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ role: 'Cliente', empresa_id: 'e1', sub_empresa_id: 's1' });
+      expect(req.request.context.get(USE_REAL_TOKEN)).toBe(true);
+      req.flush({ ok: false }, { status: 422, statusText: 'Unprocessable' });
     });
 
-    it('setViewAs("Admin") con usuario no-SuperAdmin → NO cambia nada', () => {
-      // Crear un Admin normal
-      const adminService = TestBed.inject(AuthService);
-      adminService.login(makeJwt(3600), usuarioCompleto); // tipo: 'Admin'
+    it('Admin ignora sub_empresa (alcance solo empresa)', () => {
+      superAdminService.setViewAsContext({ role: 'Admin', companyId: 'e1', subCompanyId: 's1' });
 
-      adminService.setViewAs('SuperAdmin');
-      expect(adminService.effectiveRole()).toBe('Admin'); // sin cambio
+      const req = httpMock.expectOne('/api/v2/auth/view-as');
+      expect(req.request.body).toEqual({ role: 'Admin', empresa_id: 'e1' });
+      req.flush({ ok: false }, { status: 422, statusText: 'Unprocessable' });
     });
 
-    it('setViewAsContext({ role: "Gerente", companyId: "c1" }) → persiste contexto completo', () => {
-      superAdminService.setViewAsContext({ role: 'Gerente', companyId: 'c1' });
+    it('persiste contexto y token por separado; el jwt_token real no se toca', () => {
+      const viewAsToken = activate({ role: 'Gerente', companyId: 'c1', subCompanyId: 's1' });
 
       const ctx = superAdminService.viewAsContext();
       expect(ctx?.role).toBe('Gerente');
       expect(ctx?.companyId).toBe('c1');
-
-      const stored = sessionStorage.getItem('view_as_role');
-      expect(stored).not.toBeNull();
-      const parsed = JSON.parse(stored!);
-      expect(parsed.companyId).toBe('c1');
+      expect(JSON.parse(sessionStorage.getItem('view_as_role')!).subCompanyId).toBe('s1');
+      expect(sessionStorage.getItem('view_as_token')).toBe(viewAsToken);
+      expect(localStorage.getItem('jwt_token')).toBe(realToken);
+      expect(superAdminService.getToken()).toBe(realToken);
     });
 
-    it('clearViewAs() → limpia sessionStorage, viewAsContext null', () => {
-      superAdminService.setViewAs('Admin');
-      expect(superAdminService.viewAsContext()).not.toBeNull();
+    it('no guarda el sitio en el contexto (el token del servidor no lo incluye)', () => {
+      activate({
+        role: 'Cliente',
+        companyId: 'e1',
+        subCompanyId: 's1',
+        siteId: 'x',
+        siteName: 'X',
+      });
+
+      expect(superAdminService.viewAsContext()?.siteId).toBeUndefined();
+      expect(JSON.parse(sessionStorage.getItem('view_as_role')!).siteId).toBeUndefined();
+    });
+
+    it('error del servidor → toast con el mensaje y NO activa view-as', () => {
+      const toast = TestBed.inject(ToastService);
+      const errorSpy = vi.spyOn(toast, 'error');
+
+      superAdminService.setViewAsContext({ role: 'Admin', companyId: 'nope' });
+      httpMock.expectOne('/api/v2/auth/view-as').flush(
+        {
+          ok: false,
+          error: { code: 'X', message: 'Empresa no existe' },
+          message: 'Empresa no existe',
+        },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+
+      expect(errorSpy).toHaveBeenCalledWith('Empresa no existe');
+      expect(superAdminService.isViewingAs()).toBe(false);
+      expect(sessionStorage.getItem('view_as_token')).toBeNull();
+      expect(superAdminService.viewAsLoading()).toBe(false);
+    });
+
+    it('setViewAs con usuario no-SuperAdmin → NO llama al servidor ni cambia nada', () => {
+      const adminService = TestBed.inject(AuthService);
+      adminService.login(makeJwt(3600), usuarioCompleto); // tipo: 'Admin'
+
+      adminService.setViewAs('Gerente');
+
+      httpMock.expectNone('/api/v2/auth/view-as');
+      expect(adminService.effectiveRole()).toBe('Admin');
+    });
+
+    it('clearViewAs() → limpia contexto y token, vuelve al rol real sin tocar jwt_token', () => {
+      activate({ role: 'Admin', companyId: 'e1' });
 
       superAdminService.clearViewAs();
 
       expect(superAdminService.viewAsContext()).toBeNull();
       expect(sessionStorage.getItem('view_as_role')).toBeNull();
+      expect(sessionStorage.getItem('view_as_token')).toBeNull();
+      expect(localStorage.getItem('jwt_token')).toBe(realToken);
+      expect(superAdminService.effectiveRole()).toBe('SuperAdmin');
     });
 
-    it('isViewingAs() es true tras setViewAs, false tras clearViewAs', () => {
+    it('isViewingAs() es true tras activar, false tras clearViewAs', () => {
       expect(superAdminService.isViewingAs()).toBe(false);
-      superAdminService.setViewAs('Admin');
+      activate({ role: 'Admin', companyId: 'e1' });
       expect(superAdminService.isViewingAs()).toBe(true);
       superAdminService.clearViewAs();
       expect(superAdminService.isViewingAs()).toBe(false);
@@ -455,7 +562,6 @@ describe('AuthService', () => {
     it('canSwitchView() es true solo para SuperAdmin', () => {
       expect(superAdminService.canSwitchView()).toBe(true);
 
-      // Crear un servicio para Admin normal
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
         providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
@@ -471,10 +577,35 @@ describe('AuthService', () => {
 
     it('effectiveRole() usa viewAs si está activo, sino el real', () => {
       expect(superAdminService.effectiveRole()).toBe('SuperAdmin');
-      superAdminService.setViewAs('Gerente');
+      activate({ role: 'Gerente', companyId: 'e1', subCompanyId: 's1' });
       expect(superAdminService.effectiveRole()).toBe('Gerente');
       superAdminService.clearViewAs();
       expect(superAdminService.effectiveRole()).toBe('SuperAdmin');
+    });
+
+    it('endViewAsExpired() → toast, vuelve al rol real y NO cierra la sesión', () => {
+      const toast = TestBed.inject(ToastService);
+      const infoSpy = vi.spyOn(toast, 'info');
+      activate({ role: 'Admin', companyId: 'e1' });
+
+      superAdminService.endViewAsExpired();
+
+      expect(infoSpy).toHaveBeenCalledWith("La vista 'ver como' expiró");
+      expect(superAdminService.isViewingAs()).toBe(false);
+      expect(superAdminService.isAuthenticated()).toBe(true);
+      expect(localStorage.getItem('jwt_token')).toBe(realToken);
+      expect(navigateSpy).not.toHaveBeenCalledWith(['/login']);
+    });
+
+    it('al vencer el token "ver como" (30 min) termina solo la simulación', () => {
+      vi.useFakeTimers();
+      activate({ role: 'Admin', companyId: 'e1' });
+      expect(superAdminService.isViewingAs()).toBe(true);
+
+      vi.advanceTimersByTime(1800_000 + 1000);
+
+      expect(superAdminService.isViewingAs()).toBe(false);
+      expect(superAdminService.isAuthenticated()).toBe(true);
     });
   });
 

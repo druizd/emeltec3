@@ -5,8 +5,11 @@ import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { config } from '../../config/appConfig';
 import { UnauthorizedError, ValidationError, ForbiddenError } from '../../shared/errors';
+import { VIEW_AS_ROLES, VIEW_AS_TTL_SECONDS, VIEW_AS_USER_ID } from '../../services/actAs';
 import {
   consumeOtpIfMatches,
+  findEmpresaById,
+  findSubEmpresaById,
   findUserByEmail,
   findUserPublicByEmail,
   storeOtp,
@@ -80,6 +83,93 @@ export async function login(emailInput: string, password: string): Promise<Login
       empresa_id: user.empresa_id,
       sub_empresa_id: user.sub_empresa_id,
     },
+  };
+}
+
+export type ViewAsRole = 'Admin' | 'Gerente' | 'Cliente' | 'Vendedor';
+
+export interface ViewAsInput {
+  role: ViewAsRole;
+  empresa_id?: string | null | undefined;
+  sub_empresa_id?: string | null | undefined;
+}
+
+export interface ViewAsResult {
+  token: string;
+  expires_in: number;
+  expires_at: string;
+  view_as: {
+    tipo: ViewAsRole;
+    empresa_id: string | null;
+    sub_empresa_id: string | null;
+  };
+}
+
+/**
+ * Emite un token "ver como" de SOLO LECTURA para un SuperAdmin real.
+ *
+ * Alcance (mismas reglas que `shared/permissions.ts` y `services/dataAccess.js`):
+ *  - Admin: toda la empresa; `sub_empresa_id` se ignora (queda null).
+ *  - Gerente/Cliente: `sub_empresa_id` opcional; sin ella ven toda la empresa.
+ *  - Vendedor: su alcance no depende de la empresa sino de maletas piloto y de
+ *    `usuario_sitio` del propio usuario. El token no lleva el id del SuperAdmin
+ *    (ver `VIEW_AS_USER_ID`), así que ve solo las maletas piloto; `empresa_id`
+ *    es opcional.
+ */
+export async function issueViewAsToken(
+  actor: { id?: string | number; email?: string; tipo?: string },
+  isActAs: boolean,
+  input: ViewAsInput,
+): Promise<ViewAsResult> {
+  // Un token "ver como" nunca emite otro (sin encadenar), aunque su `tipo`
+  // fuese SuperAdmin.
+  if (isActAs || actor.tipo !== 'SuperAdmin' || !actor.id) {
+    throw new ForbiddenError('Solo un SuperAdmin puede usar "ver como".');
+  }
+
+  const { role } = input;
+  if (!VIEW_AS_ROLES.includes(role)) {
+    throw new ValidationError('Rol inválido para "ver como"');
+  }
+
+  const empresaId = input.empresa_id ? input.empresa_id : null;
+  const subEmpresaId = role === 'Admin' || !input.sub_empresa_id ? null : input.sub_empresa_id;
+
+  if (!empresaId && role !== 'Vendedor') {
+    throw new ValidationError('empresa_id es requerido para este rol');
+  }
+  if (!empresaId && input.sub_empresa_id) {
+    throw new ValidationError('sub_empresa_id requiere empresa_id');
+  }
+  if (empresaId && !(await findEmpresaById(empresaId))) {
+    throw new ValidationError('La empresa no existe');
+  }
+  if (subEmpresaId) {
+    const sub = await findSubEmpresaById(subEmpresaId);
+    if (!sub || sub.empresa_id !== empresaId) {
+      throw new ValidationError('La sub-empresa no existe o no pertenece a la empresa');
+    }
+  }
+
+  const payload = {
+    id: VIEW_AS_USER_ID,
+    email: actor.email,
+    tipo: role,
+    empresa_id: empresaId,
+    sub_empresa_id: subEmpresaId,
+    act_as: true,
+    real_sub: String(actor.id),
+  };
+  const token = jwt.sign(payload, config.auth.jwtSecret, {
+    algorithm: 'HS256',
+    expiresIn: VIEW_AS_TTL_SECONDS,
+  });
+
+  return {
+    token,
+    expires_in: VIEW_AS_TTL_SECONDS,
+    expires_at: new Date(Date.now() + VIEW_AS_TTL_SECONDS * 1000).toISOString(),
+    view_as: { tipo: role, empresa_id: empresaId, sub_empresa_id: subEmpresaId },
   };
 }
 

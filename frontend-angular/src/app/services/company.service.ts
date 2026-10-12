@@ -1,10 +1,10 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { HttpClient, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpResponse } from '@angular/common/http';
 import { Observable, of, tap } from 'rxjs';
 import { finalize, shareReplay } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import type { ViewAsContext } from './auth.service';
-import { normalizeSiteType } from '../shared/site-type-ui';
+import { USE_REAL_TOKEN } from './auth-http-context';
 import type {
   ApiResponse,
   Company,
@@ -288,6 +288,8 @@ export class CompanyService {
 
   companies = signal<Company[]>([]);
   hierarchy = signal<CompanyNode[]>([]);
+  /** Árbol completo (token real) para el selector de "ver como". */
+  previewTree = signal<CompanyNode[]>([]);
   /** Petición de árbol en vuelo, compartida entre llamadores concurrentes. */
   private hierarchyInFlight: Observable<ApiResponse<CompanyNode[]>> | null = null;
   visibleHierarchy = computed<CompanyNode[]>(() =>
@@ -378,6 +380,23 @@ export class CompanyService {
       );
     this.hierarchyInFlight = request;
     return request;
+  }
+
+  /**
+   * Árbol completo con el token REAL, solo para el selector de "ver como".
+   * Con la vista activa, `hierarchy` ya viene acotado por el servidor y no
+   * serviría para elegir otra empresa/división.
+   */
+  fetchPreviewTree(): Observable<ApiResponse<CompanyNode[]>> {
+    return this.http
+      .get<ApiResponse<CompanyNode[]>>(`/api/v2/companies/tree?t=${Date.now()}`, {
+        context: new HttpContext().set(USE_REAL_TOKEN, true),
+      })
+      .pipe(
+        tap((res) => {
+          if (res.ok) this.previewTree.set(res.data);
+        }),
+      );
   }
 
   getSites(id: string): Observable<ApiResponse<SiteRecord[]>> {
@@ -989,12 +1008,9 @@ export class CompanyService {
       return context.companyId ? tree.filter((company) => company.id === context.companyId) : tree;
     }
 
-    if (context.role === 'Gerente') {
+    // Cliente ve toda su división (como el servidor), no un sitio suelto.
+    if (context.role === 'Gerente' || context.role === 'Cliente') {
       return this.scopeToSubCompany(tree, context.subCompanyId);
-    }
-
-    if (context.role === 'Cliente') {
-      return this.scopeToSite(tree, context.siteId);
     }
 
     return tree;
@@ -1009,37 +1025,6 @@ export class CompanyService {
         subCompanies: (company.subCompanies || []).filter((subCompany) => {
           return subCompany.id === subCompanyId;
         }),
-      }))
-      .filter((company) => company.subCompanies.length > 0);
-  }
-
-  private scopeToSite(tree: CompanyNode[], siteId?: string): CompanyNode[] {
-    if (!siteId) return tree;
-
-    // Cliente cold-room: si el sitio asignado es cámara de frío, mantenemos TODOS
-    // los TAPs (camara_frio) de su sub-empresa para que vea la planta completa
-    // agregada (Ventisqueros = varios sitios/TAPs). Otros tipos: solo su sitio.
-    const ownerSub = tree
-      .flatMap((c) => c.subCompanies || [])
-      .find((sc) => (sc.sites || []).some((s) => s.id === siteId));
-    const scopedSite = (ownerSub?.sites || []).find((s) => s.id === siteId);
-    const expandColdRoom =
-      !!scopedSite && normalizeSiteType(scopedSite.tipo_sitio) === 'camara_frio';
-
-    return tree
-      .map((company) => ({
-        ...company,
-        subCompanies: (company.subCompanies || [])
-          .map((subCompany) => {
-            const containsTarget = (subCompany.sites || []).some((s) => s.id === siteId);
-            const sites = (subCompany.sites || []).filter((site) =>
-              expandColdRoom && containsTarget
-                ? normalizeSiteType(site.tipo_sitio) === 'camara_frio'
-                : site.id === siteId,
-            );
-            return { ...subCompany, sites };
-          })
-          .filter((subCompany) => subCompany.sites.length > 0),
       }))
       .filter((company) => company.subCompanies.length > 0);
   }

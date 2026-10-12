@@ -18,7 +18,7 @@ import {
   getDashboardHistoryHandler,
 } from '../../modules/sites/controller';
 import { getHierarchyTreeHandler } from '../../modules/companies/controller';
-import { loginHandler, requestCodeHandler } from '../../modules/auth/controller';
+import { loginHandler, requestCodeHandler, viewAsHandler } from '../../modules/auth/controller';
 import { httpMetricsMiddleware } from '../../middlewares/httpMetrics';
 import { liveness, prometheusMetrics, readiness } from '../../modules/health/controller';
 import {
@@ -175,6 +175,11 @@ router.get('/companies/tree', protect, getHierarchyTreeHandler);
 
 router.post('/auth/login', loginHandler);
 router.post('/auth/request-code', requestCodeHandler);
+// "Ver como" de SuperAdmin: emite un token de 30 min, SOLO LECTURA, con el rol y
+// alcance elegidos. El handler exige SuperAdmin real (no un token act_as). Sin
+// require2fa: el token no escribe nada y el SuperAdmin ya lee todo; el 2FA queda
+// para las acciones que mutan o revelan PII.
+router.post('/auth/view-as', protect, viewAsHandler);
 
 // =====================================================================
 // DGA — modelo redesign 2026-05-17.

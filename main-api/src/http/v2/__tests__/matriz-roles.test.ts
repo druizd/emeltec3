@@ -81,6 +81,9 @@ const ESPERADO: Record<string, readonly Rol[]> = {
   // --- Login: son la puerta, no pueden exigir sesión ---
   'POST /auth/login': PUBLICO,
   'POST /auth/request-code': PUBLICO,
+  // "Ver como": la puerta es `protect`; el handler exige SuperAdmin real y se
+  // prueba en modules/auth/__tests__/viewAs.test.ts.
+  'POST /auth/view-as': TODOS,
 
   // --- Telemetría: el alcance por serial lo aplica requireTelemetrySerialAccess ---
   'GET /telemetry': TODOS,

@@ -7,6 +7,14 @@ import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/appConfig';
 import { isSessionRevoked } from '../services/sessionRevocation';
+import {
+  READ_ONLY_ERROR,
+  actAsContext,
+  isActAsToken,
+  isReadOnlyMethod,
+  isValidActAsToken,
+  revocationSubject,
+} from '../services/actAs';
 import { ForbiddenError, UnauthorizedError } from '../shared/errors';
 import type { AuthUser, UserTipo } from '../shared/permissions';
 
@@ -17,7 +25,12 @@ interface JwtPayload {
   empresa_id?: string | null;
   sub_empresa_id?: string | null;
   iat?: number;
+  /** Token "ver como" de SuperAdmin (solo lectura). Ver services/actAs.js. */
+  act_as?: boolean;
+  real_sub?: string;
 }
+
+type ReqWithUser = Request & { user?: AuthUser; actAs?: { realUserId: string } };
 
 export function protect(req: Request, _res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
@@ -39,20 +52,40 @@ export function protect(req: Request, _res: Response, next: NextFunction): void 
     return;
   }
 
+  // Token "ver como" (SuperAdmin simulando un rol): solo lectura.
+  const actAs = isActAsToken(decoded);
+  if (actAs) {
+    if (!isValidActAsToken(decoded)) {
+      next(new UnauthorizedError('Token inválido o expirado'));
+      return;
+    }
+    if (!isReadOnlyMethod(req.method)) {
+      // Se deposita la identidad ANTES de rechazar: `auditMutations` (montado
+      // antes del router) lee req.user / req.actAs al terminar la respuesta.
+      (req as ReqWithUser).user = decoded as AuthUser;
+      (req as ReqWithUser).actAs = actAsContext(decoded);
+      next(new ForbiddenError(READ_ONLY_ERROR));
+      return;
+    }
+  }
+
+  const attach = (): void => {
+    (req as ReqWithUser).user = decoded as AuthUser;
+    if (actAs) (req as ReqWithUser).actAs = actAsContext(decoded);
+    next();
+  };
+
   // Un cambio de contraseña corta las sesiones previas (sessions_valid_from).
-  isSessionRevoked(decoded)
+  // Con "ver como" se evalúa contra el SuperAdmin real, no contra el id simulado.
+  isSessionRevoked(revocationSubject(decoded))
     .then((revoked) => {
       if (revoked) {
         next(new UnauthorizedError('Sesión cerrada por un cambio de contraseña. Vuelve a entrar.'));
         return;
       }
-      (req as Request & { user?: AuthUser }).user = decoded as AuthUser;
-      next();
+      attach();
     })
-    .catch(() => {
-      (req as Request & { user?: AuthUser }).user = decoded as AuthUser;
-      next();
-    });
+    .catch(attach);
 }
 
 export function authorizeRoles(...roles: UserTipo[]) {

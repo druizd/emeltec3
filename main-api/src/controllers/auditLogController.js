@@ -96,7 +96,7 @@ exports.listarAuditLog = async (req, res) => {
   const { rows } = await pool.query(
     `SELECT al.id, al.ts, al.actor_id, al.actor_email, al.actor_tipo,
             al.action, al.target_type, al.target_id, al.status_code, al.metadata,
-            al.ip,
+            al.ip, al.impersonator_id,
             COALESCE(
               a_rule.sitio_id,
               a_evt.sitio_id,
