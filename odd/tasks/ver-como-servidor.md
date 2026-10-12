@@ -53,11 +53,11 @@ los checks funcionales: `main-api` → `npm test` (vitest), `auth-api` →
 ## Tareas
 
 - [x] T1 — Backend: emisión del token "ver como" + reconocimiento en `protect`
-  + bloqueo de escrituras + auditoría del suplantador + tests.
+  - bloqueo de escrituras + auditoría del suplantador + tests.
 - [x] T2 — Frontend: pedir/usar/descartar el token "ver como", corregir la
-  etiqueta "Sitio" → "División".
+      etiqueta "Sitio" → "División".
 - [x] T3 — Corrección: auditoría registra al suplantador en escrituras bloqueadas
-  (hallazgo de verificación independiente).
+      (hallazgo de verificación independiente).
 
 ## Ruta por tarea
 
