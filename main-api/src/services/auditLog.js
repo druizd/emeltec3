@@ -225,8 +225,10 @@ async function record({
         impersonatorId,
       ],
     );
+    return true;
   } catch (err) {
     console.error('[audit] No se pudo registrar evento', action, err.message);
+    return false;
   }
 }
 
@@ -271,6 +273,10 @@ function auditMutations(resolver) {
 
     const registrar = (before) => {
       res.on('finish', () => {
+        // El handler ya registró esta petición con su propia fila (más detallada):
+        // `res.locals.auditHandled` evita la segunda. Un rechazo previo al handler
+        // no la activa y queda en esta bitácora.
+        if (res.locals && res.locals.auditHandled) return;
         const user = req.user || {};
         const outcome = outcomeForStatus(res.statusCode);
         const metadata = {

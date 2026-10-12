@@ -994,7 +994,8 @@ const REALTIME_WINDOW_MS = 47 * 3_600_000;
                   type="time"
                   [value]="jornadaInicio()"
                   (change)="jornadaInicio.set($any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
+                  [disabled]="!canEditConfig()"
+                  class="disabled:cursor-not-allowed disabled:opacity-60 h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
               </label>
               <span class="text-slate-300">–</span>
@@ -1004,7 +1005,8 @@ const REALTIME_WINDOW_MS = 47 * 3_600_000;
                   type="time"
                   [value]="jornadaFin()"
                   (change)="jornadaFin.set($any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
+                  [disabled]="!canEditConfig()"
+                  class="disabled:cursor-not-allowed disabled:opacity-60 h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
               </label>
               <span class="text-caption-xs text-slate-500"
@@ -1106,6 +1108,7 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
   private readonly state = inject(WaterOperacionStateService);
   private readonly route = inject(ActivatedRoute);
 
+  readonly canEditConfig = this.state.canEditConfig;
   readonly jornadaInicio = this.state.jornadaInicio;
   readonly jornadaFin = this.state.jornadaFin;
   readonly jornadaSettingsOpen = signal(false);

@@ -1,6 +1,9 @@
 /**
  * "Ver como" de extremo a extremo con Express real: `auditMutations` montado
- * ANTES del `protect` (como en app.js), igual que en producción.
+ * ANTES del `protect`. En v1 así lo monta app.js; en v2 lo monta el propio
+ * router (`router.use` al inicio de http/v2/routes.ts). Este archivo solo prueba
+ * el contrato de cada `protect` con esa disposición; que el router v2 REAL la
+ * cumpla lo comprueba http/v2/__tests__/auditoria-escrituras.test.ts.
  *
  * Comprueba que una escritura bloqueada (403) queda en audit_log con el actor
  * simulado y el SuperAdmin real como `impersonator_id`. Los tests de unidad de
@@ -98,7 +101,7 @@ describe.each([
       protect,
       handler as unknown as RequestHandler,
     );
-    // Equivale al manejador de errores de v2: el protect v2 entrega AppError por next.
+    // Equivale al manejador de errores de app.js: el protect v2 entrega AppError por next.
     app.use(
       (
         err: { status?: number; message?: string },

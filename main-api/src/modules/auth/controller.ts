@@ -39,7 +39,7 @@ const viewAsSchema = z.object({
 // auditLog es CJS legacy: bitácora append-only (Ley 21.663 §32).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { record: recordAudit } = require('../../services/auditLog') as {
-  record: (entry: Record<string, unknown>) => Promise<void>;
+  record: (entry: Record<string, unknown>) => Promise<boolean>;
 };
 
 type ViewAsRequest = Request & {
@@ -68,7 +68,9 @@ export async function viewAsHandler(
   try {
     const result = await svc.issueViewAsToken(user, Boolean(actAs), parsed.data);
     // Una suplantación emitida queda en la bitácora: actor = SuperAdmin real.
-    await recordAudit({
+    // Esta fila reemplaza a la genérica del router (auditMutations la omite),
+    // pero solo si el INSERT se confirmó: si falla, queda la del router.
+    const registrado = await recordAudit({
       req,
       action: 'auth.view_as.issue',
       actorId: user.id ?? null,
@@ -85,6 +87,7 @@ export async function viewAsHandler(
         expires_in: result.expires_in,
       },
     });
+    if (registrado) res.locals.auditHandled = true;
     res.json(ok(result));
   } catch (err) {
     next(err);

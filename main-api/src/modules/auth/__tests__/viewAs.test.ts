@@ -48,6 +48,7 @@ async function pedir(
   const out: Ejecucion = { status: undefined, body: undefined, error: undefined };
   const req = { user, actAs, body, ip: '10.0.0.1', headers: { 'user-agent': 'vitest' } };
   const res = {
+    locals: {} as Record<string, unknown>,
     json(b: unknown) {
       out.status = 200;
       out.body = b;

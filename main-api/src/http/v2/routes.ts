@@ -44,95 +44,14 @@ import { require2fa } from '../../shared/email-otp';
 import { require2faIfSensitiveChange } from '../../modules/dga/twofactor-guards';
 import { ForbiddenError } from '../../shared/errors';
 import type { AuthUser } from '../../shared/permissions';
+import { resolveV2Audit } from './auditResolver';
+import type { AuditInfo } from './auditResolver';
 
 // auditLog es CJS legacy: bitácora append-only para mutaciones (Ley 21.663 §32).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { auditMutations } = require('../../services/auditLog') as {
-  auditMutations: (
-    resolver: (req: Request) => {
-      action: string;
-      targetType?: string;
-      targetId?: string;
-    },
-  ) => RequestHandler;
+  auditMutations: (resolver: (req: Request) => AuditInfo) => RequestHandler;
 };
-
-const auditDgaMutations = auditMutations((req) => {
-  const path = req.path;
-  // PATCH /dga/sites/:siteId/pozo-config
-  const pozoMatch = /^\/dga\/sites\/([^/]+)\/pozo-config$/.exec(path);
-  if (req.method === 'PATCH' && pozoMatch) {
-    return {
-      action: 'dga.pozo_config.patch',
-      targetType: 'pozo_config',
-      targetId: pozoMatch[1] ?? '',
-    };
-  }
-  // POST /dga/informantes (create)
-  if (req.method === 'POST' && path === '/dga/informantes') {
-    return {
-      action: 'dga.informante.upsert',
-      targetType: 'dga_informante',
-      targetId: String(req.body?.rut ?? ''),
-    };
-  }
-  // PATCH /dga/informantes/:rut
-  const infMatch = /^\/dga\/informantes\/([^/]+)$/.exec(path);
-  if (req.method === 'PATCH' && infMatch) {
-    return {
-      action: 'dga.informante.upsert',
-      targetType: 'dga_informante',
-      targetId: infMatch[1] ?? '',
-    };
-  }
-  if (req.method === 'DELETE' && infMatch) {
-    return {
-      action: 'dga.informante.delete',
-      targetType: 'dga_informante',
-      targetId: infMatch[1] ?? '',
-    };
-  }
-  if (req.method === 'POST' && path === '/dga/review-queue/action') {
-    return {
-      action: `dga.review.${req.body?.action ?? 'unknown'}`,
-      targetType: 'dato_dga',
-      targetId: `${req.body?.site_id ?? ''}::${req.body?.ts ?? ''}`,
-    };
-  }
-  // POST /dga/review-queue/bulk — el lote es UNA acción. El targetId resume a
-  // qué tocó: los sitios involucrados y cuántos slots. La lista completa no
-  // entra en una columna, y para reconstruir el detalle están los propios
-  // slots, que guardan la nota del admin.
-  if (req.method === 'POST' && path === '/dga/review-queue/bulk') {
-    const items: Array<{ site_id?: string }> = Array.isArray(req.body?.items) ? req.body.items : [];
-    const sitios = [...new Set(items.map((i) => i?.site_id ?? '').filter(Boolean))];
-    return {
-      action: `dga.review.bulk.${req.body?.action ?? 'unknown'}`,
-      targetType: 'dato_dga',
-      targetId: `${sitios.join(',') || 'sin_sitio'}::${items.length} slots`,
-    };
-  }
-  // POST /dga/sites/:siteId/slots/bulk — la nota del operador y el rango son
-  // la única constancia de por qué un tramo se recalculó o no se declaró, así
-  // que van al audit_log y no al fallback `unknown`.
-  const bulkMatch = /^\/dga\/sites\/([^/]+)\/slots\/bulk$/.exec(path);
-  if (req.method === 'POST' && bulkMatch) {
-    return {
-      action: `dga.slots.${req.body?.action ?? 'unknown'}`,
-      targetType: 'dato_dga',
-      targetId: `${bulkMatch[1] ?? ''}::${req.body?.desde ?? ''}..${req.body?.hasta ?? ''}`,
-    };
-  }
-  const reconMatch = path.match(/^\/dga\/sites\/([^/]+)\/reconocer-sensor-defectuoso$/);
-  if (req.method === 'POST' && reconMatch) {
-    return {
-      action: 'dga.sensor.reconocer_defectuoso',
-      targetType: 'sitio',
-      targetId: reconMatch[1] ?? '',
-    };
-  }
-  return { action: `dga.${req.method.toLowerCase()}.unknown` };
-});
 
 /** Bloquea acceso DGA de escritura a usuarios Vendedor (empresas tipo Demo). */
 function blockDemoAccess(req: Request, res: Response, next: NextFunction): void {
@@ -175,6 +94,13 @@ router.get('/companies/tree', protect, getHierarchyTreeHandler);
 
 router.post('/auth/login', loginHandler);
 router.post('/auth/request-code', requestCodeHandler);
+
+// Auditoría de TODA escritura del router, una sola vez y ANTES de `protect`: así
+// un rechazo (403 de "ver como", de rol o de 2FA) también deja fila, como en v1
+// (app.js). Va después de las rutas públicas de login, que no tienen actor. Las
+// rutas no montan audit propio: el resolver (auditResolver.ts) cubre DGA, digest
+// y bitácora; lo no mapeado cae en `v2.<método>.sin_mapear`.
+router.use(auditMutations(resolveV2Audit));
 // "Ver como" de SuperAdmin: emite un token de 30 min, SOLO LECTURA, con el rol y
 // alcance elegidos. El handler exige SuperAdmin real (no un token act_as). Sin
 // require2fa: el token no escribe nada y el SuperAdmin ya lee todo; el 2FA queda
@@ -194,7 +120,6 @@ router.post(
   protect,
   authorizeRoles('SuperAdmin'),
   require2faIfPasswordChange,
-  auditDgaMutations,
   upsertInformanteHandler,
 );
 router.patch(
@@ -202,7 +127,6 @@ router.patch(
   protect,
   authorizeRoles('SuperAdmin'),
   require2faIfPasswordChange,
-  auditDgaMutations,
   upsertInformanteHandler,
 );
 router.delete(
@@ -210,7 +134,6 @@ router.delete(
   protect,
   authorizeRoles('SuperAdmin'),
   require2fa,
-  auditDgaMutations,
   deleteInformanteHandler,
 );
 
@@ -228,7 +151,6 @@ router.patch(
   blockDemoAccess,
   requireSiteParamAccess(),
   require2faIfSensitiveChange,
-  auditDgaMutations,
   patchPozoDgaConfigHandler,
 );
 router.get(
@@ -360,7 +282,6 @@ router.post(
   protect,
   authorizeRoles('SuperAdmin', 'Admin'),
   require2fa,
-  auditDgaMutations,
   reviewSlotActionHandler,
 );
 
@@ -372,7 +293,6 @@ router.post(
   protect,
   authorizeRoles('SuperAdmin', 'Admin'),
   require2fa,
-  auditDgaMutations,
   reviewBulkActionHandler,
 );
 
@@ -392,7 +312,6 @@ router.post(
   protect,
   authorizeRoles('SuperAdmin', 'Admin'),
   require2fa,
-  auditDgaMutations,
   bulkSlotActionHandler,
 );
 
@@ -402,7 +321,6 @@ router.post(
   protect,
   authorizeRoles('SuperAdmin', 'Admin'),
   require2fa,
-  auditDgaMutations,
   reconocerSensorDefectuosoHandler,
 );
 
@@ -419,12 +337,6 @@ import {
   sendDigestPruebaHandler,
 } from '../../modules/healthDigest/destinatariosController';
 
-const auditDigestMutations = auditMutations(() => ({
-  action: 'health_digest.destinatarios.update',
-  targetType: 'health_digest_destinatario',
-  targetId: 'lista',
-}));
-
 router.get(
   '/health-digest/destinatarios',
   protect,
@@ -438,22 +350,11 @@ router.put(
   protect,
   authorizeRoles('SuperAdmin'),
   require2faIfNuevoDestinatario,
-  auditDigestMutations,
   replaceDigestDestinatariosHandler,
 );
 // Programación del resumen: horas de envío y umbral de horas sin transmitir.
 // Sin 2FA — cambiar la hora de un correo que ya reciben no saca datos afuera.
-router.put(
-  '/health-digest/config',
-  protect,
-  authorizeRoles('SuperAdmin'),
-  auditMutations(() => ({
-    action: 'health_digest.config.update',
-    targetType: 'health_digest_config',
-    targetId: 'global',
-  })),
-  saveDigestConfigHandler,
-);
+router.put('/health-digest/config', protect, authorizeRoles('SuperAdmin'), saveDigestConfigHandler);
 router.post(
   '/health-digest/prueba',
   protect,

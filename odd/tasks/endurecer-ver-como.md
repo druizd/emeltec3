@@ -65,8 +65,8 @@ frontend: `npm test` y build.
 
 - [x] T1 — Revocación falla cerrada para tokens "ver como" (v1 y v2).
 - [x] T2 — `PUT operacion-config` solo para SuperAdmin y Admin.
-- [ ] T3 — Frontend: edición de turnos y jornada solo para SuperAdmin y Admin.
-- [ ] T4 — Auditoría v2 antes de `protect`, sin filas duplicadas.
+- [x] T3 — Frontend: edición de turnos y jornada solo para SuperAdmin y Admin.
+- [x] T4 — Auditoría v2 antes de `protect`, sin filas duplicadas.
 
 ## Ruta por tarea
 
@@ -77,6 +77,18 @@ frontend: `npm test` y build.
 - Pronóstico: unas 350–450 líneas de autoría (tests incluidos).
 - Estrategia: `ask-on-risk`; si se superan unas 400 líneas se pregunta por la
   cadena antes del siguiente commit.
+- Real: unas 1.215 líneas. Cadena elegida por el usuario (2026-10-12): PRs
+  apilados sobre `main` (`stacked-to-main`), fusionados en orden.
+  - PR 1 `feat/endurecer-ver-como-01-revocacion-rol`: 7e8a776, 8778140
+    (T1, T2), 390 líneas.
+  - PR 2 `feat/endurecer-ver-como-02-frontend`: 3ddc030 (T3), 153 líneas.
+  - PR 3 `feat/endurecer-ver-como-03-auditoria-v2`: efdef21, e49d39b,
+    e1a6474, fde410d y este registro (T4 y correcciones), unas 650 líneas.
+    `size:exception`: el montaje en el router, los resolvers movidos y sus
+    tests son una sola unidad (efdef21 solo son 517 líneas); separar las
+    correcciones no lo deja bajo 400.
+- Revisión nativa: `review-b0afbbf5a7e52de1` (f1de3df..e1a6474) y
+  `review-97e3938a26874c2d` (e1a6474..fde410d), ambas aprobadas y acusadas.
 
 ## Progreso y evidencia
 
@@ -95,8 +107,57 @@ frontend: `npm test` y build.
   de companyRoutes con tokens firmados y un stub del controller de dist (no hay
   build en test). Nota: Vendedor ya recibía 403 antes del cambio porque
   `requireSiteAccess` no le da alcance al sitio (desajuste v1/v2 de Vendedor,
-  fuera de alcance); el test lo cubre igual. Commit: se anota en el siguiente.
+  fuera de alcance); el test lo cubre igual. Commit: 8778140.
+- T3: RED (el spec no compilaba sin `canEditConfig`; con la propiedad sola, 1
+  test fallando: PUT disparado sin permiso) -> GREEN. Frontend `npm test`: 17
+  archivos, 275 tests OK; `npm run build` OK (solo warnings previos de
+  hammerjs). Rol efectivo: `AuthService.canEditSiteSettings` (ya existía; usa
+  `effectiveRole`, que respeta "ver como"). `WaterOperacionStateService`
+  expone `canEditConfig`; el effect de autoguardado y el loop del PUT salen sin
+  disparar si es false, y los 3 componentes deshabilitan selector de turnos,
+  nombre/inicio/fin y jornada. Spec nuevo: `water-operacion-state.spec.ts`.
+  Dependencias: `npm ci` no aplica (workspace pnpm); se usó
+  `npx pnpm@11.1.1 install --frozen-lockfile --filter ./frontend-angular...`
+  sin tocar el lockfile. Commit: 3ddc030.
+- T4: RED 2 tests fallando (PATCH bitácora con "ver como" y PUT digest con rol
+  Cliente: 0 filas en audit_log); los 3 de regresión (DGA, digest, lecturas)
+  pasaban antes y después -> GREEN. `npm test` main-api: 85 archivos, 943 tests
+  OK; typecheck y eslint OK. Decisión: un único
+  `router.use(auditMutations(resolveV2Audit))` al inicio de
+  `http/v2/routes.ts` (tras las rutas públicas de login) y resolvers movidos a `http/v2/auditResolver.ts`; se quitó el audit por
+  ruta. Se eligió plegar los resolvers en un único punto de auditoría a nivel de
+  router; los handlers que escriben su propia fila más rica (hoy
+  `viewAsHandler`) ponen `res.locals.auditHandled` tras un INSERT confirmado y
+  `auditMutations` omite la fila del router (ver corrección de T4 y el
+  seguimiento de la revisión nativa). Acciones de DGA y digest idénticas; se añadieron acciones para
+  bitácora (`bitacora.ficha.patch`, `bitacora.contacto.*`, `bitacora.equipo.*`),
+  reveals de PII, `auth.view_as` y `health_digest.prueba.send`; lo no mapeado
+  cae en `v2.<método>.sin_mapear`. Efecto colateral aceptado: el
+  `fetchBefore` de auditLog para targets conocidos (pozo_config, dga_informante)
+  ahora corre antes de `protect`, igual que en v1. Test nuevo:
+  `http/v2/__tests__/auditoria-escrituras.test.ts` (router real). Se corrigió el
+  comentario de `actAsAudit.test.ts`. Commit: efdef21.
+- Corrección de T4 (hallada en la revisión del padre): `POST /auth/view-as` exitoso
+  dejaba 2 filas (`auth.view_as.issue` del handler + `auth.view_as` del router).
+  RED: 1 test fallando (2 filas) -> GREEN. Mecanismo: el handler pone
+  `res.locals.auditHandled = true` y `auditMutations` omite su fila en `finish`;
+  los rechazos (403/422) siguen en la fila del router, una sola. Nombre
+  `auth.view_as.issue` intacto. Tests: 2 casos nuevos en
+  `auditoria-escrituras.test.ts`. `npm test` main-api: 85 archivos, 945 tests OK;
+  typecheck OK.
+- Commits: T1 7e8a776, T2 8778140, T3 3ddc030, T4 efdef21.
+- Seguimiento (advertencias de la revisión nativa aprobada, linaje
+  review-b0afbbf5a7e52de1): (1) `auditHandled` se marca solo si `record` confirma
+  el INSERT (`record` ahora devuelve true/false; antes tragaba el error y no
+  había forma de saberlo), así un INSERT fallido del handler deja la fila del
+  router; (2) el resolver ignora la barra final y compara segmentos fijos sin
+  distinguir mayúsculas (ni app.js ni el router v2 fijan `caseSensitive`/`strict`,
+  así que se imita el default de Express), ids intactos; (3) este texto y el
+  encabezado de `auditResolver.ts` corregidos. RED: 5 tests fallando (1 de INSERT
+  fallido + 4 de barra/mayúsculas) -> GREEN. `npm test` main-api: 85 archivos,
+  950 tests OK; typecheck OK.
 
 ## Siguiente paso
 
-T3.
+Revisar y fusionar los PRs 1, 2 y 3 en ese orden (decisión del usuario); tras
+cada fusión, rebasar el siguiente sobre `main`.
