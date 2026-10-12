@@ -77,7 +77,8 @@ export function protect(req: Request, _res: Response, next: NextFunction): void 
 
   // Un cambio de contraseña corta las sesiones previas (sessions_valid_from).
   // Con "ver como" se evalúa contra el SuperAdmin real, no contra el id simulado.
-  isSessionRevoked(revocationSubject(decoded))
+  // Si la DB falla, "ver como" falla cerrado (401); los tokens normales fallan abiertos.
+  isSessionRevoked(revocationSubject(decoded), { failClosed: actAs })
     .then((revoked) => {
       if (revoked) {
         next(new UnauthorizedError('Sesión cerrada por un cambio de contraseña. Vuelve a entrar.'));
@@ -85,7 +86,13 @@ export function protect(req: Request, _res: Response, next: NextFunction): void 
       }
       attach();
     })
-    .catch(attach);
+    .catch(() => {
+      if (actAs) {
+        next(new UnauthorizedError('No se pudo validar la sesión. Vuelve a entrar.'));
+        return;
+      }
+      attach();
+    });
 }
 
 export function authorizeRoles(...roles: UserTipo[]) {
