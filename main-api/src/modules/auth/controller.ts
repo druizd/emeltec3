@@ -68,6 +68,8 @@ export async function viewAsHandler(
   try {
     const result = await svc.issueViewAsToken(user, Boolean(actAs), parsed.data);
     // Una suplantación emitida queda en la bitácora: actor = SuperAdmin real.
+    // Esta fila reemplaza a la genérica del router (auditMutations la omite).
+    res.locals.auditHandled = true;
     await recordAudit({
       req,
       action: 'auth.view_as.issue',

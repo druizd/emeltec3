@@ -123,6 +123,14 @@ frontend: `npm test` y build.
   ahora corre antes de `protect`, igual que en v1. Test nuevo:
   `http/v2/__tests__/auditoria-escrituras.test.ts` (router real). Se corrigió el
   comentario de `actAsAudit.test.ts`. Commit: efdef21.
+- Corrección de T4 (hallada en la revisión del padre): `POST /auth/view-as` exitoso
+  dejaba 2 filas (`auth.view_as.issue` del handler + `auth.view_as` del router).
+  RED: 1 test fallando (2 filas) -> GREEN. Mecanismo: el handler pone
+  `res.locals.auditHandled = true` y `auditMutations` omite su fila en `finish`;
+  los rechazos (403/422) siguen en la fila del router, una sola. Nombre
+  `auth.view_as.issue` intacto. Tests: 2 casos nuevos en
+  `auditoria-escrituras.test.ts`. `npm test` main-api: 85 archivos, 945 tests OK;
+  typecheck OK.
 - Commits: T1 7e8a776, T2 8778140, T3 3ddc030, T4 efdef21.
 
 ## Siguiente paso

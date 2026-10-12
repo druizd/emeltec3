@@ -92,11 +92,11 @@ describe('auditoría de escrituras en el router v2 real', () => {
     return inserts().map((c) => c[1] as unknown[]);
   };
 
-  const enviar = (method: string, path: string, token: string) =>
+  const enviar = (method: string, path: string, token: string, body: unknown = { nombre: 'x' }) =>
     fetch(`${base}/api/v2${path}`, {
       method,
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ nombre: 'x' }),
+      body: JSON.stringify(body),
     });
 
   beforeEach(async () => {
@@ -171,6 +171,26 @@ describe('auditoría de escrituras en el router v2 real', () => {
     expect(filas[0]![3]).toBe('health_digest.config.update');
     expect(filas[0]![4]).toBe('health_digest_config');
     expect(filas[0]![5]).toBe('global');
+  });
+
+  it('POST /auth/view-as emitido: una sola fila (la del handler, auth.view_as.issue)', async () => {
+    const res = await enviar('POST', '/auth/view-as', tokenRol('SuperAdmin'), { role: 'Vendedor' });
+    expect(res.status).toBe(200);
+
+    const filas = await insertsTrasResponder();
+    expect(filas).toHaveLength(1);
+    expect(filas[0]![3]).toBe('auth.view_as.issue');
+    expect(JSON.parse(filas[0]![10] as string)).toMatchObject({ view_as_tipo: 'Vendedor' });
+  });
+
+  it('POST /auth/view-as rechazado (no SuperAdmin): 403 y una sola fila', async () => {
+    const res = await enviar('POST', '/auth/view-as', tokenRol('Admin'), { role: 'Vendedor' });
+    expect(res.status).toBe(403);
+
+    const filas = await insertsTrasResponder();
+    expect(filas).toHaveLength(1);
+    expect(filas[0]![3]).toBe('auth.view_as');
+    expect(filas[0]![9]).toBe(403);
   });
 
   it('las lecturas no generan filas de auditoría', async () => {
