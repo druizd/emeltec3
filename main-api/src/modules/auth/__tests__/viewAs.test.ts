@@ -19,6 +19,7 @@ const repo = vi.hoisted(() => ({
   findEmpresaById: vi.fn(),
   findSubEmpresaById: vi.fn(),
   findUserByEmail: vi.fn(),
+  findUserTipoActivoById: vi.fn(),
   findUserPublicByEmail: vi.fn(),
   storeOtp: vi.fn(),
   consumeOtpIfMatches: vi.fn(),
@@ -70,6 +71,7 @@ describe('POST /auth/view-as', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     queryMock = vi.spyOn(pool, 'query').mockResolvedValue({ rows: [], rowCount: 0 });
+    repo.findUserTipoActivoById.mockResolvedValue({ tipo: 'SuperAdmin', activo: true });
     repo.findEmpresaById.mockResolvedValue({ id: 'E1' });
     repo.findSubEmpresaById.mockResolvedValue({ id: 'S1', empresa_id: 'E1' });
   });
@@ -100,6 +102,33 @@ describe('POST /auth/view-as', () => {
       { realUserId: 'SA001' },
     );
     expect(r.error?.status).toBe(403);
+  });
+
+  it.each([
+    ['un SuperAdmin degradado en la base', { tipo: 'Admin', activo: true }],
+    ['un SuperAdmin desactivado en la base', { tipo: 'SuperAdmin', activo: false }],
+    ['un emisor que ya no existe en la base', null],
+  ])('403 si el JWT dice SuperAdmin pero es %s', async (_caso, fila) => {
+    repo.findUserTipoActivoById.mockResolvedValue(fila);
+    const r = await pedir(SUPERADMIN, { role: 'Cliente', empresa_id: 'E1' });
+    expect(r.error?.status).toBe(403);
+    expect(r.body).toBeUndefined();
+    expect(repo.findUserTipoActivoById).toHaveBeenCalledWith('SA001');
+  });
+
+  it('trata activo NULL como activo', async () => {
+    repo.findUserTipoActivoById.mockResolvedValue({ tipo: 'SuperAdmin', activo: null });
+    const r = await pedir(SUPERADMIN, { role: 'Cliente', empresa_id: 'E1' });
+    expect(r.status).toBe(200);
+  });
+
+  it('si la consulta del emisor falla, no emite token (falla cerrado)', async () => {
+    repo.findUserTipoActivoById.mockRejectedValue(new Error('conexion caida'));
+    const r = await pedir(SUPERADMIN, { role: 'Cliente', empresa_id: 'E1' });
+    expect(r.body).toBeUndefined();
+    expect(r.error?.message).toBe('conexion caida');
+    const insert = queryMock.mock.calls.find((c) => String(c[0]).includes('INSERT INTO audit_log'));
+    expect(insert).toBeUndefined();
   });
 
   it('emite un token HS256 de 30 minutos con los claims esperados', async () => {

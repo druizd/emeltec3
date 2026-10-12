@@ -11,6 +11,7 @@ import {
   findEmpresaById,
   findSubEmpresaById,
   findUserByEmail,
+  findUserTipoActivoById,
   findUserPublicByEmail,
   storeOtp,
   verifyPassword,
@@ -124,6 +125,14 @@ export async function issueViewAsToken(
   // Un token "ver como" nunca emite otro (sin encadenar), aunque su `tipo`
   // fuese SuperAdmin.
   if (isActAs || actor.tipo !== 'SuperAdmin' || !actor.id) {
+    throw new ForbiddenError('Solo un SuperAdmin puede usar "ver como".');
+  }
+
+  // El `tipo` del JWT puede estar viejo: un SuperAdmin degradado o desactivado
+  // seguiría emitiendo mientras viva su sesión. Se contrasta con la base y, si la
+  // consulta falla, el error se propaga y no se emite nada (falla cerrado).
+  const real = await findUserTipoActivoById(String(actor.id));
+  if (!real || real.tipo !== 'SuperAdmin' || real.activo === false) {
     throw new ForbiddenError('Solo un SuperAdmin puede usar "ver como".');
   }
 

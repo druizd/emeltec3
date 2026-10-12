@@ -46,6 +46,21 @@ export async function findUserPublicByEmail(email: string): Promise<{
   return r.rows[0] ?? null;
 }
 
+/**
+ * Rol y estado reales de un usuario (null si no existe). `activo` NULL se lee
+ * como activo, igual que `COALESCE(activo, true)` en el resto de la API.
+ */
+export async function findUserTipoActivoById(
+  id: string,
+): Promise<{ tipo: string; activo: boolean | null } | null> {
+  const r = await query<{ tipo: string; activo: boolean | null }>(
+    `SELECT tipo, activo FROM usuario WHERE id = $1`,
+    [id],
+    { name: 'auth__user_tipo_activo_by_id' },
+  );
+  return r.rows[0] ?? null;
+}
+
 /** Empresa por id (null si no existe). Alcance para el modo "ver como". */
 export async function findEmpresaById(id: string): Promise<{ id: string } | null> {
   const r = await query<{ id: string }>(`SELECT id FROM empresa WHERE id = $1`, [id], {
