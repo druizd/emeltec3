@@ -1,7 +1,9 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import type { ApiResponse, User, UserRole } from '@emeltec/shared';
+import { USE_REAL_TOKEN, VIEW_AS_TOKEN_STORAGE_KEY } from './auth-http-context';
+import { ToastService } from './toast.service';
 
 export type { User, UserRole };
 
@@ -46,8 +48,17 @@ export interface ViewAsContext {
   companyName?: string;
   subCompanyId?: string;
   subCompanyName?: string;
+  /** Legado: el token del servidor no lleva sitio; ya no se usa para filtrar. */
   siteId?: string;
   siteName?: string;
+}
+
+/** Respuesta de `POST /api/v2/auth/view-as`. */
+interface ViewAsTokenResponse {
+  token: string;
+  expires_in: number;
+  expires_at: string;
+  view_as: { tipo: string; empresa_id: string | null; sub_empresa_id: string | null };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -56,6 +67,8 @@ export class AuthService {
   private tokenSignal = signal<string | null>(null);
   private loadingSignal = signal<boolean>(true);
   private viewAsContextSignal = signal<ViewAsContext | null>(null);
+  private viewAsTokenSignal = signal<string | null>(null);
+  private viewAsLoadingSignal = signal(false);
 
   readonly user = this.userSignal.asReadonly();
   readonly token = this.tokenSignal.asReadonly();
@@ -66,6 +79,8 @@ export class AuthService {
   readonly realRole = computed<UserRole | null>(() => this.userSignal()?.tipo ?? null);
   /** Rol simulado activo (null si no hay view-as) */
   readonly viewAsContext = this.viewAsContextSignal.asReadonly();
+  /** True mientras se pide al servidor el token "ver como". */
+  readonly viewAsLoading = this.viewAsLoadingSignal.asReadonly();
   readonly viewAsRole = computed<UserRole | null>(() => this.viewAsContextSignal()?.role ?? null);
   /** Rol efectivo: simulado si existe, sino el real. Lo consumen los computeds de permisos */
   readonly effectiveRole = computed<UserRole | null>(
@@ -142,6 +157,8 @@ export class AuthService {
   private warningTimer: ReturnType<typeof setTimeout> | null = null;
   /** Intervalo que actualiza el countdown cada segundo mientras el aviso está visible. */
   private countdownInterval: ReturnType<typeof setInterval> | null = null;
+  /** Timer que termina el modo "ver como" cuando su token (30 min) expira. */
+  private viewAsTimer: ReturnType<typeof setTimeout> | null = null;
 
   private sessionExpiringSoonSignal = signal(false);
   private secondsUntilLogoutSignal = signal<number | null>(null);
@@ -152,6 +169,7 @@ export class AuthService {
   readonly secondsUntilLogout = this.secondsUntilLogoutSignal.asReadonly();
 
   private http = inject(HttpClient);
+  private toast = inject(ToastService);
 
   constructor(private router: Router) {
     this.initFromStorage();
@@ -181,7 +199,12 @@ export class AuthService {
       this.http.get<ApiResponse<User>>('/api/users/me').subscribe({
         next: (res) => {
           // Solo pisar el signal si sigue siendo la misma sesión/usuario.
-          if (res.ok && this.tokenSignal() && this.userSignal()?.id === res.data.id) {
+          if (
+            res.ok &&
+            this.tokenSignal() &&
+            !this.viewAsTokenSignal() &&
+            this.userSignal()?.id === res.data.id
+          ) {
             this.userSignal.set(res.data);
           }
         },
@@ -208,12 +231,11 @@ export class AuthService {
       const sessionUser = toSessionUser(restoredUser);
       localStorage.setItem('user_data', JSON.stringify(sessionUser));
       this.userSignal.set(sessionUser);
-      const storedViewAs = this.parseStoredViewAs(sessionStorage.getItem(VIEW_AS_STORAGE_KEY));
-      if (storedViewAs && this.realRole() === 'SuperAdmin') {
-        this.viewAsContextSignal.set(storedViewAs);
-      }
+      const restoredViewAs = this.restoreViewAs();
       this.scheduleAutoLogout(storedToken);
-      this.hydrateUserFromApi();
+      // Con "ver como" activo el token simulado no tiene usuario real
+      // (`/api/users/me` respondería 404): se conserva el SuperAdmin guardado.
+      if (!restoredViewAs) this.hydrateUserFromApi();
     } else if (storedToken) {
       // Token presente pero expirado/corrupto: limpiar para no dejar basura.
       this.clearSession();
@@ -225,10 +247,9 @@ export class AuthService {
     localStorage.setItem('jwt_token', tokenStr);
     // En disco solo la proyección mínima; el perfil completo vive en memoria.
     localStorage.setItem('user_data', JSON.stringify(toSessionUser(userData)));
-    sessionStorage.removeItem(VIEW_AS_STORAGE_KEY);
+    this.dropViewAs();
     this.tokenSignal.set(tokenStr);
     this.userSignal.set(userData);
-    this.viewAsContextSignal.set(null);
     this.scheduleAutoLogout(tokenStr);
   }
 
@@ -348,10 +369,9 @@ export class AuthService {
     this.clearTimers();
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user_data');
-    sessionStorage.removeItem(VIEW_AS_STORAGE_KEY);
+    this.dropViewAs();
     this.tokenSignal.set(null);
     this.userSignal.set(null);
-    this.viewAsContextSignal.set(null);
   }
 
   updateUser(userData: Partial<User>): void {
@@ -382,20 +402,113 @@ export class AuthService {
     this.setViewAsContext({ role });
   }
 
-  /** Activa la preview contextual: Admin=empresa, Gerente=subempresa, Cliente=sitio. */
+  /**
+   * Activa la preview contextual pidiendo al servidor un token "ver como"
+   * (solo lectura, 30 min). El servidor es la fuente de verdad del alcance:
+   * Admin=empresa, Gerente/Cliente=empresa (+ división opcional), Vendedor=demo.
+   * La llamada usa SIEMPRE el token real; el contexto solo cambia si responde 200.
+   */
   setViewAsContext(context: ViewAsContext): void {
-    if (this.realRole() !== 'SuperAdmin') return;
+    if (this.realRole() !== 'SuperAdmin' || this.viewAsLoadingSignal()) return;
 
-    sessionStorage.setItem(VIEW_AS_STORAGE_KEY, JSON.stringify(context));
-    this.viewAsContextSignal.set(context);
+    const body: { role: PreviewRole; empresa_id?: string; sub_empresa_id?: string } = {
+      role: context.role,
+    };
+    if (context.companyId) body.empresa_id = context.companyId;
+    if ((context.role === 'Gerente' || context.role === 'Cliente') && context.subCompanyId) {
+      body.sub_empresa_id = context.subCompanyId;
+    }
+
+    this.viewAsLoadingSignal.set(true);
+    this.http
+      .post<ApiResponse<ViewAsTokenResponse>>('/api/v2/auth/view-as', body, {
+        context: new HttpContext().set(USE_REAL_TOKEN, true),
+      })
+      .subscribe({
+        next: (res) => {
+          this.viewAsLoadingSignal.set(false);
+          if (!res.ok || !res.data?.token) {
+            this.toast.error('No se pudo activar la vista previa.');
+            return;
+          }
+          this.activateViewAs(context, res.data.token);
+          this.router.navigate(['/dashboard']);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.viewAsLoadingSignal.set(false);
+          this.toast.error(
+            err.error?.message ??
+              err.error?.error?.message ??
+              'No se pudo activar la vista previa.',
+          );
+        },
+      });
+  }
+
+  /** Desactiva la simulación y vuelve al rol real (el token real nunca se tocó). */
+  clearViewAs(): void {
+    this.dropViewAs();
     this.router.navigate(['/dashboard']);
   }
 
-  /** Desactiva la simulación y vuelve al rol real */
-  clearViewAs(): void {
+  /**
+   * El token "ver como" fue rechazado (401: vencido o revocado). Termina solo
+   * la simulación: el SuperAdmin sigue logueado con su token real.
+   */
+  endViewAsExpired(): void {
+    if (!this.viewAsTokenSignal()) return;
+    this.toast.info("La vista 'ver como' expiró");
+    this.clearViewAs();
+  }
+
+  private activateViewAs(context: ViewAsContext, token: string): void {
+    // Sin sitio: el token del servidor no lo incluye y ya no se filtra por sitio.
+    const scope: ViewAsContext = { ...context };
+    delete scope.siteId;
+    delete scope.siteName;
+    sessionStorage.setItem(VIEW_AS_STORAGE_KEY, JSON.stringify(scope));
+    sessionStorage.setItem(VIEW_AS_TOKEN_STORAGE_KEY, token);
+    this.viewAsTokenSignal.set(token);
+    this.viewAsContextSignal.set(scope);
+    this.scheduleViewAsExpiry(token);
+  }
+
+  /** Restaura "ver como" tras recargar; descarta lo guardado si venció o está incompleto. */
+  private restoreViewAs(): boolean {
+    const context = this.parseStoredViewAs(sessionStorage.getItem(VIEW_AS_STORAGE_KEY));
+    const token = sessionStorage.getItem(VIEW_AS_TOKEN_STORAGE_KEY);
+    if (context && token && this.realRole() === 'SuperAdmin' && !this.isTokenExpired(token)) {
+      this.viewAsTokenSignal.set(token);
+      this.viewAsContextSignal.set(context);
+      this.scheduleViewAsExpiry(token);
+      return true;
+    }
+    this.dropViewAs();
+    return false;
+  }
+
+  /** Programa el fin de "ver como" al vencer su token. */
+  private scheduleViewAsExpiry(token: string): void {
+    this.clearViewAsTimer();
+    const expMs = this.getTokenExpiryMs(token);
+    if (expMs === null) return;
+    this.viewAsTimer = setTimeout(() => this.endViewAsExpired(), Math.max(0, expMs - Date.now()));
+  }
+
+  private clearViewAsTimer(): void {
+    if (this.viewAsTimer !== null) {
+      clearTimeout(this.viewAsTimer);
+      this.viewAsTimer = null;
+    }
+  }
+
+  /** Borra token + contexto "ver como" (storage, signals, timer). */
+  private dropViewAs(): void {
+    this.clearViewAsTimer();
     sessionStorage.removeItem(VIEW_AS_STORAGE_KEY);
+    sessionStorage.removeItem(VIEW_AS_TOKEN_STORAGE_KEY);
+    this.viewAsTokenSignal.set(null);
     this.viewAsContextSignal.set(null);
-    this.router.navigate(['/dashboard']);
   }
 
   private parseStoredViewAs(value: string | null): ViewAsContext | null {

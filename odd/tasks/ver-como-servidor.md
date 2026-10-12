@@ -54,7 +54,7 @@ los checks funcionales: `main-api` → `npm test` (vitest), `auth-api` →
 
 - [x] T1 — Backend: emisión del token "ver como" + reconocimiento en `protect`
   + bloqueo de escrituras + auditoría del suplantador + tests.
-- [ ] T2 — Frontend: pedir/usar/descartar el token "ver como", corregir la
+- [x] T2 — Frontend: pedir/usar/descartar el token "ver como", corregir la
   etiqueta "Sitio" → "División".
 
 ## Ruta por tarea
@@ -79,7 +79,25 @@ los checks funcionales: `main-api` → `npm test` (vitest), `auth-api` →
     nullable) + registro `auth.view_as.issue` al emitir.
   - Verificación: `cd main-api && npm test` → 81 archivos, 918 tests OK;
     `npm run typecheck` → sin errores; prettier OK en lo tocado.
+- T2 hecha (frontend-angular).
+  - `AuthService.setViewAsContext` hace `POST /api/v2/auth/view-as` con el token real
+    (`USE_REAL_TOKEN` en `HttpContext`); guarda el token en `sessionStorage`
+    (`view_as_token`) junto al contexto; `jwt_token` nunca se toca. Errores: toast con
+    el mensaje del servidor.
+  - Interceptor: usa el token "ver como" si existe, salvo llamadas `USE_REAL_TOKEN`
+    (emitir, árbol completo del selector). 401 con token "ver como" → `endViewAsExpired()`
+    (toast "La vista 'ver como' expiró", vuelve al rol real, sin logout). 403 en no-GET →
+    toast con el mensaje de solo lectura. Un 403 por permisos del rol no termina la vista.
+  - Vencimiento: timer a `exp` del token; al recargar se descarta si venció o falta el
+    token; con "ver como" restaurado no se llama `/api/users/me`.
+  - Selector: Cliente ahora elige empresa + división (sin sitio); etiqueta "División";
+    Vendedor solo empresa. El árbol del selector usa `fetchPreviewTree()` (token real)
+    porque bajo "ver como" `/companies/tree` viene acotado. Filtro cliente de Cliente
+    = por división (como el servidor).
+  - Verificación: `cd frontend-angular && npx ng build` → OK (solo warnings previos de
+    budget/hammerjs); `npm test` → 16 archivos, 272 tests OK; eslint y prettier OK en
+    lo tocado.
 
 ## Siguiente paso
 
-T2 (frontend).
+Revisión final de la rama y PR (decisión del usuario).

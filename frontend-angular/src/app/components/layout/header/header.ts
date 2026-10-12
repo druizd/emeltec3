@@ -10,7 +10,7 @@ import { LayoutUiService } from '../layout-ui.service';
 import { AlertNotificationsService } from '../../../services/alert-notifications.service';
 import { etiquetaSitioEvento, type EventoReciente } from '../../../services/alerta.service';
 import { getSiteTypeUi, siteTypesForModule } from '../../../shared/site-type-ui';
-import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
+import type { CompanyNode, SubCompanyNode } from '@emeltec/shared';
 
 @Component({
   selector: 'app-header',
@@ -305,7 +305,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                           </select>
                         </label>
 
-                        @if (draftRole() !== 'Admin') {
+                        @if (draftRole() === 'Gerente' || draftRole() === 'Cliente') {
                           <label class="block">
                             <span
                               class="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
@@ -323,25 +323,6 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                             </select>
                           </label>
                         }
-
-                        @if (draftRole() === 'Cliente') {
-                          <label class="block">
-                            <span
-                              class="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
-                            >
-                              Sitio
-                            </span>
-                            <select
-                              [value]="draftSiteId()"
-                              (change)="onDraftSiteChange($event)"
-                              class="h-9 w-full rounded-lg border border-surface-container bg-white px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
-                            >
-                              @for (site of previewSites(); track site.id) {
-                                <option [value]="site.id">{{ siteLabel(site) }}</option>
-                              }
-                            </select>
-                          </label>
-                        }
                       </div>
 
                       <div
@@ -354,7 +335,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                       <button
                         type="button"
                         (click)="applyPreview()"
-                        [disabled]="!canApplyPreview()"
+                        [disabled]="!canApplyPreview() || auth.viewAsLoading()"
                         class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary-dark active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                       >
                         <span class="material-symbols-outlined text-[15px]">visibility</span>
@@ -520,17 +501,17 @@ export class HeaderComponent implements OnInit {
     icon: string;
   }[] = [
     { value: 'Admin', label: 'Admin', scope: 'Empresa', icon: 'admin_panel_settings' },
-    { value: 'Gerente', label: 'Gerente', scope: 'Division', icon: 'manage_accounts' },
-    { value: 'Cliente', label: 'Cliente', scope: 'Sitio', icon: 'person' },
+    { value: 'Gerente', label: 'Gerente', scope: 'División', icon: 'manage_accounts' },
+    { value: 'Cliente', label: 'Cliente', scope: 'División', icon: 'person' },
     { value: 'Vendedor', label: 'Vendedor', scope: 'Demo', icon: 'storefront' },
   ];
 
   readonly draftRole = signal<PreviewRole>('Admin');
   readonly draftCompanyId = signal('');
   readonly draftSubCompanyId = signal('');
-  readonly draftSiteId = signal('');
 
-  readonly previewCompanies = computed(() => this.companyService.hierarchy());
+  // Árbol completo con el token real: bajo "ver como" `hierarchy` viene acotado.
+  readonly previewCompanies = computed(() => this.companyService.previewTree());
 
   readonly selectedDraftCompany = computed(() => {
     return (
@@ -550,30 +531,14 @@ export class HeaderComponent implements OnInit {
     );
   });
 
-  readonly previewSites = computed(() => this.selectedDraftSubCompany()?.sites ?? []);
-
-  readonly selectedDraftSite = computed(() => {
-    return (
-      this.previewSites().find((site) => site.id === this.draftSiteId()) ??
-      this.previewSites()[0] ??
-      null
-    );
-  });
-
   readonly previewDraftScopeLabel = computed(() => {
     const company = this.selectedDraftCompany();
     const subCompany = this.selectedDraftSubCompany();
-    const site = this.selectedDraftSite();
 
     if (!company) return '';
-    if (this.draftRole() === 'Admin') return company.nombre;
-    if (this.draftRole() === 'Gerente') {
-      return subCompany ? `${company.nombre} / ${subCompany.nombre}` : company.nombre;
-    }
+    if (this.draftRole() === 'Admin' || this.draftRole() === 'Vendedor') return company.nombre;
 
-    return [company.nombre, subCompany?.nombre, site ? this.siteLabel(site) : '']
-      .filter(Boolean)
-      .join(' / ');
+    return subCompany ? `${company.nombre} / ${subCompany.nombre}` : company.nombre;
   });
 
   ngOnInit(): void {
@@ -614,11 +579,13 @@ export class HeaderComponent implements OnInit {
 
     this.syncDraftFromActivePreview();
     if (this.previewCompanies().length === 0) {
-      this.companyService.fetchHierarchy().subscribe(() => this.ensureDraftDefaults());
+      this.companyService.fetchPreviewTree().subscribe(() => this.ensureDraftDefaults());
       return;
     }
 
     this.ensureDraftDefaults();
+    // Refresca en segundo plano por si cambió la jerarquía desde la última vez.
+    this.companyService.fetchPreviewTree().subscribe(() => this.ensureDraftDefaults());
   }
 
   selectDraftRole(role: PreviewRole): void {
@@ -629,33 +596,20 @@ export class HeaderComponent implements OnInit {
   onDraftCompanyChange(event: Event): void {
     this.draftCompanyId.set(this.eventValue(event));
     this.draftSubCompanyId.set('');
-    this.draftSiteId.set('');
     this.ensureDraftDefaults();
   }
 
   onDraftSubCompanyChange(event: Event): void {
     this.draftSubCompanyId.set(this.eventValue(event));
-    this.draftSiteId.set('');
-    this.ensureDraftDefaults();
-  }
-
-  onDraftSiteChange(event: Event): void {
-    this.draftSiteId.set(this.eventValue(event));
     this.ensureDraftDefaults();
   }
 
   canApplyPreview(): boolean {
-    if (this.draftRole() === 'Admin') {
+    if (this.draftRole() === 'Admin' || this.draftRole() === 'Vendedor') {
       return Boolean(this.selectedDraftCompany());
     }
 
-    if (this.draftRole() === 'Gerente') {
-      return Boolean(this.selectedDraftCompany() && this.selectedDraftSubCompany());
-    }
-
-    return Boolean(
-      this.selectedDraftCompany() && this.selectedDraftSubCompany() && this.selectedDraftSite(),
-    );
+    return Boolean(this.selectedDraftCompany() && this.selectedDraftSubCompany());
   }
 
   applyPreview(): void {
@@ -663,21 +617,17 @@ export class HeaderComponent implements OnInit {
     if (!context) return;
 
     this.focusPreviewSelection(context);
+    this.companyService.invalidateSiteCache();
     this.auth.setViewAsContext(context);
     this.viewAsMenuOpen.set(false);
   }
 
   clearPreview(): void {
     if (this.auth.isViewingAs()) {
+      this.companyService.invalidateSiteCache();
       this.auth.clearViewAs();
     }
     this.viewAsMenuOpen.set(false);
-  }
-
-  siteLabel(site: SiteRecord): string {
-    const base = site.descripcion?.trim() || site.id_serial?.trim() || 'Sitio';
-    const obra = site.pozo_config?.obra_dga?.trim();
-    return obra ? `${base} - ${obra}` : base;
   }
 
   private syncDraftFromActivePreview(): void {
@@ -686,7 +636,6 @@ export class HeaderComponent implements OnInit {
       this.draftRole.set(context.role);
       this.draftCompanyId.set(context.companyId || '');
       this.draftSubCompanyId.set(context.subCompanyId || '');
-      this.draftSiteId.set(context.siteId || '');
       return;
     }
 
@@ -695,7 +644,6 @@ export class HeaderComponent implements OnInit {
     this.draftRole.set('Admin');
     this.draftCompanyId.set(selected?.company.id || this.previewCompanies()[0]?.id || '');
     this.draftSubCompanyId.set(selected?.subCompany.id || '');
-    this.draftSiteId.set(selected?.subCompany.sites?.[0]?.id || '');
   }
 
   private ensureDraftDefaults(): void {
@@ -707,12 +655,6 @@ export class HeaderComponent implements OnInit {
       company?.subCompanies?.[0] ??
       null;
     this.draftSubCompanyId.set(subCompany?.id || '');
-
-    const site =
-      subCompany?.sites?.find((item) => item.id === this.draftSiteId()) ??
-      subCompany?.sites?.[0] ??
-      null;
-    this.draftSiteId.set(site?.id || '');
   }
 
   private buildPreviewContext(): ViewAsContext | null {
@@ -720,7 +662,7 @@ export class HeaderComponent implements OnInit {
     const company = this.selectedDraftCompany();
     if (!company) return null;
 
-    if (role === 'Admin') {
+    if (role === 'Admin' || role === 'Vendedor') {
       return {
         role,
         companyId: company.id,
@@ -728,21 +670,9 @@ export class HeaderComponent implements OnInit {
       };
     }
 
+    // Gerente y Cliente: toda la división (sub_empresa), igual que el servidor.
     const subCompany = this.selectedDraftSubCompany();
     if (!subCompany) return null;
-
-    if (role === 'Gerente') {
-      return {
-        role,
-        companyId: company.id,
-        companyName: company.nombre,
-        subCompanyId: subCompany.id,
-        subCompanyName: subCompany.nombre,
-      };
-    }
-
-    const site = this.selectedDraftSite();
-    if (!site) return null;
 
     return {
       role,
@@ -750,8 +680,6 @@ export class HeaderComponent implements OnInit {
       companyName: company.nombre,
       subCompanyId: subCompany.id,
       subCompanyName: subCompany.nombre,
-      siteId: site.id,
-      siteName: this.siteLabel(site),
     };
   }
 
@@ -761,10 +689,7 @@ export class HeaderComponent implements OnInit {
       company?.subCompanies?.find((item) => item.id === context.subCompanyId) ??
       company?.subCompanies?.[0] ??
       null;
-    const site =
-      subCompany?.sites?.find((item) => item.id === context.siteId) ??
-      subCompany?.sites?.[0] ??
-      null;
+    const site = subCompany?.sites?.[0] ?? null;
 
     if (subCompany) {
       this.companyService.selectedSubCompanyId.set(subCompany.id);
