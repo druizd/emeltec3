@@ -20,8 +20,10 @@ import type { AuthUser, UserTipo } from '../shared/permissions';
 
 interface JwtPayload {
   id?: string | number;
+  /** Solo en tokens de propósito (MFA, activación, restablecimiento): no son sesión. */
+  purpose?: string;
   email?: string;
-  tipo: UserTipo;
+  tipo?: UserTipo;
   empresa_id?: string | null;
   sub_empresa_id?: string | null;
   iat?: number;
@@ -48,6 +50,13 @@ export function protect(req: Request, _res: Response, next: NextFunction): void 
       algorithms: ['HS256'],
     }) as JwtPayload;
   } catch {
+    next(new UnauthorizedError('Token inválido o expirado'));
+    return;
+  }
+
+  // Solo se aceptan tokens de sesión. Los de propósito (auth-api los firma con el
+  // mismo secreto) y los que no traen id o tipo no son una sesión.
+  if (decoded.purpose !== undefined || !decoded.id || !decoded.tipo) {
     next(new UnauthorizedError('Token inválido o expirado'));
     return;
   }

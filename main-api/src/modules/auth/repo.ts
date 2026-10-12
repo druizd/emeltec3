@@ -20,12 +20,14 @@ export interface UserRow {
   password_hash: string | null;
   otp_hash: string | null;
   otp_expires_at: string | Date | null;
+  /** NULL se lee como activo (igual que `COALESCE(activo, true)`). */
+  activo: boolean | null;
 }
 
 export async function findUserByEmail(email: string): Promise<UserRow | null> {
   const r = await query<UserRow>(
     `SELECT id, nombre, email, tipo, empresa_id, sub_empresa_id,
-            password_hash, otp_hash, otp_expires_at
+            password_hash, otp_hash, otp_expires_at, activo
      FROM usuario WHERE email = $1`,
     [email],
     { name: 'auth__user_by_email' },
@@ -42,6 +44,21 @@ export async function findUserPublicByEmail(email: string): Promise<{
     `SELECT id, nombre, email FROM usuario WHERE email = $1`,
     [email],
     { name: 'auth__user_public_by_email' },
+  );
+  return r.rows[0] ?? null;
+}
+
+/**
+ * Rol y estado reales de un usuario (null si no existe). `activo` NULL se lee
+ * como activo, igual que `COALESCE(activo, true)` en el resto de la API.
+ */
+export async function findUserTipoActivoById(
+  id: string,
+): Promise<{ tipo: string; activo: boolean | null } | null> {
+  const r = await query<{ tipo: string; activo: boolean | null }>(
+    `SELECT tipo, activo FROM usuario WHERE id = $1`,
+    [id],
+    { name: 'auth__user_tipo_activo_by_id' },
   );
   return r.rows[0] ?? null;
 }
