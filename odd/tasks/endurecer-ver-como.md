@@ -122,7 +122,8 @@ frontend: `npm test` y build.
   `fetchBefore` de auditLog para targets conocidos (pozo_config, dga_informante)
   ahora corre antes de `protect`, igual que en v1. Test nuevo:
   `http/v2/__tests__/auditoria-escrituras.test.ts` (router real). Se corrigió el
-  comentario de `actAsAudit.test.ts`. Commit: se anota en el commit docs(odd).
+  comentario de `actAsAudit.test.ts`. Commit: efdef21.
+- Commits: T1 7e8a776, T2 8778140, T3 3ddc030, T4 efdef21.
 
 ## Siguiente paso
 
