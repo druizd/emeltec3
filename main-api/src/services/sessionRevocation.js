@@ -15,6 +15,11 @@
  * no responde, el resto de la API tampoco funciona, y fallar cerrado convertiría
  * cualquier hipo de la base en un cierre de sesión masivo. El error queda en
  * stderr.
+ *
+ * Excepción: los tokens "ver como" (act_as) piden `{ failClosed: true }` y ahí el
+ * error de la DB se propaga. Un token de suplantación revocado no debe seguir
+ * sirviendo por un corte de la base, y son pocos y de vida corta, así que no hay
+ * riesgo de cierre masivo de sesiones.
  */
 
 const CACHE_TTL_MS = Number.parseInt(process.env.SESSION_REVOCATION_TTL_MS || '30000', 10);
@@ -63,9 +68,11 @@ async function loadSessionsValidFrom(userId) {
  * por redondeo.
  *
  * @param {{ id?: string|number, iat?: number }} decoded - payload del JWT ya verificado.
+ * @param {{ failClosed?: boolean }} [options] - con `failClosed` un error de DB se
+ *   propaga (el llamador debe rechazar); por defecto se falla abierto.
  * @returns {Promise<boolean>}
  */
-async function isSessionRevoked(decoded) {
+async function isSessionRevoked(decoded, options = {}) {
   const userId = decoded?.id;
   const iat = decoded?.iat;
   if (!userId || !Number.isFinite(iat)) return false;
@@ -76,6 +83,7 @@ async function isSessionRevoked(decoded) {
     return Math.floor(validFromMs / 1000) > iat;
   } catch (err) {
     console.error('[sessionRevocation] No se pudo verificar el corte de sesion:', err.message);
+    if (options.failClosed) throw err;
     return false;
   }
 }

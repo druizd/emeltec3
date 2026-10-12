@@ -47,7 +47,16 @@ exports.protect = async (req, res, next) => {
 
   // Un cambio de contraseña corta las sesiones previas (sessions_valid_from).
   // Con "ver como" se evalúa contra el SuperAdmin real, no contra el id simulado.
-  if (await isSessionRevoked(revocationSubject(decoded))) {
+  // Si la DB falla, "ver como" falla cerrado (401); los tokens normales fallan abiertos.
+  let revoked;
+  try {
+    revoked = await isSessionRevoked(revocationSubject(decoded), { failClosed: actAs });
+  } catch {
+    return res
+      .status(401)
+      .json({ ok: false, error: 'No se pudo validar la sesión. Vuelve a entrar.' });
+  }
+  if (revoked) {
     return res.status(401).json({
       ok: false,
       error: 'Sesión cerrada por un cambio de contraseña. Vuelve a entrar.',

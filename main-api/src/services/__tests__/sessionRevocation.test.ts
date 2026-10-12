@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import sessionRevocation from '../sessionRevocation';
 
 const { isSessionRevoked, forget, _resetCache, _setPool } = sessionRevocation as {
-  isSessionRevoked: (d: unknown) => Promise<boolean>;
+  isSessionRevoked: (d: unknown, o?: { failClosed?: boolean }) => Promise<boolean>;
   forget: (id: string) => void;
   _resetCache: () => void;
   _setPool: (p: unknown) => void;
@@ -81,6 +81,22 @@ describe('sessionRevocation', () => {
     queryMock.mockRejectedValue(new Error('conexion caida'));
 
     expect(await isSessionRevoked({ id: 'u-1', iat: iatFor(new Date()) })).toBe(false);
+  });
+
+  it('con failClosed propaga el error de la DB en lugar de dejar pasar', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    queryMock.mockRejectedValue(new Error('conexion caida'));
+
+    await expect(
+      isSessionRevoked({ id: 'u-1', iat: iatFor(new Date()) }, { failClosed: true }),
+    ).rejects.toThrow('conexion caida');
+  });
+
+  it('con failClosed sigue respondiendo normal si la DB funciona', async () => {
+    queryMock.mockResolvedValue({ rows: [{ sessions_valid_from: null }] });
+    expect(
+      await isSessionRevoked({ id: 'u-1', iat: iatFor(new Date()) }, { failClosed: true }),
+    ).toBe(false);
   });
 
   it('ignora tokens sin id o sin iat', async () => {
