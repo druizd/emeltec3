@@ -30,6 +30,12 @@ exports.protect = async (req, res, next) => {
     return res.status(401).json({ ok: false, error: 'Token inválido o expirado' });
   }
 
+  // Solo se aceptan tokens de sesión. Los de propósito (auth-api los firma con el
+  // mismo secreto) y los que no traen id o tipo no son una sesión.
+  if (decoded.purpose !== undefined || !decoded.id || !decoded.tipo) {
+    return res.status(401).json({ ok: false, error: 'Token inválido o expirado' });
+  }
+
   // Token "ver como" (SuperAdmin simulando un rol): solo lectura.
   const actAs = isActAsToken(decoded);
   if (actAs) {
