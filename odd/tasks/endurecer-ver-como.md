@@ -77,6 +77,18 @@ frontend: `npm test` y build.
 - Pronóstico: unas 350–450 líneas de autoría (tests incluidos).
 - Estrategia: `ask-on-risk`; si se superan unas 400 líneas se pregunta por la
   cadena antes del siguiente commit.
+- Real: unas 1.215 líneas. Cadena elegida por el usuario (2026-10-12): PRs
+  apilados sobre `main` (`stacked-to-main`), fusionados en orden.
+  - PR 1 `feat/endurecer-ver-como-01-revocacion-rol`: 7e8a776, 8778140
+    (T1, T2), 390 líneas.
+  - PR 2 `feat/endurecer-ver-como-02-frontend`: 3ddc030 (T3), 153 líneas.
+  - PR 3 `feat/endurecer-ver-como-03-auditoria-v2`: efdef21, e49d39b,
+    e1a6474, fde410d y este registro (T4 y correcciones), unas 650 líneas.
+    `size:exception`: el montaje en el router, los resolvers movidos y sus
+    tests son una sola unidad (efdef21 solo son 517 líneas); separar las
+    correcciones no lo deja bajo 400.
+- Revisión nativa: `review-b0afbbf5a7e52de1` (f1de3df..e1a6474) y
+  `review-97e3938a26874c2d` (e1a6474..fde410d), ambas aprobadas y acusadas.
 
 ## Progreso y evidencia
 
@@ -147,4 +159,5 @@ frontend: `npm test` y build.
 
 ## Siguiente paso
 
-Decisión del usuario sobre estrategia de entrega (rama de ~1100 líneas).
+Revisar y fusionar los PRs 1, 2 y 3 en ese orden (decisión del usuario); tras
+cada fusión, rebasar el siguiente sobre `main`.
