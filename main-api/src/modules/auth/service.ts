@@ -64,7 +64,11 @@ export async function login(emailInput: string, password: string): Promise<Login
     if (await verifyPassword(password, user.password_hash)) authenticated = true;
   }
 
-  if (!authenticated) throw new UnauthorizedError('Credenciales inválidas');
+  // Un usuario desactivado recibe lo mismo que con credenciales inválidas; se
+  // decide DESPUÉS de las verificaciones para no delatar la cuenta por tiempo.
+  if (!authenticated || user.activo === false) {
+    throw new UnauthorizedError('Credenciales inválidas');
+  }
 
   const payload = {
     id: user.id,
