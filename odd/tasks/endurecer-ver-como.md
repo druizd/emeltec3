@@ -122,9 +122,9 @@ frontend: `npm test` y build.
 - T4: RED 2 tests fallando (PATCH bitácora con "ver como" y PUT digest con rol
   Cliente: 0 filas en audit_log); los 3 de regresión (DGA, digest, lecturas)
   pasaban antes y después -> GREEN. `npm test` main-api: 85 archivos, 943 tests
-  OK; typecheck y eslint OK. Decisión: un único `router.use(auditMutations(
-  resolveV2Audit))` al inicio de `http/v2/routes.ts` (tras las rutas públicas de
-  login) y resolvers movidos a `http/v2/auditResolver.ts`; se quitó el audit por
+  OK; typecheck y eslint OK. Decisión: un único
+  `router.use(auditMutations(resolveV2Audit))` al inicio de
+  `http/v2/routes.ts` (tras las rutas públicas de login) y resolvers movidos a `http/v2/auditResolver.ts`; se quitó el audit por
   ruta. Se eligió plegar los resolvers en un único punto de auditoría a nivel de
   router; los handlers que escriben su propia fila más rica (hoy
   `viewAsHandler`) ponen `res.locals.auditHandled` tras un INSERT confirmado y
