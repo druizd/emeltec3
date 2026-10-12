@@ -64,7 +64,7 @@ frontend: `npm test` y build.
 ## Tareas
 
 - [x] T1 — Revocación falla cerrada para tokens "ver como" (v1 y v2).
-- [ ] T2 — `PUT operacion-config` solo para SuperAdmin y Admin.
+- [x] T2 — `PUT operacion-config` solo para SuperAdmin y Admin.
 - [ ] T3 — Frontend: edición de turnos y jornada solo para SuperAdmin y Admin.
 - [ ] T4 — Auditoría v2 antes de `protect`, sin filas duplicadas.
 
@@ -88,8 +88,15 @@ frontend: `npm test` y build.
   responde 401 y v2 `next(UnauthorizedError)` solo si el token es act_as; los
   normales siguen fallando abiertos. Tests nuevos:
   `middlewares/__tests__/actAsRevocation.test.ts` (protect real v1 y v2).
-  Commit: ver `git log` (hash se anota en el commit siguiente).
+  Commit: 7e8a776.
+- T2: RED 2 tests fallando (PUT 200 en vez de 403 para Gerente y Cliente) ->
+  GREEN. `npm test` main-api: 84 archivos, 938 tests OK; typecheck OK. Test:
+  `routes/__tests__/companyRoutesOperacionConfig.test.ts` monta el router real
+  de companyRoutes con tokens firmados y un stub del controller de dist (no hay
+  build en test). Nota: Vendedor ya recibía 403 antes del cambio porque
+  `requireSiteAccess` no le da alcance al sitio (desajuste v1/v2 de Vendedor,
+  fuera de alcance); el test lo cubre igual. Commit: se anota en el siguiente.
 
 ## Siguiente paso
 
-T2.
+T3.

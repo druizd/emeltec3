@@ -10,6 +10,10 @@ const { requireSiteAccess, requireRole } = require('../middlewares/coldRoomAcces
 // cliente que lo mira: el prorrateo de un pozo cambia los m³ que se le informan.
 const RILES_ADMIN_ROLES = ['SuperAdmin', 'Admin', 'Gerente'];
 
+// Los turnos y la jornada definen cómo se calcula la operación del sitio: solo
+// los administradores los cambian (el GET sigue abierto a quien ve el sitio).
+const OPERACION_CONFIG_WRITE_ROLES = ['SuperAdmin', 'Admin'];
+
 // Lazy require del controller TS compilado de contadores (puede no estar
 // disponible en dev sin build). Se monta solo si carga.
 let contadoresController = null;
@@ -192,6 +196,7 @@ if (siteOperacionConfigController) {
   router.put(
     '/sites/:siteId/operacion-config',
     requireSiteAccess('siteId'),
+    requireRole(...OPERACION_CONFIG_WRITE_ROLES),
     siteOperacionConfigController.updateSiteOperacionConfigHandler,
   );
 }
