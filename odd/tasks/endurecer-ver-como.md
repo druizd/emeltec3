@@ -66,7 +66,7 @@ frontend: `npm test` y build.
 - [x] T1 — Revocación falla cerrada para tokens "ver como" (v1 y v2).
 - [x] T2 — `PUT operacion-config` solo para SuperAdmin y Admin.
 - [x] T3 — Frontend: edición de turnos y jornada solo para SuperAdmin y Admin.
-- [ ] T4 — Auditoría v2 antes de `protect`, sin filas duplicadas.
+- [x] T4 — Auditoría v2 antes de `protect`, sin filas duplicadas.
 
 ## Ruta por tarea
 
@@ -106,8 +106,24 @@ frontend: `npm test` y build.
   nombre/inicio/fin y jornada. Spec nuevo: `water-operacion-state.spec.ts`.
   Dependencias: `npm ci` no aplica (workspace pnpm); se usó
   `npx pnpm@11.1.1 install --frozen-lockfile --filter ./frontend-angular...`
-  sin tocar el lockfile. Commit: se anota en el siguiente.
+  sin tocar el lockfile. Commit: 3ddc030.
+- T4: RED 2 tests fallando (PATCH bitácora con "ver como" y PUT digest con rol
+  Cliente: 0 filas en audit_log); los 3 de regresión (DGA, digest, lecturas)
+  pasaban antes y después -> GREEN. `npm test` main-api: 85 archivos, 943 tests
+  OK; typecheck y eslint OK. Decisión: un único `router.use(auditMutations(
+  resolveV2Audit))` al inicio de `http/v2/routes.ts` (tras las rutas públicas de
+  login) y resolvers movidos a `http/v2/auditResolver.ts`; se quitó el audit por
+  ruta. Se eligió plegar los resolvers y no un flag en `res.locals` porque deja
+  un solo punto de auditoría (duplicar es imposible por construcción) y no toca
+  `auditLog.js`. Acciones de DGA y digest idénticas; se añadieron acciones para
+  bitácora (`bitacora.ficha.patch`, `bitacora.contacto.*`, `bitacora.equipo.*`),
+  reveals de PII, `auth.view_as` y `health_digest.prueba.send`; lo no mapeado
+  cae en `v2.<método>.sin_mapear`. Efecto colateral aceptado: el
+  `fetchBefore` de auditLog para targets conocidos (pozo_config, dga_informante)
+  ahora corre antes de `protect`, igual que en v1. Test nuevo:
+  `http/v2/__tests__/auditoria-escrituras.test.ts` (router real). Se corrigió el
+  comentario de `actAsAudit.test.ts`. Commit: se anota en el commit docs(odd).
 
 ## Siguiente paso
 
-T4.
+Revisión y PR (decisión del usuario); sin push desde esta sesión.
