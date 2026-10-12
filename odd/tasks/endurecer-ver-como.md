@@ -113,9 +113,11 @@ frontend: `npm test` y build.
   OK; typecheck y eslint OK. Decisión: un único `router.use(auditMutations(
   resolveV2Audit))` al inicio de `http/v2/routes.ts` (tras las rutas públicas de
   login) y resolvers movidos a `http/v2/auditResolver.ts`; se quitó el audit por
-  ruta. Se eligió plegar los resolvers y no un flag en `res.locals` porque deja
-  un solo punto de auditoría (duplicar es imposible por construcción) y no toca
-  `auditLog.js`. Acciones de DGA y digest idénticas; se añadieron acciones para
+  ruta. Se eligió plegar los resolvers en un único punto de auditoría a nivel de
+  router; los handlers que escriben su propia fila más rica (hoy
+  `viewAsHandler`) ponen `res.locals.auditHandled` tras un INSERT confirmado y
+  `auditMutations` omite la fila del router (ver corrección de T4 y el
+  seguimiento de la revisión nativa). Acciones de DGA y digest idénticas; se añadieron acciones para
   bitácora (`bitacora.ficha.patch`, `bitacora.contacto.*`, `bitacora.equipo.*`),
   reveals de PII, `auth.view_as` y `health_digest.prueba.send`; lo no mapeado
   cae en `v2.<método>.sin_mapear`. Efecto colateral aceptado: el
@@ -132,7 +134,17 @@ frontend: `npm test` y build.
   `auditoria-escrituras.test.ts`. `npm test` main-api: 85 archivos, 945 tests OK;
   typecheck OK.
 - Commits: T1 7e8a776, T2 8778140, T3 3ddc030, T4 efdef21.
+- Seguimiento (advertencias de la revisión nativa aprobada, linaje
+  review-b0afbbf5a7e52de1): (1) `auditHandled` se marca solo si `record` confirma
+  el INSERT (`record` ahora devuelve true/false; antes tragaba el error y no
+  había forma de saberlo), así un INSERT fallido del handler deja la fila del
+  router; (2) el resolver ignora la barra final y compara segmentos fijos sin
+  distinguir mayúsculas (ni app.js ni el router v2 fijan `caseSensitive`/`strict`,
+  así que se imita el default de Express), ids intactos; (3) este texto y el
+  encabezado de `auditResolver.ts` corregidos. RED: 5 tests fallando (1 de INSERT
+  fallido + 4 de barra/mayúsculas) -> GREEN. `npm test` main-api: 85 archivos,
+  950 tests OK; typecheck OK.
 
 ## Siguiente paso
 
-Revisión y PR (decisión del usuario); sin push desde esta sesión.
+Decisión del usuario sobre estrategia de entrega (rama de ~1100 líneas).

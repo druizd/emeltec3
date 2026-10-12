@@ -225,8 +225,10 @@ async function record({
         impersonatorId,
       ],
     );
+    return true;
   } catch (err) {
     console.error('[audit] No se pudo registrar evento', action, err.message);
+    return false;
   }
 }
 

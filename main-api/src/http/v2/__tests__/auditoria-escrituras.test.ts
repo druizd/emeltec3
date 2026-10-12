@@ -193,6 +193,58 @@ describe('auditoría de escrituras en el router v2 real', () => {
     expect(filas[0]![9]).toBe(403);
   });
 
+  it('si falla el INSERT del handler en view-as, queda la fila del router (una persistida)', async () => {
+    let primero = true;
+    const persistidas: unknown[][] = [];
+    queryMock.mockImplementation(async (...args: unknown[]) => {
+      if (String(args[0]).includes('INSERT INTO audit_log')) {
+        if (primero) {
+          primero = false;
+          throw new Error('insert caido');
+        }
+        persistidas.push(args[1] as unknown[]);
+      }
+      return { rows: [], rowCount: 0 };
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await enviar('POST', '/auth/view-as', tokenRol('SuperAdmin'), { role: 'Vendedor' });
+    expect(res.status).toBe(200);
+
+    await vi.waitFor(() => expect(inserts().length).toBeGreaterThanOrEqual(2));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(inserts()).toHaveLength(2);
+    expect(persistidas).toHaveLength(1);
+    expect(persistidas[0]![3]).toBe('auth.view_as');
+  });
+
+  it.each([
+    ['barra final', '/sites/bitacora/equipos/EQ1/'],
+    ['mayúsculas en segmentos fijos', '/Sites/Bitacora/Equipos/EQ1'],
+  ])('bitácora con %s se mapea igual que la ruta canónica', async (_n, ruta) => {
+    const res = await enviar('PATCH', ruta, tokenActAs());
+    expect(res.status).toBe(403);
+
+    const filas = await insertsTrasResponder();
+    expect(filas).toHaveLength(1);
+    expect(filas[0]![3]).toBe('bitacora.equipo.patch');
+    expect(filas[0]![5]).toBe('EQ1');
+  });
+
+  it.each([
+    ['barra final', '/dga/informantes/11111111-1/'],
+    ['mayúsculas en segmentos fijos', '/DGA/Informantes/11111111-1'],
+  ])('DGA con %s se mapea igual que la ruta canónica', async (_n, ruta) => {
+    const res = await enviar('PATCH', ruta, tokenRol('SuperAdmin'));
+    expect(res.status).toBe(200);
+
+    const filas = await insertsTrasResponder();
+    expect(filas).toHaveLength(1);
+    expect(filas[0]![3]).toBe('dga.informante.upsert');
+    expect(filas[0]![4]).toBe('dga_informante');
+    expect(filas[0]![5]).toBe('11111111-1');
+  });
+
   it('las lecturas no generan filas de auditoría', async () => {
     const res = await fetch(`${base}/api/v2/companies/tree`, {
       headers: { authorization: `Bearer ${tokenRol('SuperAdmin')}` },

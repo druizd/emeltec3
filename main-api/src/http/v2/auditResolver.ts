@@ -9,6 +9,12 @@
  *
  * Una sola entrada por petición: las rutas ya no montan su propio audit. Los
  * nombres de acción de DGA y digest se mantienen idénticos a los históricos.
+ *
+ * Acoplamiento con los handlers: uno que escribe su propia fila, más rica que la
+ * genérica (hoy `viewAsHandler`, `auth.view_as.issue`), pone
+ * `res.locals.auditHandled = true` DESPUÉS de que su INSERT se confirma, y
+ * `auditMutations` omite la fila del router. Si el INSERT falla, no hay marca y
+ * queda la fila del router.
  */
 import type { Request } from 'express';
 
@@ -19,9 +25,10 @@ export interface AuditInfo {
 }
 
 function resolveDgaAudit(req: Request): AuditInfo {
-  const path = req.path;
+  const path = normalizePath(req.path);
+  const pathLower = path.toLowerCase();
   // PATCH /dga/sites/:siteId/pozo-config
-  const pozoMatch = /^\/dga\/sites\/([^/]+)\/pozo-config$/.exec(path);
+  const pozoMatch = /^\/dga\/sites\/([^/]+)\/pozo-config$/i.exec(path);
   if (req.method === 'PATCH' && pozoMatch) {
     return {
       action: 'dga.pozo_config.patch',
@@ -30,7 +37,7 @@ function resolveDgaAudit(req: Request): AuditInfo {
     };
   }
   // POST /dga/informantes (create)
-  if (req.method === 'POST' && path === '/dga/informantes') {
+  if (req.method === 'POST' && pathLower === '/dga/informantes') {
     return {
       action: 'dga.informante.upsert',
       targetType: 'dga_informante',
@@ -38,7 +45,7 @@ function resolveDgaAudit(req: Request): AuditInfo {
     };
   }
   // PATCH /dga/informantes/:rut
-  const infMatch = /^\/dga\/informantes\/([^/]+)$/.exec(path);
+  const infMatch = /^\/dga\/informantes\/([^/]+)$/i.exec(path);
   if (req.method === 'PATCH' && infMatch) {
     return {
       action: 'dga.informante.upsert',
@@ -53,7 +60,7 @@ function resolveDgaAudit(req: Request): AuditInfo {
       targetId: infMatch[1] ?? '',
     };
   }
-  if (req.method === 'POST' && path === '/dga/review-queue/action') {
+  if (req.method === 'POST' && pathLower === '/dga/review-queue/action') {
     return {
       action: `dga.review.${req.body?.action ?? 'unknown'}`,
       targetType: 'dato_dga',
@@ -64,7 +71,7 @@ function resolveDgaAudit(req: Request): AuditInfo {
   // qué tocó: los sitios involucrados y cuántos slots. La lista completa no
   // entra en una columna, y para reconstruir el detalle están los propios
   // slots, que guardan la nota del admin.
-  if (req.method === 'POST' && path === '/dga/review-queue/bulk') {
+  if (req.method === 'POST' && pathLower === '/dga/review-queue/bulk') {
     const items: Array<{ site_id?: string }> = Array.isArray(req.body?.items) ? req.body.items : [];
     const sitios = [...new Set(items.map((i) => i?.site_id ?? '').filter(Boolean))];
     return {
@@ -76,7 +83,7 @@ function resolveDgaAudit(req: Request): AuditInfo {
   // POST /dga/sites/:siteId/slots/bulk — la nota del operador y el rango son
   // la única constancia de por qué un tramo se recalculó o no se declaró, así
   // que van al audit_log y no al fallback `unknown`.
-  const bulkMatch = /^\/dga\/sites\/([^/]+)\/slots\/bulk$/.exec(path);
+  const bulkMatch = /^\/dga\/sites\/([^/]+)\/slots\/bulk$/i.exec(path);
   if (req.method === 'POST' && bulkMatch) {
     return {
       action: `dga.slots.${req.body?.action ?? 'unknown'}`,
@@ -84,7 +91,7 @@ function resolveDgaAudit(req: Request): AuditInfo {
       targetId: `${bulkMatch[1] ?? ''}::${req.body?.desde ?? ''}..${req.body?.hasta ?? ''}`,
     };
   }
-  const reconMatch = path.match(/^\/dga\/sites\/([^/]+)\/reconocer-sensor-defectuoso$/);
+  const reconMatch = path.match(/^\/dga\/sites\/([^/]+)\/reconocer-sensor-defectuoso$/i);
   if (req.method === 'POST' && reconMatch) {
     return {
       action: 'dga.sensor.reconocer_defectuoso',
@@ -96,21 +103,24 @@ function resolveDgaAudit(req: Request): AuditInfo {
 }
 
 function resolveHealthDigestAudit(req: Request): AuditInfo | null {
-  if (req.method === 'PUT' && req.path === '/health-digest/destinatarios') {
+  if (
+    req.method === 'PUT' &&
+    normalizePath(req.path).toLowerCase() === '/health-digest/destinatarios'
+  ) {
     return {
       action: 'health_digest.destinatarios.update',
       targetType: 'health_digest_destinatario',
       targetId: 'lista',
     };
   }
-  if (req.method === 'PUT' && req.path === '/health-digest/config') {
+  if (req.method === 'PUT' && normalizePath(req.path).toLowerCase() === '/health-digest/config') {
     return {
       action: 'health_digest.config.update',
       targetType: 'health_digest_config',
       targetId: 'global',
     };
   }
-  if (req.method === 'POST' && req.path === '/health-digest/prueba') {
+  if (req.method === 'POST' && normalizePath(req.path).toLowerCase() === '/health-digest/prueba') {
     return {
       action: 'health_digest.prueba.send',
       targetType: 'health_digest_config',
@@ -148,17 +158,27 @@ const RUTAS_ESCRITURA: ReadonlyArray<readonly [string, string, string, string]> 
   ['DELETE', '/sites/bitacora/equipos/:id', 'bitacora.equipo.delete', 'bitacora_equipo'],
 ];
 
+/**
+ * Express enruta sin distinguir mayúsculas y sin exigir la barra final (no hay
+ * `caseSensitive` ni `strict` en app.js ni en el router v2), así que el resolver
+ * hace lo mismo: ignora una barra final y compara los segmentos fijos sin
+ * distinguir mayúsculas. Los valores de parámetros (ids) se conservan tal cual.
+ */
+function normalizePath(path: string): string {
+  return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
 /** Devuelve el último parámetro de `path` si encaja con `template`; null si no encaja. */
 function matchTemplate(template: string, path: string): string | null {
   const t = template.split('/');
-  const p = path.split('/');
+  const p = normalizePath(path).split('/');
   if (t.length !== p.length) return null;
   let lastParam = '';
   for (let i = 0; i < t.length; i++) {
     if (t[i]!.startsWith(':')) {
       if (!p[i]) return null;
       lastParam = p[i]!;
-    } else if (t[i] !== p[i]) {
+    } else if (t[i] !== p[i]?.toLowerCase()) {
       return null;
     }
   }
@@ -171,7 +191,7 @@ function matchTemplate(template: string, path: string): string | null {
  * igual en vez de quedar en silencio.
  */
 export function resolveV2Audit(req: Request): AuditInfo {
-  if (req.path.startsWith('/dga/')) return resolveDgaAudit(req);
+  if (req.path.toLowerCase().startsWith('/dga/')) return resolveDgaAudit(req);
   const digest = resolveHealthDigestAudit(req);
   if (digest) return digest;
   for (const [method, template, action, targetType] of RUTAS_ESCRITURA) {
