@@ -92,9 +92,30 @@ build (main-api).
 
 ## Progreso
 
-- T1 a T4 hechas y checks de cierre en verde. Pendiente: revisión nativa por
-  slice (`gentle-ai review assess` sobre la rama completa: riesgo `high`,
-  `hot_path` en `middlewares/auth.ts`) y merge de la cadena.
+- T1 a T4 hechas, checks de cierre en verde y revisión nativa aprobada.
+  Pendiente: merge de la cadena (decisión del usuario).
+- Slices verificados por separado (`tsc -p tsconfig.test.json` y
+  `npx vitest run`): 01 966 tests, 02 971, 03 977; 04 tiene el mismo árbol que
+  la rama original verificada.
+- Revisión nativa (consentida por el usuario en cada caso, 4 lentes):
+  - Slice 01 (`high`, 147 líneas): aprobado y acusado,
+    `review-866ea0863b46d696`.
+  - Slice 02 (`high`, 59 líneas): aprobado y acusado,
+    `review-b3c223599d4cf6dd`.
+  - Slice 03 (`medium`, `under_budget`): sin revisión propia, entró con el 04.
+  - Slices 03+04 (`high`, 383 líneas): aprobado y acusado,
+    `review-a9890497a36093ea`.
+- Hallazgos no bloqueantes verificados, para trabajo posterior:
+  - R3-002: ningún test afirma que `updateUser`/`deleteUser` llamen a
+    `sessionRevocation.forget(id)`.
+  - R3-003: `activo` llegando como string `'false'` desactiva (Postgres lo
+    castea) pero no revoca sesiones, porque la comparación es `=== false`. La
+    otra mitad del hallazgo (que el SELECT no traiga `tipo`) es falsa.
+  - R3-001 (test de OTP inactivo v1 que no llegaría al chequeo) es falso:
+    `otp_expires_at` null no cuenta como vencido (`authController.js:44`).
+  - Sugerencias de legibilidad: guarda duplicada en `authMiddleware.js`,
+    chequeo SuperAdmin duplicado en `service.ts:135`, mock por texto SQL en
+    `auditoria-escrituras.test.ts`.
 - Commits: T1 `d119434`, T2 `782f070`, T3 `929d6f4`, T4 `92723a7`, ajuste de
   tipos/lint de tests `8bc19a3`.
 - Checks de cierre (main-api): `npm run lint` 0 problemas;
