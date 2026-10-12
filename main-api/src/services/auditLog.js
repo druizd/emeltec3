@@ -189,6 +189,9 @@ async function record({
   metadata = null,
 }) {
   try {
+    // Modo "ver como": quien actúa de verdad es el SuperAdmin (req.actAs lo pone
+    // `protect`); el actor "oficial" es el rol simulado.
+    const impersonatorId = (req && req.actAs && req.actAs.realUserId) || null;
     const payloadHash = payload
       ? crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex')
       : null;
@@ -205,8 +208,8 @@ async function record({
     await pool.query(
       `INSERT INTO audit_log
         (actor_id, actor_email, actor_tipo, action, target_type, target_id,
-         payload_hash, ip, user_agent, status_code, metadata)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+         payload_hash, ip, user_agent, status_code, metadata, impersonator_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [
         actorId,
         actorEmail,
@@ -219,6 +222,7 @@ async function record({
         userAgent || null,
         statusCode,
         metadata ? JSON.stringify(metadata) : null,
+        impersonatorId,
       ],
     );
   } catch (err) {

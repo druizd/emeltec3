@@ -46,6 +46,26 @@ export async function findUserPublicByEmail(email: string): Promise<{
   return r.rows[0] ?? null;
 }
 
+/** Empresa por id (null si no existe). Alcance para el modo "ver como". */
+export async function findEmpresaById(id: string): Promise<{ id: string } | null> {
+  const r = await query<{ id: string }>(`SELECT id FROM empresa WHERE id = $1`, [id], {
+    name: 'auth__empresa_by_id',
+  });
+  return r.rows[0] ?? null;
+}
+
+/** Sub-empresa por id con su empresa (null si no existe). */
+export async function findSubEmpresaById(
+  id: string,
+): Promise<{ id: string; empresa_id: string } | null> {
+  const r = await query<{ id: string; empresa_id: string }>(
+    `SELECT id, empresa_id FROM sub_empresa WHERE id = $1`,
+    [id],
+    { name: 'auth__sub_empresa_by_id' },
+  );
+  return r.rows[0] ?? null;
+}
+
 export async function storeOtp(
   email: string,
   plainCode: string,
