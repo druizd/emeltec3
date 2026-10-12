@@ -19,6 +19,7 @@ import {
   type HistoryGranularity,
   type SiteOperacionTurno,
 } from '../../../../services/company.service';
+import { AuthService } from '../../../../services/auth.service';
 
 export interface TurnoConfig {
   nombre: string;
@@ -40,6 +41,14 @@ export interface HistoricalRow {
 export class WaterOperacionStateService {
   private readonly companyService = inject(CompanyService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
+
+  /**
+   * Solo SuperAdmin y Admin (con el rol efectivo de "ver como") pueden cambiar
+   * turnos y jornada: el backend responde 403 al resto. Los componentes
+   * deshabilitan los controles con esto y el guardado automático ni se intenta.
+   */
+  readonly canEditConfig = this.auth.canEditSiteSettings;
 
   readonly numTurnos = signal<2 | 3>(3);
   readonly turnosConfig = signal<TurnoConfig[]>([
@@ -71,6 +80,8 @@ export class WaterOperacionStateService {
     // serializeConfig() lee los 4 signals → registra la dependencia.
     const snapshot = this.serializeConfig();
     if (this.lastPersistedConfig === null || !this.activeSiteId) return;
+    // Sin permiso de edición el PUT daría 403: no se intenta.
+    if (!this.canEditConfig()) return;
     if (snapshot === this.lastPersistedConfig) return;
     this.configSaveTrigger$.next();
   });
@@ -325,7 +336,7 @@ export class WaterOperacionStateService {
         debounceTime(500),
         switchMap(() => {
           const activeId = this.activeSiteId;
-          if (!activeId) return of(null);
+          if (!activeId || !this.canEditConfig()) return of(null);
           const turnos: SiteOperacionTurno[] = this.turnosConfig().slice(0, 3);
           const payload = {
             num_turnos: this.numTurnos(),

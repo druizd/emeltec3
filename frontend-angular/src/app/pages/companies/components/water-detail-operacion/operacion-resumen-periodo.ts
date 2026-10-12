@@ -250,7 +250,8 @@ interface IncidenciaPeriodo {
                 <button
                   type="button"
                   (click)="numTurnos.set(2)"
-                  class="px-3 py-1.5 transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                  [disabled]="!canEditConfig()"
+                  class="disabled:cursor-not-allowed disabled:opacity-60 px-3 py-1.5 transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   [class]="
                     numTurnos() === 2 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
@@ -261,7 +262,8 @@ interface IncidenciaPeriodo {
                 <button
                   type="button"
                   (click)="numTurnos.set(3)"
-                  class="px-3 py-1.5 transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                  [disabled]="!canEditConfig()"
+                  class="disabled:cursor-not-allowed disabled:opacity-60 px-3 py-1.5 transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   [class]="
                     numTurnos() === 3 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
@@ -293,19 +295,22 @@ interface IncidenciaPeriodo {
                   type="text"
                   [value]="t.nombre"
                   (change)="updateTurnoConfig(i, 'nombre', $any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
+                  [disabled]="!canEditConfig()"
+                  class="disabled:cursor-not-allowed disabled:opacity-60 h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
                 <input
                   type="time"
                   [value]="t.inicio"
                   (change)="updateTurnoConfig(i, 'inicio', $any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
+                  [disabled]="!canEditConfig()"
+                  class="disabled:cursor-not-allowed disabled:opacity-60 h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
                 <input
                   type="time"
                   [value]="t.fin"
                   (change)="updateTurnoConfig(i, 'fin', $any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
+                  [disabled]="!canEditConfig()"
+                  class="disabled:cursor-not-allowed disabled:opacity-60 h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
               }
             </div>
@@ -688,6 +693,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   readonly preset = this.state.preset;
   readonly fechaDesde = this.state.fechaDesde;
   readonly fechaHasta = this.state.fechaHasta;
+  readonly canEditConfig = this.state.canEditConfig;
   readonly numTurnos = this.state.numTurnos;
   readonly turnosConfig = this.state.turnosConfig;
   readonly resumenSettingsOpen = signal(false);

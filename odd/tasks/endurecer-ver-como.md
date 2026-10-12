@@ -65,7 +65,7 @@ frontend: `npm test` y build.
 
 - [x] T1 — Revocación falla cerrada para tokens "ver como" (v1 y v2).
 - [x] T2 — `PUT operacion-config` solo para SuperAdmin y Admin.
-- [ ] T3 — Frontend: edición de turnos y jornada solo para SuperAdmin y Admin.
+- [x] T3 — Frontend: edición de turnos y jornada solo para SuperAdmin y Admin.
 - [ ] T4 — Auditoría v2 antes de `protect`, sin filas duplicadas.
 
 ## Ruta por tarea
@@ -95,8 +95,19 @@ frontend: `npm test` y build.
   de companyRoutes con tokens firmados y un stub del controller de dist (no hay
   build en test). Nota: Vendedor ya recibía 403 antes del cambio porque
   `requireSiteAccess` no le da alcance al sitio (desajuste v1/v2 de Vendedor,
-  fuera de alcance); el test lo cubre igual. Commit: se anota en el siguiente.
+  fuera de alcance); el test lo cubre igual. Commit: 8778140.
+- T3: RED (el spec no compilaba sin `canEditConfig`; con la propiedad sola, 1
+  test fallando: PUT disparado sin permiso) -> GREEN. Frontend `npm test`: 17
+  archivos, 275 tests OK; `npm run build` OK (solo warnings previos de
+  hammerjs). Rol efectivo: `AuthService.canEditSiteSettings` (ya existía; usa
+  `effectiveRole`, que respeta "ver como"). `WaterOperacionStateService`
+  expone `canEditConfig`; el effect de autoguardado y el loop del PUT salen sin
+  disparar si es false, y los 3 componentes deshabilitan selector de turnos,
+  nombre/inicio/fin y jornada. Spec nuevo: `water-operacion-state.spec.ts`.
+  Dependencias: `npm ci` no aplica (workspace pnpm); se usó
+  `npx pnpm@11.1.1 install --frozen-lockfile --filter ./frontend-angular...`
+  sin tocar el lockfile. Commit: se anota en el siguiente.
 
 ## Siguiente paso
 
-T3.
+T4.
