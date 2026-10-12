@@ -17,10 +17,10 @@ rol en `PUT operacion-config` y las escrituras v2 bloqueadas que no quedan en
   `requireSiteAccess`: Cliente, Gerente y Vendedor (maletas piloto) pueden
   cambiar turnos y jornada.
 - En v2 la auditoría se monta por ruta y después de `protect`, y las rutas de
-  bitácora no la tienen. Verificado en producción el 2026-10-12: `PATCH
-  /api/v2/sites/bitacora/equipos/EQ999999` con token "ver como" responde 403
-  pero no deja fila en `audit_log`; la misma prueba en v1 (`PUT
-  /api/alertas/999999999`) sí queda registrada con `impersonator_id`.
+  bitácora no la tienen. Verificado en producción el 2026-10-12:
+  `PATCH /api/v2/sites/bitacora/equipos/EQ999999` con token "ver como"
+  responde 403 pero no deja fila en `audit_log`; la misma prueba en v1
+  (`PUT /api/alertas/999999999`) sí queda registrada con `impersonator_id`.
 - `middlewares/__tests__/actAsAudit.test.ts` monta la auditoría antes de
   `protect` "como en app.js", algo que solo es cierto en v1.
 
