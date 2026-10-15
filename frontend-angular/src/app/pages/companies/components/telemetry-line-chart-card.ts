@@ -8,6 +8,7 @@ import {
   OnDestroy,
   SimpleChanges,
   ViewChild,
+  signal,
 } from '@angular/core';
 import {
   Chart,
@@ -15,18 +16,24 @@ import {
   ChartDataset,
   ChartOptions,
   Plugin,
+  Scale,
   TooltipItem,
   registerables,
 } from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import { CHILE_TIME_ZONE } from '../../../shared/timezone';
 
-Chart.register(...registerables);
+// El plugin de zoom no hace nada en un grafico que no lo configura.
+Chart.register(...registerables, zoomPlugin);
 
 type TimePoint = { x: number; y: number };
 type ChartPointValue = TimePoint | null;
 type ReferenceTone = 'min' | 'target' | 'max' | 'neutral';
 type SeriesAggregation = 'avg' | 'last' | 'min' | 'max';
 type MissingValueMode = 'gap' | 'zero' | 'carry';
+
+/** Sobre este ancho el eje X marca dias (DD/MM) en vez de horas. */
+const MULTI_DAY_SPAN_MS = 36 * 60 * 60 * 1000;
 
 export interface TelemetryReferenceLine {
   label: string;
@@ -58,11 +65,24 @@ export interface TelemetryLineChart {
   note?: string;
   showLatestBadge?: boolean;
   compact?: boolean;
+  /** Mas alto que el normal: para series largas que necesitan resolucion vertical. */
+  tall?: boolean;
   maxVisiblePoints?: number;
   bucketMinutes?: number;
   extendToNow?: boolean;
   xMin?: number;
   xMax?: number;
+  /**
+   * Hueco maximo, en ms, que la linea puentea. Sin esto la linea une cualquier
+   * par de puntos, y un equipo que no reporto en dos dias se dibuja como una
+   * recta que nunca existio.
+   */
+  maxGapMs?: number;
+  /**
+   * Arrastrar el mouse sobre un tramo lo amplia (solo el eje del tiempo).
+   * Amplia lo ya cargado: no vuelve a pedir datos con mas resolucion.
+   */
+  zoomable?: boolean;
 }
 
 @Component({
@@ -73,6 +93,7 @@ export interface TelemetryLineChart {
     <article
       class="chart-card"
       [class.chart-card--compact]="chart.compact"
+      [class.chart-card--tall]="chart.tall"
       [ngClass]="'tone-' + (chart.tone || 'blue')"
     >
       <div class="chart-head">
@@ -81,6 +102,16 @@ export interface TelemetryLineChart {
           <h2>{{ chart.title }}</h2>
         </div>
         <div class="range-tags">
+          @if (chart.zoomable && hasRenderableData()) {
+            @if (zoomed()) {
+              <button type="button" class="zoom-reset" (click)="resetZoom()">
+                <span class="material-symbols-outlined" aria-hidden="true">zoom_out_map</span>
+                Restablecer zoom
+              </button>
+            } @else {
+              <span class="range-tag--neutral zoom-hint">Arrastra para ampliar</span>
+            }
+          }
           @if (chart.note) {
             <span class="range-tag--neutral">{{ chart.note }}</span>
           }
@@ -91,7 +122,12 @@ export interface TelemetryLineChart {
       </div>
 
       <div class="chart-box">
-        <canvas #canvas [class.is-hidden]="!hasRenderableData()"></canvas>
+        <canvas
+          #canvas
+          [class.is-hidden]="!hasRenderableData()"
+          [class.is-zoomable]="chart.zoomable"
+          (dblclick)="resetZoom()"
+        ></canvas>
         @if (!hasRenderableData()) {
           <div class="empty-state">
             <span class="material-symbols-outlined">show_chart</span>
@@ -147,7 +183,7 @@ export interface TelemetryLineChart {
         gap: 8px;
       }
 
-      .range-tags span {
+      .range-tags > span {
         border: 1px solid #e6ebf2;
         border-radius: 9999px;
         background: #f8fafc;
@@ -191,6 +227,10 @@ export interface TelemetryLineChart {
         height: 202px;
       }
 
+      .chart-card--tall .chart-box {
+        height: 320px;
+      }
+
       canvas {
         display: block;
         height: 100% !important;
@@ -200,6 +240,46 @@ export interface TelemetryLineChart {
 
       canvas.is-hidden {
         opacity: 0;
+      }
+
+      canvas.is-zoomable {
+        cursor: crosshair;
+      }
+
+      .zoom-hint {
+        font-weight: 700 !important;
+        color: #94a3b8;
+      }
+
+      /*
+       * El color del zoom es el del modulo, no el de la serie: lo define la
+       * pagina con --chart-accent y --chart-accent-strong (por defecto, teal).
+       */
+      .zoom-reset {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid color-mix(in srgb, var(--chart-accent, #0dafbd) 30%, transparent);
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--chart-accent, #0dafbd) 8%, transparent);
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--chart-accent-strong, #0899a5);
+        transition: background 160ms ease;
+      }
+
+      .zoom-reset:hover {
+        background: color-mix(in srgb, var(--chart-accent, #0dafbd) 14%, transparent);
+      }
+
+      .zoom-reset:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--chart-accent, #0dafbd) 36%, transparent);
+        outline-offset: 2px;
+      }
+
+      .zoom-reset .material-symbols-outlined {
+        font-size: 15px;
       }
 
       .empty-state {
@@ -246,6 +326,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
   @ViewChild('canvas') canvas?: ElementRef<HTMLCanvasElement>;
 
   private chartInstance: Chart<'line'> | null = null;
+  readonly zoomed = signal(false);
 
   ngAfterViewInit(): void {
     this.renderChart();
@@ -266,11 +347,25 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
     return this.chart.series.some((series) => this.finiteValues(series.values).length >= 2);
   }
 
+  /** El canvas no lee variables CSS: se resuelve --chart-accent a un hex. */
+  private zoomAccent(): string {
+    const canvas = this.canvas?.nativeElement;
+    const value = canvas ? getComputedStyle(canvas).getPropertyValue('--chart-accent').trim() : '';
+    return /^#[0-9a-f]{6}$/i.test(value) ? value : '#0dafbd';
+  }
+
+  resetZoom(): void {
+    if (!this.chart.zoomable || !this.zoomed()) return;
+    this.chartInstance?.resetZoom();
+    this.zoomed.set(false);
+  }
+
   private renderChart(): void {
     const canvas = this.canvas?.nativeElement;
     if (!canvas || !this.chart) return;
 
     this.destroyChart();
+    this.zoomed.set(false);
     if (!this.hasRenderableData()) return;
 
     const ctx = canvas.getContext('2d');
@@ -319,7 +414,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
         pointBorderColor: series.color,
         pointBorderWidth: style.pointBorderWidth,
         pointStyle: style.pointStyle,
-        spanGaps: true,
+        spanGaps: this.chart.maxGapMs ?? true,
         order: style.order,
       };
     });
@@ -389,8 +484,27 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
   }
 
   private chartOptions(): ChartOptions<'line'> {
-    const yBounds = this.visibleYBounds();
+    const rawYBounds = this.visibleYBounds();
+    const yStep = this.yStep(rawYBounds);
+    // Los bordes caen sobre el paso: si no, Chart.js rotula el borde suelto
+    // (-8 con marcas de 5 en 5) y el eje se lee como mal escalado.
+    // Y una serie que nunca baja de cero no se dibuja sobre un eje negativo:
+    // el margen de abajo dejaba un caudal con piso en -300.
+    const allNonNegative = this.chart.series.every((series) =>
+      this.finiteValues(series.values).every((value) => value >= 0),
+    );
+    const yBounds =
+      this.chart.min === undefined && this.chart.max === undefined
+        ? {
+            min: Math.floor(rawYBounds.min / yStep) * yStep,
+            max: Math.ceil(rawYBounds.max / yStep) * yStep,
+          }
+        : rawYBounds;
+    if (allNonNegative && this.chart.min === undefined && yBounds.min < 0) yBounds.min = 0;
     const xBounds = this.xBounds();
+    // El callback de las marcas recibe la escala como this.
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this;
 
     return {
       responsive: true,
@@ -407,8 +521,12 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
           type: 'linear',
           min: xBounds.min,
           max: xBounds.max,
+          // Las marcas salen del tramo visible y no del total: con zoom, el
+          // tramo es otro y las marcas del total quedan todas fuera de vista.
           afterBuildTicks: (scale) => {
-            scale.ticks = this.xTicks(xBounds).map((value) => ({ value }));
+            scale.ticks = this.xTicks({ min: scale.min, max: scale.max }).map((value) => ({
+              value,
+            }));
           },
           grid: {
             color: '#dfe7f0',
@@ -429,7 +547,9 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
               weight: 800,
             },
             padding: 12,
-            callback: (value) => this.formatTickTimestamp(Number(value)),
+            callback: function (this: Scale, value) {
+              return self.formatTickTimestamp(Number(value), { min: this.min, max: this.max });
+            },
           },
         },
         y: {
@@ -444,7 +564,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
           },
           ticks: {
             color: '#94a3b8',
-            stepSize: this.yStep(yBounds),
+            stepSize: yStep,
             font: {
               family: 'JetBrains Mono',
               size: 11,
@@ -503,6 +623,24 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
             label: (item) => this.tooltipLabel(item),
           },
         },
+        zoom: this.chart.zoomable
+          ? {
+              zoom: {
+                drag: {
+                  enabled: true,
+                  backgroundColor: this.withAlpha(this.zoomAccent(), 0.12),
+                  borderColor: this.withAlpha(this.zoomAccent(), 0.55),
+                  borderWidth: 1,
+                  // Un clic con un temblor de mouse no es un zoom.
+                  threshold: 8,
+                },
+                mode: 'x',
+                onZoomComplete: () => this.zoomed.set(true),
+              },
+              // Nunca mas angosto que 5 minutos: debajo de eso no quedan lecturas.
+              limits: { x: { min: 'original', max: 'original', minRange: 5 * 60_000 } },
+            }
+          : undefined,
       },
     };
   }
@@ -702,31 +840,57 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
 
   private xTicks(bounds: { min: number; max: number }): number[] {
     const hour = 60 * 60 * 1000;
-    const twelveHours = 12 * hour;
     const span = bounds.max - bounds.min;
     const ticks: number[] = [];
 
     if (span <= 3 * hour + 60_000) {
       const halfHour = 30 * 60 * 1000;
-      const firstTick = Math.ceil(bounds.min / halfHour) * halfHour;
-      ticks.push(bounds.min);
-      for (let value = firstTick; value < bounds.max; value += halfHour) {
-        if (value > bounds.min) ticks.push(value);
+      // Con zoom el tramo puede ser de minutos: el paso baja hasta 5 min.
+      const minuteStep = [5, 10, 15, 30].find((minutes) => span / (minutes * 60_000) <= 8) ?? 30;
+      const tickStep = Math.min(halfHour, minuteStep * 60_000);
+      const firstTick = Math.ceil(bounds.min / tickStep) * tickStep;
+      // Los bordes van solo si no quedan pegados a una marca redonda: con
+      // zoom el borde cae en cualquier minuto y "14:30" pisaba a "14:35".
+      const clearance = tickStep * 0.4;
+      if (firstTick - bounds.min > clearance) ticks.push(bounds.min);
+      for (let value = firstTick; value <= bounds.max; value += tickStep) {
+        if (value >= bounds.min) ticks.push(value);
       }
-      ticks.push(bounds.max);
+      if (bounds.max - ticks[ticks.length - 1]! > clearance) ticks.push(bounds.max);
+      if (!ticks.length) ticks.push(bounds.min, bounds.max);
       return Array.from(new Set(ticks)).sort((a, b) => a - b);
     }
 
     const firstHour = Math.floor(bounds.min / hour) * hour;
 
+    // Varios dias: una marca por medianoche, saltando dias para no pasar de 8.
+    // Las marcas de 12:00 dejan de servir aca: "12:00" no dice de que dia es.
+    if (span > MULTI_DAY_SPAN_MS) {
+      const day = 24 * hour;
+      const step = Math.max(1, Math.ceil(span / day / 8)) * day;
+      let firstMidnight = firstHour;
+      while (firstMidnight <= bounds.max && this.localTimeParts(firstMidnight).hour !== '00') {
+        firstMidnight += hour;
+      }
+      for (let value = firstMidnight; value <= bounds.max; value += step) {
+        if (value >= bounds.min) ticks.push(value);
+      }
+      return ticks.length ? ticks : [bounds.min, bounds.max];
+    }
+
+    // Cada cuantas horas marcar: la menor que deje 8 marcas o menos. Solo con
+    // 00:00 y 12:00 una ventana de 12 h quedaba con una marca en el medio.
+    const stepHours = [1, 2, 3, 4, 6, 12].find((h) => span / (h * hour) <= 8) ?? 12;
     for (let value = firstHour; value <= bounds.max; value += hour) {
       const time = this.localTimeParts(value);
-      if (time.minute === '00' && (time.hour === '00' || time.hour === '12')) ticks.push(value);
+      if (time.minute === '00' && Number(time.hour) % stepHours === 0 && value >= bounds.min) {
+        ticks.push(value);
+      }
     }
 
     if (!ticks.length) ticks.push(bounds.min);
-    if (ticks[0]! - bounds.min > twelveHours * 0.6) ticks.unshift(bounds.min);
-    if (Math.abs(ticks[ticks.length - 1]! - bounds.max) > hour) {
+    if (ticks[0]! - bounds.min > stepHours * hour * 0.6) ticks.unshift(bounds.min);
+    if (Math.abs(ticks[ticks.length - 1]! - bounds.max) > stepHours * hour * 0.6) {
       ticks.push(bounds.max);
     }
     return Array.from(new Set(ticks)).sort((a, b) => a - b);
@@ -858,19 +1022,24 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
     return null;
   }
 
-  private formatTickTimestamp(timestampMs: number): string {
+  private formatTickTimestamp(timestampMs: number, bounds: { min: number; max: number }): string {
     if (!Number.isFinite(timestampMs)) return '';
     const parts = new Intl.DateTimeFormat('es-CL', {
       timeZone: CHILE_TIME_ZONE,
       day: '2-digit',
+      month: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23',
       hour12: false,
     }).formatToParts(new Date(timestampMs));
     const day = parts.find((part) => part.type === 'day')?.value || '';
+    const month = parts.find((part) => part.type === 'month')?.value || '';
     const hour = parts.find((part) => part.type === 'hour')?.value || '';
     const minute = parts.find((part) => part.type === 'minute')?.value || '';
+    if (bounds.max - bounds.min > MULTI_DAY_SPAN_MS) {
+      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}`;
+    }
     if (hour === '00' && minute === '00' && day) return `${Number(day)} 00:00`;
     return `${hour}:${minute}`;
   }

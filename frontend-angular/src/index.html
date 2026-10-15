@@ -8,21 +8,13 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3" />
     <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg?v=3" />
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fuentes e iconos van en public/fonts y se declaran en styles.css. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-
-    <!-- Icons: solo wght=400 (sin axes variables FILL/weight rango). Baja la
-         fuente woff2 de ~1.1 MB a ~50-100 kB. Si en el futuro necesitamos
-         iconos llenos (FILL=1) o pesos diferentes, agregar valores discretos
-         a la URL en vez de rangos. -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/MaterialSymbolsOutlined-400.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
   </head>
 
