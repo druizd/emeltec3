@@ -43,10 +43,55 @@ interface FilaSala {
   meta: Record<string, { alias: string; unidad: string | null; rol: string }>;
 }
 
+type RangoHistorico = '12h' | '24h' | '7d' | '30d' | 'personalizado';
+type GranularidadHistorico = '1m' | '1h';
+
+/** El periodo que alimenta tendencias e historico, ya resuelto a instantes. */
+interface VentanaHistorico {
+  desdeMs: number;
+  hastaMs: number;
+  granularidad: GranularidadHistorico;
+  etiqueta: string;
+  /** Solo los rangos personalizados: fechas YYYY-MM-DD que pide el backend. */
+  fechas?: { desde: string; hasta: string };
+}
+
 const POLL_EN_VIVO_MS = 60_000;
-/** 12 horas a 1 lectura por minuto. Es lo que alimenta las tendencias. */
+/** 12 horas a 1 lectura por minuto: la vista por defecto, la que precalienta el cache. */
 const LECTURAS_TENDENCIA = 720;
 const FILAS_POR_PAGINA = 50;
+const HORA_MS = 3_600_000;
+const DIA_MS = 24 * HORA_MS;
+/**
+ * La plataforma trata a Chile como UTC-4 fijo (CHILE_TIME_ZONE = 'Etc/GMT+4'),
+ * y el backend corta los rangos por fecha con esa misma zona.
+ */
+const OFFSET_CHILE_MS = 4 * HORA_MS;
+/** Topes del endpoint: 93 dias por rango y 3.500 filas por respuesta. */
+const MAX_DIAS_RANGO = 93;
+const MAX_FILAS_RANGO = 3500;
+/**
+ * Hasta 2 dias se pide minuto a minuto (2.880 filas, bajo el tope). Mas alla
+ * se pide por hora: 93 dias son 2.232 filas, asi que nunca se trunca.
+ */
+const MAX_DIAS_POR_MINUTO = 2;
+/** Mas que esto sin lectura y la linea se corta en vez de inventar una recta. */
+const HUECO_MAXIMO_MS: Record<GranularidadHistorico, number> = {
+  '1m': 10 * 60_000,
+  '1h': 3 * HORA_MS,
+};
+
+const RANGOS_PREDEFINIDOS: {
+  id: Exclude<RangoHistorico, 'personalizado'>;
+  label: string;
+  horas: number;
+  etiqueta: string;
+}[] = [
+  { id: '12h', label: '12 h', horas: 12, etiqueta: 'Últimas 12 horas' },
+  { id: '24h', label: '24 h', horas: 24, etiqueta: 'Últimas 24 horas' },
+  { id: '7d', label: '7 días', horas: 7 * 24, etiqueta: 'Últimos 7 días' },
+  { id: '30d', label: '30 días', horas: 30 * 24, etiqueta: 'Últimos 30 días' },
+];
 /** Mas series que esto en un grafico y no se distingue ninguna. */
 const MAX_SERIES_GRAFICO = 4;
 
@@ -234,6 +279,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
                 }
               </section>
             } @else if (activeSection() === 'tendencias') {
+              <ng-container [ngTemplateOutlet]="barraRango" />
               @if (cargandoHistorico()) {
                 <section class="panel">
                   <p class="panel__hint">Cargando histórico…</p>
@@ -276,9 +322,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
                       </button>
                     }
                   </div>
-                  <p class="selector__hint">
-                    Hasta {{ maxSeries }} series a la vez. Ventana: últimas 12 horas.
-                  </p>
+                  <p class="selector__hint">Hasta {{ maxSeries }} series a la vez.</p>
                 </div>
 
                 @if (cargandoHistorico()) {
@@ -290,6 +334,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
                 }
               </section>
             } @else if (activeSection() === 'historico') {
+              <ng-container [ngTemplateOutlet]="barraRango" />
               <section class="panel">
                 @if (cargandoHistorico()) {
                   <p class="panel__hint">Cargando histórico…</p>
@@ -298,8 +343,11 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
                 } @else if (!filas().length) {
                   <div class="vacio">
                     <span class="material-symbols-outlined" aria-hidden="true">table_rows</span>
-                    <strong>Sin lecturas en la ventana consultada</strong>
-                    <span>El equipo no ha reportado en las últimas 12 horas.</span>
+                    <strong>Sin lecturas en el período consultado</strong>
+                    <span
+                      >El equipo no reportó entre el {{ ventanaDesde() }} y el
+                      {{ ventanaHasta() }}.</span
+                    >
                   </div>
                 } @else {
                   <div class="tabla-wrap">
@@ -366,6 +414,74 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
             (closed)="descargaAbierta.set(false)"
           />
         }
+
+        <ng-template #barraRango>
+          <section class="panel rango" aria-label="Período consultado">
+            <div class="rango__fila">
+              <div class="rango__opciones" role="group" aria-label="Elegir período">
+                @for (opcion of rangosPredefinidos; track opcion.id) {
+                  <button
+                    type="button"
+                    [class.is-on]="rango() === opcion.id && !personalizadoAbierto()"
+                    [attr.aria-pressed]="rango() === opcion.id && !personalizadoAbierto()"
+                    (click)="elegirRango(opcion.id)"
+                  >
+                    {{ opcion.label }}
+                  </button>
+                }
+                <button
+                  type="button"
+                  [class.is-on]="rango() === 'personalizado' || personalizadoAbierto()"
+                  [attr.aria-pressed]="rango() === 'personalizado' || personalizadoAbierto()"
+                  (click)="abrirPersonalizado()"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                  Personalizado
+                </button>
+              </div>
+              <p class="rango__resumen">
+                <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+                <span class="rango__fechas-texto">{{ ventanaDesde() }} → {{ ventanaHasta() }}</span>
+                <span class="rango__detalle">{{ ventanaDetalle() }}</span>
+              </p>
+            </div>
+
+            @if (personalizadoAbierto()) {
+              <form class="rango__form" (submit)="$event.preventDefault(); aplicarPersonalizado()">
+                <label>
+                  <span>DESDE</span>
+                  <input
+                    type="date"
+                    [value]="fechaDesde()"
+                    [max]="fechaHasta() || hoy()"
+                    (input)="fechaDesde.set($any($event.target).value)"
+                  />
+                </label>
+                <label>
+                  <span>HASTA</span>
+                  <input
+                    type="date"
+                    [value]="fechaHasta()"
+                    [min]="fechaDesde()"
+                    [max]="hoy()"
+                    (input)="fechaHasta.set($any($event.target).value)"
+                  />
+                </label>
+                <button type="submit" class="rango__aplicar">Aplicar</button>
+                <button type="button" class="rango__cancelar" (click)="cancelarPersonalizado()">
+                  Cancelar
+                </button>
+              </form>
+              <p class="rango__ayuda">
+                Hasta {{ maxDiasRango }} días. Sobre {{ maxDiasPorMinuto }} días el gráfico usa una
+                lectura por hora.
+              </p>
+              @if (errorRango()) {
+                <p class="panel__error">{{ errorRango() }}</p>
+              }
+            }
+          </section>
+        </ng-template>
       } @else {
         <section class="dashboard-shell">
           <p class="panel__hint">Cargando sitio…</p>
@@ -376,6 +492,9 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
   styles: [
     `
       .sala-page {
+        /* Acento del modulo Proceso para los controles de los graficos (zoom). */
+        --chart-accent: #6366f1;
+        --chart-accent-strong: #4f46e5;
         min-height: 100%;
         overflow-x: hidden;
         padding: 0 18px 32px;
@@ -728,7 +847,7 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         display: grid;
         gap: 16px;
         margin-top: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
       }
 
       @media (max-width: 900px) {
@@ -783,6 +902,173 @@ const CAMPOS_DESCARGA: DownloadDataType[] = [
         margin-top: 8px;
         font-size: 11px;
         color: var(--color-on-surface-muted);
+      }
+
+      .rango {
+        padding: 14px 18px;
+      }
+
+      .rango__fila {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .rango__opciones {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        border: 1px solid var(--color-outline-variant);
+        border-radius: 8px;
+        background: var(--color-surface-subtle);
+        padding: 3px;
+      }
+
+      .rango__opciones button {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--color-on-surface-variant);
+        transition:
+          background 160ms ease,
+          color 160ms ease;
+      }
+
+      .rango__opciones button:hover {
+        color: #4f46e5;
+      }
+
+      .rango__opciones button.is-on {
+        background: var(--color-surface);
+        color: #4f46e5;
+        box-shadow:
+          0 0 0 1px rgba(99, 102, 241, 0.25),
+          0 1px 3px rgba(15, 23, 42, 0.08);
+      }
+
+      .rango__opciones button:focus-visible,
+      .rango__form button:focus-visible,
+      .rango__form input:focus-visible {
+        outline: 2px solid rgba(99, 102, 241, 0.36);
+        outline-offset: 2px;
+      }
+
+      .rango__opciones .material-symbols-outlined,
+      .rango__resumen .material-symbols-outlined {
+        font-size: 16px;
+      }
+
+      .rango__resumen {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 10px;
+        font-size: 12px;
+        color: var(--color-on-surface-variant);
+      }
+
+      .rango__resumen .material-symbols-outlined {
+        color: #6366f1;
+      }
+
+      .rango__fechas-texto {
+        font-family: var(--font-mono);
+        font-weight: 600;
+        color: #334155;
+      }
+
+      .rango__detalle {
+        border-radius: 9999px;
+        background: rgba(99, 102, 241, 0.08);
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #4f46e5;
+      }
+
+      .rango__form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 10px;
+        margin-top: 14px;
+        border-top: 1px solid var(--color-outline-variant);
+        padding-top: 14px;
+      }
+
+      .rango__form label {
+        display: grid;
+        gap: 4px;
+      }
+
+      .rango__form label span {
+        font-family: var(--font-josefin);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: var(--color-on-surface-muted);
+      }
+
+      .rango__form input {
+        height: 36px;
+        border: 1px solid var(--color-outline-variant);
+        border-radius: 6px;
+        background: var(--color-surface);
+        padding: 0 10px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: #334155;
+      }
+
+      .rango__aplicar,
+      .rango__cancelar {
+        height: 36px;
+        border-radius: 6px;
+        padding: 0 14px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .rango__aplicar {
+        background: #6366f1;
+        color: #ffffff;
+        transition: background 160ms ease;
+      }
+
+      .rango__aplicar:hover {
+        background: #4f46e5;
+      }
+
+      .rango__cancelar {
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
+        color: #475569;
+      }
+
+      .rango__ayuda {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--color-on-surface-muted);
+      }
+
+      .rango .panel__error {
+        margin-top: 6px;
+      }
+
+      @media (max-width: 640px) {
+        .rango__form label {
+          flex: 1 1 140px;
+        }
+
+        .rango__form input {
+          width: 100%;
+        }
       }
 
       .tabla-wrap {
@@ -883,8 +1169,12 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
   private readonly companyService = inject(CompanyService);
 
   private pollSub?: Subscription;
+  private historicoSub?: Subscription;
 
   readonly maxSeries = MAX_SERIES_GRAFICO;
+  readonly maxDiasRango = MAX_DIAS_RANGO;
+  readonly maxDiasPorMinuto = MAX_DIAS_POR_MINUTO;
+  readonly rangosPredefinidos = RANGOS_PREDEFINIDOS;
   readonly camposDescarga = CAMPOS_DESCARGA;
   readonly tabs: { id: SeccionSala; label: string; icon: string }[] = [
     { id: 'monitoreo', label: 'Monitoreo', icon: 'monitoring' },
@@ -914,6 +1204,26 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
   readonly errorHistorico = signal('');
   readonly pagina = signal(1);
   private readonly seleccionManual = signal<string[] | null>(null);
+
+  /** El periodo aplicado: lo que muestran los graficos y la tabla ahora. */
+  readonly rango = signal<RangoHistorico>('12h');
+  readonly ventana = signal<VentanaHistorico>(this.ventanaPredefinida('12h'));
+  /** El formulario de fechas se edita sin tocar el periodo hasta "Aplicar". */
+  readonly personalizadoAbierto = signal(false);
+  readonly fechaDesde = signal('');
+  readonly fechaHasta = signal('');
+  readonly errorRango = signal('');
+  readonly hoy = signal(this.fechaChile(Date.now()));
+
+  readonly ventanaDesde = computed(() => this.formatearFecha(this.ventana().desdeMs));
+  readonly ventanaHasta = computed(() => this.formatearFecha(this.ventana().hastaMs));
+  readonly ventanaDetalle = computed(() => {
+    const ventana = this.ventana();
+    // equipo_hourly guarda la ultima lectura de cada hora, no un promedio.
+    const resolucion =
+      ventana.granularidad === '1m' ? '1 lectura por minuto' : '1 lectura por hora';
+    return `${ventana.etiqueta} · ${resolucion}`;
+  });
 
   /**
    * Las columnas del grafico y de la tabla salen del historico, no del vivo:
@@ -1053,8 +1363,9 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
 
         const unidad = conDato.find((variable) => variable.unidad)?.unidad || '';
         const chart: TelemetryLineChart = {
+          ...this.ejeTemporal(),
           title: `${grupo.servicio.label} — ${MAGNITUDES[grupo.magnitud] || grupo.magnitud}`,
-          subtitle: unidad ? `Últimas 12 horas · ${unidad}` : 'Últimas 12 horas',
+          subtitle: unidad ? `${this.ventana().etiqueta} · ${unidad}` : this.ventana().etiqueta,
           tone: grupo.servicio.tono,
           timestamps,
           series: conDato.map((variable, i) => ({
@@ -1065,7 +1376,7 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
             precision: 2,
             missingValue: 'gap' as const,
           })),
-          emptyText: 'El equipo no ha reportado estas variables en la ventana consultada.',
+          emptyText: 'El equipo no ha reportado estas variables en el período elegido.',
         };
         return { id, chart };
       })
@@ -1079,8 +1390,9 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
     const porClave = new Map(this.variables().map((variable) => [variable.key, variable]));
 
     return {
+      ...this.ejeTemporal(),
       title: 'Variables de proceso',
-      subtitle: 'Últimas 12 horas',
+      subtitle: this.ventana().etiqueta,
       tone: 'purple',
       timestamps: filas.map((fila) => fila.timestampMs),
       series: elegidas.map((key, i) => {
@@ -1094,7 +1406,7 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
           missingValue: 'gap' as const,
         };
       }),
-      emptyText: 'El equipo no ha reportado estas variables en la ventana consultada.',
+      emptyText: 'El equipo no ha reportado estas variables en el período elegido.',
     };
   });
 
@@ -1165,6 +1477,53 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.pollSub?.unsubscribe();
+    this.historicoSub?.unsubscribe();
+  }
+
+  elegirRango(id: Exclude<RangoHistorico, 'personalizado'>): void {
+    this.personalizadoAbierto.set(false);
+    this.errorRango.set('');
+    this.rango.set(id);
+    this.ventana.set(this.ventanaPredefinida(id));
+    this.recargarHistorico();
+  }
+
+  abrirPersonalizado(): void {
+    this.hoy.set(this.fechaChile(Date.now()));
+    if (!this.fechaDesde() || !this.fechaHasta()) {
+      // Arranca con la semana en curso: el caso tipico es revisar algo de dias atras.
+      this.fechaHasta.set(this.hoy());
+      this.fechaDesde.set(this.fechaChile(Date.now() - 6 * DIA_MS));
+    }
+    this.errorRango.set('');
+    this.personalizadoAbierto.set(true);
+  }
+
+  cancelarPersonalizado(): void {
+    this.personalizadoAbierto.set(false);
+    this.errorRango.set('');
+  }
+
+  aplicarPersonalizado(): void {
+    const desde = this.fechaDesde();
+    const hasta = this.fechaHasta();
+    const error = this.validarFechas(desde, hasta);
+    this.errorRango.set(error);
+    if (error) return;
+
+    const desdeMs = this.inicioDelDiaChile(desde);
+    const finMs = this.inicioDelDiaChile(hasta) + DIA_MS;
+    const dias = Math.round((finMs - desdeMs) / DIA_MS);
+    this.rango.set('personalizado');
+    this.ventana.set({
+      desdeMs,
+      hastaMs: Math.min(finMs, Date.now()),
+      granularidad: dias <= MAX_DIAS_POR_MINUTO ? '1m' : '1h',
+      etiqueta: dias === 1 ? `Día ${this.fechaCorta(desde)}` : `${dias} días`,
+      fechas: { desde, hasta },
+    });
+    this.personalizadoAbierto.set(false);
+    this.recargarHistorico();
   }
 
   setActiveSection(section: SeccionSala): void {
@@ -1226,26 +1585,120 @@ export class SalaServiciosDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  private recargarHistorico(): void {
+    const siteId = this.siteContext()?.site.id;
+    if (siteId) this.cargarHistorico(siteId);
+  }
+
+  /**
+   * Las ventanas predefinidas se recalculan contra la hora actual en cada
+   * carga: "ultimas 24 horas" pedidas a las 10:00 no son las mismas a las 15:00.
+   */
   private cargarHistorico(siteId: string): void {
+    if (this.rango() !== 'personalizado') {
+      this.ventana.set(
+        this.ventanaPredefinida(this.rango() as Exclude<RangoHistorico, 'personalizado'>),
+      );
+    }
+    const ventana = this.ventana();
+
+    // 12 h es la consulta en vivo de siempre: sin rango, la que precalienta el
+    // cache. El resto pide por fecha, y el backend corta por dia completo, asi
+    // que lo que cae fuera de la ventana se descarta al llegar.
+    const consulta =
+      this.rango() === '12h'
+        ? this.companyService.getSiteDashboardHistory(siteId, LECTURAS_TENDENCIA, {
+            analogicas: true,
+          })
+        : this.companyService.getSiteDashboardHistory(siteId, MAX_FILAS_RANGO, {
+            from: ventana.fechas?.desde ?? this.fechaChile(ventana.desdeMs),
+            to: ventana.fechas?.hasta ?? this.fechaChile(ventana.hastaMs),
+            granularity: ventana.granularidad,
+            analogicas: true,
+          });
+
+    // Cambiar de periodo rapido no puede dejar que una respuesta vieja pise a la nueva.
+    this.historicoSub?.unsubscribe();
     this.cargandoHistorico.set(true);
     this.errorHistorico.set('');
-    this.companyService
-      .getSiteDashboardHistory(siteId, LECTURAS_TENDENCIA, { analogicas: true })
-      .subscribe({
-        next: (res) => {
-          this.cargandoHistorico.set(false);
-          if (!res.ok) {
-            this.errorHistorico.set('No fue posible cargar el histórico del sitio.');
-            return;
-          }
-          this.filasCronologicas.set(this.aFilas(res.data?.rows || []));
-          this.pagina.set(1);
-        },
-        error: () => {
-          this.cargandoHistorico.set(false);
+    this.historicoSub = consulta.subscribe({
+      next: (res) => {
+        this.cargandoHistorico.set(false);
+        if (!res.ok) {
           this.errorHistorico.set('No fue posible cargar el histórico del sitio.');
-        },
-      });
+          return;
+        }
+        this.filasCronologicas.set(
+          this.aFilas(res.data?.rows || []).filter(
+            (fila) => fila.timestampMs >= ventana.desdeMs && fila.timestampMs <= ventana.hastaMs,
+          ),
+        );
+        this.pagina.set(1);
+      },
+      error: (err) => {
+        this.cargandoHistorico.set(false);
+        this.errorHistorico.set(
+          err?.error?.message || 'No fue posible cargar el histórico del sitio.',
+        );
+      },
+    });
+  }
+
+  private ventanaPredefinida(id: Exclude<RangoHistorico, 'personalizado'>): VentanaHistorico {
+    const rango = RANGOS_PREDEFINIDOS.find((item) => item.id === id) ?? RANGOS_PREDEFINIDOS[0]!;
+    const hastaMs = Date.now();
+    return {
+      desdeMs: hastaMs - rango.horas * HORA_MS,
+      hastaMs,
+      granularidad: rango.horas <= MAX_DIAS_POR_MINUTO * 24 ? '1m' : '1h',
+      etiqueta: rango.etiqueta,
+    };
+  }
+
+  /** Mismo eje X, cortes de linea y densidad para todos los graficos de la pantalla. */
+  private ejeTemporal(): Pick<
+    TelemetryLineChart,
+    'xMin' | 'xMax' | 'maxGapMs' | 'maxVisiblePoints' | 'tall' | 'zoomable'
+  > {
+    const ventana = this.ventana();
+    return {
+      xMin: ventana.desdeMs,
+      xMax: ventana.hastaMs,
+      maxGapMs: HUECO_MAXIMO_MS[ventana.granularidad],
+      // Sin trazo de puntos Chart.js dibuja 1.500 sin esfuerzo, y muestrear mas
+      // fino esconde los picos que el operador viene a buscar.
+      maxVisiblePoints: 1500,
+      tall: true,
+      zoomable: true,
+    };
+  }
+
+  private validarFechas(desde: string, hasta: string): string {
+    if (!desde || !hasta) return 'Elige la fecha desde y la fecha hasta.';
+    if (desde > hasta) return 'La fecha desde no puede ser posterior a la fecha hasta.';
+    if (hasta > this.fechaChile(Date.now())) return 'La fecha hasta no puede ser futura.';
+    const dias = Math.round(
+      (this.inicioDelDiaChile(hasta) - this.inicioDelDiaChile(desde)) / DIA_MS + 1,
+    );
+    if (dias > MAX_DIAS_RANGO) return `El rango máximo es de ${MAX_DIAS_RANGO} días.`;
+    return '';
+  }
+
+  /** 'YYYY-MM-DD' del instante en hora de Chile. */
+  private fechaChile(ms: number): string {
+    return new Date(ms - OFFSET_CHILE_MS).toISOString().slice(0, 10);
+  }
+
+  /** Instante en que empieza el dia 'YYYY-MM-DD' en hora de Chile. */
+  private inicioDelDiaChile(fecha: string): number {
+    const [anio, mes, dia] = fecha.split('-').map(Number);
+    return Date.UTC(anio!, mes! - 1, dia!) + OFFSET_CHILE_MS;
+  }
+
+  /** 'YYYY-MM-DD' a 'DD/MM/YYYY'. */
+  private fechaCorta(fecha: string): string {
+    const [anio, mes, dia] = fecha.split('-');
+    return `${dia}/${mes}/${anio}`;
   }
 
   /**
